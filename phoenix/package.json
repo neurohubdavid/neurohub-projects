@@ -1,0 +1,82 @@
+{
+  "name": "phoenix-companion",
+  "productName": "Phoenix",
+  "version": "1.0.0",
+  "description": "Phoenix: a free, private, neurodivergent-affirming AI companion from NeuroHub Community.",
+  "author": "NeuroHub Community",
+  "license": "MIT",
+  "private": true,
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "web": "node scripts/serve.mjs",
+    "test": "node --test test/",
+    "smoke": "node scripts/smoke-electron.mjs",
+    "sync-site": "node scripts/sync-site.mjs",
+    "predist": "node scripts/sync-site.mjs",
+    "dist": "electron-builder --win nsis portable --x64 --arm64 --publish never",
+    "dist:dir": "electron-builder --win dir --publish never"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "playwright-core": "^1.63.0"
+  },
+  "build": {
+    "appId": "org.neurohubcommunity.phoenix",
+    "productName": "Phoenix",
+    "copyright": "NeuroHub Community",
+    "electronLanguages": ["en-GB", "en-US"],
+    "compression": "maximum",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**",
+      "app/**",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "Phoenix",
+      "artifactName": "Phoenix-Setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Phoenix-Portable-${version}-${arch}.${ext}"
+    },
+    "mac": {
+      "category": "public.app-category.healthcare-fitness",
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility"
+    }
+  }
+}

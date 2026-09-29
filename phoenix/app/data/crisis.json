@@ -1,0 +1,246 @@
+{
+  "_note": "Curated crisis and emergency contacts. Last verified against each provider’s own website (or a second reliable source) on the date in lastReviewed. Re-check every few months: numbers change. Text and chat options are listed first because many neurodivergent people find phone calls hard.",
+  "lastReviewed": "2026-09-29",
+  "global": [
+    {
+      "name": "Find A Helpline",
+      "detail": "Free directory of verified helplines in 130+ countries, searchable by country and topic.",
+      "url": "https://findahelpline.com"
+    },
+    {
+      "name": "IASP Crisis Centres",
+      "detail": "International Association for Suicide Prevention directory of crisis centres by country.",
+      "url": "https://www.iasp.info/crisis-centres-helplines/"
+    },
+    {
+      "name": "Befrienders Worldwide",
+      "detail": "Emotional support helplines around the world.",
+      "url": "https://www.befrienders.org/need-to-talk"
+    }
+  ],
+  "countries": {
+    "GB": {
+      "name": "United Kingdom",
+      "emergency": "999",
+      "lines": [
+        {
+          "name": "Shout (text)",
+          "how": "Text SHOUT to 85258",
+          "detail": "Free, confidential, 24/7 text support",
+          "type": "text"
+        },
+        {
+          "name": "Samaritans",
+          "how": "Call 116 123",
+          "detail": "Free, any time, from any phone",
+          "type": "call"
+        },
+        {
+          "name": "NHS 111",
+          "how": "Call 111 and choose the mental health option",
+          "detail": "Urgent mental health advice (England)",
+          "type": "call"
+        }
+      ]
+    },
+    "IE": {
+      "name": "Ireland",
+      "emergency": "112 or 999",
+      "lines": [
+        {
+          "name": "Text About It",
+          "how": "Text 50808",
+          "detail": "Free, 24/7 text support",
+          "type": "text"
+        },
+        {
+          "name": "Pieta",
+          "how": "Call 1800 247 247, or text HELP to 51444",
+          "detail": "Suicide and self-harm crisis support, 24/7 (standard text rates apply to 51444)",
+          "type": "text"
+        },
+        {
+          "name": "Samaritans Ireland",
+          "how": "Call 116 123",
+          "detail": "Free, 24/7",
+          "type": "call"
+        }
+      ]
+    },
+    "US": {
+      "name": "United States",
+      "emergency": "911",
+      "lines": [
+        {
+          "name": "988 Suicide & Crisis Lifeline",
+          "how": "Call or text 988, or chat at chat.988lifeline.org",
+          "detail": "Free, 24/7",
+          "type": "text"
+        },
+        {
+          "name": "Crisis Text Line",
+          "how": "Text HOME to 741741",
+          "detail": "Free, 24/7 text support",
+          "type": "text"
+        }
+      ]
+    },
+    "CA": {
+      "name": "Canada",
+      "emergency": "911",
+      "lines": [
+        {
+          "name": "9-8-8 Suicide Crisis Helpline",
+          "how": "Call or text 988",
+          "detail": "Free, 24/7, run by the Public Health Agency of Canada",
+          "type": "text"
+        }
+      ]
+    },
+    "AU": {
+      "name": "Australia",
+      "emergency": "000",
+      "lines": [
+        {
+          "name": "Lifeline",
+          "how": "Call 13 11 14, or text 0477 13 11 14",
+          "detail": "24/7 crisis support",
+          "type": "text"
+        },
+        {
+          "name": "Suicide Call Back Service",
+          "how": "Call 1300 659 467",
+          "detail": "24/7 counselling",
+          "type": "call"
+        }
+      ]
+    },
+    "NZ": {
+      "name": "New Zealand",
+      "emergency": "111",
+      "lines": [
+        {
+          "name": "1737 Need to talk?",
+          "how": "Call or text 1737",
+          "detail": "Free, confidential, 24/7",
+          "type": "text"
+        },
+        {
+          "name": "Lifeline Aotearoa",
+          "how": "Call 0800 543 354, or text HELP to 4357",
+          "detail": "Free helpline and text",
+          "type": "text"
+        },
+        {
+          "name": "Suicide Crisis Helpline",
+          "how": "Call 0508 828 865",
+          "detail": "Free",
+          "type": "call"
+        }
+      ]
+    },
+    "IN": {
+      "name": "India",
+      "emergency": "112",
+      "lines": [
+        {
+          "name": "Tele-MANAS",
+          "how": "Call 14416 or 1-800-891-4416",
+          "detail": "Government mental health helpline, free",
+          "type": "call"
+        }
+      ]
+    },
+    "ZA": {
+      "name": "South Africa",
+      "emergency": "112 (mobile) or 10111 (police)",
+      "lines": [
+        {
+          "name": "SADAG suicide crisis line",
+          "how": "Call 0800 567 567",
+          "detail": "South African Depression and Anxiety Group",
+          "type": "call"
+        }
+      ]
+    },
+    "DE": {
+      "name": "Germany",
+      "emergency": "112",
+      "lines": [
+        {
+          "name": "Telefonseelsorge",
+          "how": "Call 0800 111 0 111, 0800 111 0 222 or 116 123. Chat and email at telefonseelsorge.de",
+          "detail": "Free, day and night",
+          "type": "call"
+        }
+      ]
+    },
+    "FR": {
+      "name": "France",
+      "emergency": "112 or 15",
+      "lines": [
+        {
+          "name": "3114",
+          "how": "Call 3114",
+          "detail": "National suicide prevention line, 24/7",
+          "type": "call"
+        }
+      ]
+    },
+    "ES": {
+      "name": "Spain",
+      "emergency": "112",
+      "lines": [
+        {
+          "name": "Línea 024",
+          "how": "Call 024",
+          "detail": "Suicide prevention line",
+          "type": "call"
+        }
+      ]
+    },
+    "NL": {
+      "name": "Netherlands",
+      "emergency": "112",
+      "lines": [
+        {
+          "name": "113 Zelfmoordpreventie",
+          "how": "Call 113, or free on 0800-0113. Chat at 113.nl",
+          "detail": "Anonymous, 24/7",
+          "type": "text"
+        }
+      ]
+    },
+    "BR": {
+      "name": "Brazil",
+      "emergency": "192 (ambulance) or 190 (police)",
+      "lines": [
+        {
+          "name": "CVV",
+          "how": "Call 188",
+          "detail": "Centro de Valorização da Vida, 24/7",
+          "type": "call"
+        }
+      ]
+    },
+    "SG": {
+      "name": "Singapore",
+      "emergency": "999 (police) or 995 (ambulance)",
+      "lines": [
+        {
+          "name": "SOS CareText (WhatsApp)",
+          "how": "WhatsApp 9151 1767",
+          "detail": "Samaritans of Singapore, 24/7",
+          "type": "text"
+        },
+        {
+          "name": "Samaritans of Singapore",
+          "how": "Call 1767",
+          "detail": "24/7, free",
+          "type": "call"
+        }
+      ]
+    }
+  },
+  "fallbackEmergency": "If you are in immediate danger, call your local emergency number. In many countries that is 112, 999, 911 or 000."
+}

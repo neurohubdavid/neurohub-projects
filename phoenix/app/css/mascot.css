@@ -1,0 +1,94 @@
+/* Phoenix, the neuro-affirming AI assistant. States: idle | listening | thinking | talking | happy | concerned.
+   Every animated state has a static pose too, so with reduced motion the state is still readable
+   (open beak = speaking, sparkles = happy, glow ring = listening, eyes up = thinking, eyes down = concerned). */
+
+.ph { display: inline-block; width: var(--ph-size, 96px); line-height: 0; flex: none; }
+.ph-svg { width: 100%; height: auto; overflow: visible; }
+
+.ph-all { transform-box: view-box; transform-origin: 100px 140px; animation: ph-bob 3.6s ease-in-out infinite; }
+@keyframes ph-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+.ph-tail path, .ph-crest path { transform-box: fill-box; transform-origin: 50% 0; animation: ph-flicker 1.7s ease-in-out infinite; }
+.ph-crest path { transform-origin: 50% 100%; animation-duration: 1.3s; }
+.ph-tail path:nth-child(2), .ph-crest path:nth-child(2) { animation-delay: -.55s; }
+.ph-tail path:nth-child(3), .ph-crest path:nth-child(3) { animation-delay: -1.1s; }
+@keyframes ph-flicker { 0%, 100% { transform: scaleY(1) skewX(0); } 30% { transform: scaleY(1.1) skewX(4deg); } 62% { transform: scaleY(.93) skewX(-4deg); } }
+
+.ph-wing { transform-box: fill-box; }
+.ph-wing-l { transform-origin: 100% 78%; }
+.ph-wing-r { transform-origin: 0% 78%; }
+
+.ph-lid { transform-box: fill-box; transform-origin: 50% 0; transform: scaleY(0); animation: ph-blink 5.6s infinite; }
+@keyframes ph-blink { 0%, 92%, 100% { transform: scaleY(0); } 95% { transform: scaleY(1); } }
+
+.ph-pupil { transition: transform .35s ease; transform-box: fill-box; }
+.ph-lower { transform-box: fill-box; transform-origin: 100% 0%; } /* hinge at the back of the jaw, opens downward */
+.ph-aura { opacity: 0; transform-box: fill-box; transform-origin: center; }
+.ph-spark { opacity: 0; transform-box: fill-box; transform-origin: center; }
+.ph-think-dots { opacity: 0; }
+
+/* Level: flames grow, and a glow appears from level 5 */
+.ph[data-level='3'] .ph-tail, .ph[data-level='4'] .ph-tail { transform: scale(1.06); transform-origin: 100px 160px; }
+.ph[data-level='5'] .ph-svg, .ph[data-level='6'] .ph-svg, .ph[data-level='7'] .ph-svg { filter: drop-shadow(0 0 8px rgba(255, 150, 80, .55)); }
+.ph[data-level='1'] .ph-tail, .ph[data-level='1'] .ph-crest { transform: scale(.8); transform-origin: 100px 150px; }
+
+/* States */
+.ph[data-state='listening'] .ph-aura { opacity: 1; animation: ph-aura 1.5s ease-out infinite; }
+.ph[data-state='listening'] .ph-all { animation: none; transform: rotate(-4deg); }
+
+.ph[data-state='thinking'] .ph-pupil { transform: translate(-2.5px, -3.5px); }
+.ph[data-state='thinking'] .ph-tail path { animation-duration: .75s; }
+.ph[data-state='thinking'] .ph-all { animation: ph-sway 1.8s ease-in-out infinite; }
+.ph[data-state='thinking'] .ph-think-dots { opacity: 1; }
+.ph[data-state='thinking'] .ph-think-dots circle { animation: ph-dot 1.2s ease-in-out infinite; }
+.ph[data-state='thinking'] .ph-think-dots circle:nth-child(2) { animation-delay: .2s; }
+.ph[data-state='thinking'] .ph-think-dots circle:nth-child(3) { animation-delay: .4s; }
+@keyframes ph-sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes ph-dot { 0%, 100% { transform: translateY(0); opacity: .35; } 50% { transform: translateY(-4px); opacity: 1; } }
+
+.ph[data-state='talking'] .ph-lower { transform: rotate(-16deg); animation: ph-talk .3s ease-in-out infinite; }
+.ph[data-state='talking'] .ph-all { animation: ph-bob 1.3s ease-in-out infinite; }
+@keyframes ph-talk { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-20deg); } }
+
+/* Voice reactions. Listening: wings lift, alert. Talking: wings flutter softly, crest bobs, infinity glows; each spoken word adds a pulse. */
+.ph-infinity { transition: filter .12s ease; }
+.ph-crest { transition: transform .12s ease; }
+.ph[data-state='listening'] .ph-wing-l { transform: rotate(-7deg); }
+.ph[data-state='listening'] .ph-wing-r { transform: rotate(7deg); }
+.ph[data-state='listening'] .ph-infinity { animation: ph-glow 1.5s ease-in-out infinite; }
+.ph[data-state='talking'] .ph-wing-l { animation: ph-flutter-l .55s ease-in-out infinite; }
+.ph[data-state='talking'] .ph-wing-r { animation: ph-flutter-r .55s ease-in-out infinite; }
+.ph[data-state='talking'] .ph-infinity { animation: ph-glow .9s ease-in-out infinite; }
+.ph.beat .ph-crest { transform: translateY(-3px) scaleY(1.06); }
+.ph.beat .ph-infinity { filter: drop-shadow(0 0 4px #ffd23a) brightness(1.25); }
+@keyframes ph-flutter-l { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-5deg); } }
+@keyframes ph-flutter-r { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(5deg); } }
+@keyframes ph-glow { 0%, 100% { filter: none; } 50% { filter: drop-shadow(0 0 4px #ffd23a); } }
+
+.ph[data-state='happy'] .ph-all { animation: ph-hop .65s ease-out 3; }
+.ph[data-state='happy'] .ph-wing-l { animation: ph-flap-l .32s ease-in-out infinite; transform: rotate(-14deg); }
+.ph[data-state='happy'] .ph-wing-r { animation: ph-flap-r .32s ease-in-out infinite; transform: rotate(14deg); }
+.ph[data-state='happy'] .ph-spark { opacity: 1; animation: ph-spark 1.1s ease-out infinite; }
+.ph[data-state='happy'] .ph-spark:nth-child(2) { animation-delay: .25s; }
+.ph[data-state='happy'] .ph-spark:nth-child(3) { animation-delay: .5s; }
+@keyframes ph-hop { 0% { transform: translateY(0); } 40% { transform: translateY(-14px); } 100% { transform: translateY(0); } }
+@keyframes ph-flap-l { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(-24deg); } }
+@keyframes ph-flap-r { 0%, 100% { transform: rotate(4deg); } 50% { transform: rotate(24deg); } }
+@keyframes ph-spark { 0% { transform: scale(.2) rotate(0); opacity: 0; } 40% { opacity: 1; } 100% { transform: scale(1.1) rotate(90deg); opacity: 0; } }
+
+.ph[data-state='concerned'] .ph-all { animation-duration: 6.5s; }
+.ph[data-state='concerned'] .ph-pupil { transform: translate(0, 2.5px); }
+.ph[data-state='concerned'] .ph-tail path { animation-duration: 3s; }
+
+@keyframes ph-aura { 0% { transform: scale(.78); opacity: .95; } 100% { transform: scale(1.06); opacity: 0; } }
+
+/* Reduced motion: no movement, but the state is still legible */
+@media (prefers-reduced-motion: reduce) {
+  .ph[data-state='listening'] .ph-aura { opacity: .9; }
+  .ph[data-state='happy'] .ph-spark { opacity: 1; }
+}
+:root[data-motion='reduced'] .ph[data-state='listening'] .ph-aura { opacity: .9; }
+:root[data-motion='reduced'] .ph[data-state='happy'] .ph-spark { opacity: 1; }
+:root[data-motion='reduced'] .ph[data-state='thinking'] .ph-think-dots { opacity: 1; }
+:root[data-motion='reduced'] .ph-lid { transform: scaleY(0); }
+:root[data-motion='full'] .ph-all { animation: ph-bob 3.6s ease-in-out infinite; }

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phoenix, a neuro-affirming AI assistant</title>
+  <meta name="description" content="Phoenix is a free, private, neuro-affirming AI assistant for Autistic, ADHD and other neurodivergent people. Bring your own AI, or run it on your own device.">
+  <meta name="theme-color" content="#a66bff">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; media-src 'self' data: blob:; connect-src 'self' http: https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/brand.css">
+  <link rel="stylesheet" href="css/mascot.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="js/theme-boot.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#view">Skip to content</a>
+  <div class="app" id="app">
+    <header class="top">
+      <div class="brand" id="brand"><span class="name">Phoenix</span></div>
+      <nav class="nav" id="nav" aria-label="Main"></nav>
+      <button class="btn btn-sm help-btn" id="help-btn" aria-label="Get help now, crisis and emergency support">Help</button>
+    </header>
+    <main class="view" id="view" tabindex="-1"></main>
+  </div>
+  <noscript><p style="padding:1rem">Phoenix needs JavaScript to run.</p></noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

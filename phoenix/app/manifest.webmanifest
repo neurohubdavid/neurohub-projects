@@ -1,0 +1,14 @@
+{
+  "name": "Phoenix, a neuro-affirming AI assistant",
+  "short_name": "Phoenix",
+  "description": "A free, private, neuro-affirming AI assistant for Autistic, ADHD and other neurodivergent people.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fffbf2",
+  "theme_color": "#a66bff",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

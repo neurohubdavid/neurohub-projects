@@ -1,0 +1,10 @@
+node_modules
+dist
+test/shots
+test/.userdata-*
+smoke.out
+smoke.err
+
+tools/
+
+.netlify/
