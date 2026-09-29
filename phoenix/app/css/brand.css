@@ -4,6 +4,10 @@
 @font-face { font-family: 'Atkinson Hyperlegible'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/atkinson-hyperlegible-latin-400-normal.woff2') format('woff2'), url('../fonts/atkinson-hyperlegible-latin-400-normal.woff') format('woff'); }
 @font-face { font-family: 'Atkinson Hyperlegible'; font-style: italic; font-weight: 400; font-display: swap; src: url('../fonts/atkinson-hyperlegible-latin-400-italic.woff2') format('woff2'); }
 @font-face { font-family: 'Atkinson Hyperlegible'; font-style: normal; font-weight: 700; font-display: swap; src: url('../fonts/atkinson-hyperlegible-latin-700-normal.woff2') format('woff2'), url('../fonts/atkinson-hyperlegible-latin-700-normal.woff') format('woff'); }
+@font-face { font-family: 'Lexend'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/lexend-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Lexend'; font-style: normal; font-weight: 700; font-display: swap; src: url('../fonts/lexend-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'OpenDyslexic'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/opendyslexic-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'OpenDyslexic'; font-style: normal; font-weight: 700; font-display: swap; src: url('../fonts/opendyslexic-latin-700-normal.woff2') format('woff2'); }
 @font-face { font-family: 'Lilita One'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fonts/lilita-one-latin-400-normal.woff2') format('woff2'); }
 
 :root {
@@ -50,14 +54,28 @@
   --sh: none; --sh-sm: none; --bw: 1.5px;
 }
 /* Dyslexia-friendly: wider letter and line spacing, no display font */
-:root[data-dyslexia='on'] { --ls: .035em; --lh: 1.85; --font: 'Atkinson Hyperlegible', Verdana, 'Segoe UI', sans-serif; --display: 'Atkinson Hyperlegible', Verdana, sans-serif; }
-:root[data-dyslexia='on'] body { word-spacing: .12em; }
-:root[data-dyslexia='on'] h1, :root[data-dyslexia='on'] h2, :root[data-dyslexia='on'] h3 { font-weight: 700; }
+/* High contrast: black and white with strong yellow and cyan, thick borders, no soft colours */
+:root[data-theme='contrast'] {
+  color-scheme: dark;
+  --bg: #000000; --bg-2: #0a0a0a; --card: #000000; --text: #ffffff; --muted: #e6e6e6;
+  --border: #ffffff; --shadow: #ffffff; --focus: #ffe600;
+  --good: #7dff9b; --good-bg: #002a10; --bad: #ff8a80; --bad-bg: #300000; --warn-bg: #2b2500;
+  --accent: #ffe600; --accent-ink: #000000; --link: #66e0ff; --bw: 3px;
+  --sh: 3px 3px 0 #ffffff; --sh-sm: 2px 2px 0 #ffffff;
+}
+:root[data-theme='contrast'] .btn-primary, :root[data-theme='contrast'] .tag[aria-pressed='true'] { background: #ffe600; color: #000; }
+:root[data-theme='contrast'] .msg.user { background: #1a1a1a; }
+/* Reading preferences are set from JavaScript as variables: --font, --display, --lh, --ls, --ws, --scale, --measure */
+:root[data-links='underline'] a { text-decoration: underline; text-decoration-thickness: 2px; }
+:root[data-focus='big'] :focus-visible { outline-width: 5px; outline-offset: 4px; }
+:root[data-measure='narrow'] .chat-list, :root[data-measure='narrow'] .view > .stack, :root[data-measure='narrow'] .learn-item { max-width: 42rem; margin-left: auto; margin-right: auto; }
+:root[data-boldtext='on'] body { font-weight: 700; }
 
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { font-size: calc(100% * var(--scale)); -webkit-text-size-adjust: 100%; height: 100%; }
-body { margin: 0; height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); line-height: var(--lh); letter-spacing: var(--ls); font-size: 1.05rem; }
+body { margin: 0; height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); line-height: var(--lh); letter-spacing: var(--ls); word-spacing: var(--ws, 0); font-size: 1.05rem; }
+.msg, .card, .notice, .learn-item, .steps li { line-height: var(--lh); }
 img, svg { max-width: 100%; }
 h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; line-height: 1.15; letter-spacing: .01em; margin: 0 0 .5em; }
 h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); }

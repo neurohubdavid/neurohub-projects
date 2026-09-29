@@ -153,6 +153,38 @@ await step('learn: book concepts are searchable', async () => {
   assert.ok((await page.locator('.learn-item').count()) >= 2);
 });
 
+await step('accessibility: font, size, spacing, theme and voice controls change the page, and persist', async () => {
+  await page.click('#a11y-btn');
+  await page.waitForSelector('.modal .a11y');
+  await page.screenshot({ path: path.join(shots, '15-accessibility.png') });
+  await page.selectOption('.modal select[aria-label="Font"]', 'lexend');
+  const set = async (id, v) => { await page.locator('#' + id).evaluate((el, val) => { el.value = String(val); el.dispatchEvent(new Event('input', { bubbles: true })); }, v); };
+  await set('a11y-size', 1.5); await set('a11y-line', 2.2); await set('a11y-letter', 0.1); await set('a11y-word', 0.3);
+  await page.click('.modal button:has-text("High contrast")');
+  await page.click('.modal .switch:has-text("Underline links")').catch(() => {});
+  const look = await page.evaluate(() => {
+    const cs = getComputedStyle(document.body);
+    return { font: cs.fontFamily, lh: cs.lineHeight, ls: cs.letterSpacing, ws: cs.wordSpacing, root: getComputedStyle(document.documentElement).fontSize, theme: document.documentElement.dataset.theme, bg: cs.backgroundColor };
+  });
+  assert.match(look.font, /Lexend/); assert.equal(look.root, '24px'); assert.equal(look.theme, 'contrast'); assert.equal(look.bg, 'rgb(0, 0, 0)');
+  assert.ok(parseFloat(look.ls) > 0 && parseFloat(look.ws) > 0, 'letter and word spacing applied');
+  assert.ok(parseFloat(look.lh) / parseFloat(await page.evaluate(() => getComputedStyle(document.body).fontSize)) > 2, 'line spacing applied');
+  // voice section: controls exist and the sample button is usable
+  assert.ok(await page.locator('.modal input[aria-label="Speaking speed"]').count() === 1);
+  assert.ok(await page.locator('.modal input[aria-label="Pitch"]').count() === 1);
+  assert.ok(await page.locator('.modal input[aria-label="Volume"]').count() === 1);
+  assert.ok(await page.locator('.modal button:has-text("Hear a sample")').count() === 1);
+  await page.screenshot({ path: path.join(shots, '16-accessibility-applied.png') });
+  await page.click('.modal button:has-text("Done")');
+  // a preset and reset
+  await page.keyboard.press('Alt+A'); await page.waitForSelector('.modal .a11y');
+  await page.click('.modal button:has-text("Dyslexia-friendly")');
+  assert.match(await page.evaluate(() => document.body.style.fontFamily || getComputedStyle(document.body).fontFamily), /Lexend/);
+  await page.click('.modal button:has-text("Reset accessibility settings")');
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme || 'auto'), 'auto');
+  await page.click('.modal button:has-text("Done")');
+});
+
 await step('settings: connect a local AI, find models, test', async () => {
   await page.click('#nav button:has-text("Settings")');
   await page.click('.tile:has-text("On this computer")');

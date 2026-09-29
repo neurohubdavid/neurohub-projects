@@ -22,7 +22,7 @@ const page = await ctx.newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(base + '/');
 assert.match(await page.textContent('h1'), /Phoenix/);
-assert.ok((await page.locator('a[download]').count()) >= 3, 'download links');
+assert.ok((await page.locator('a[href*="/releases/download/phoenix-v"]').count()) >= 3, 'download links point at the GitHub release');
 await page.goto(base + '/app/');
 await page.waitForSelector('.modal');
 await page.click('button:has-text("Start with the built-in helper")');

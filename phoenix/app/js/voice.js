@@ -42,7 +42,8 @@ export function createRecognizer({ lang = 'en-GB', onStart, onInterim, onEnd, on
 let voicesCache = [];
 function refreshVoices() { if (voiceSupport.tts) voicesCache = speechSynthesis.getVoices(); return voicesCache; }
 if (voiceSupport.tts) { refreshVoices(); speechSynthesis.addEventListener?.('voiceschanged', refreshVoices); }
-export const listVoices = (lang = 'en') => refreshVoices().filter((v) => v.lang?.toLowerCase().startsWith(lang.toLowerCase().slice(0, 2)));
+export const allVoices = () => (voiceSupport.tts ? refreshVoices().slice() : []);
+export const listVoices =(lang = 'en') => refreshVoices().filter((v) => v.lang?.toLowerCase().startsWith(lang.toLowerCase().slice(0, 2)));
 
 /** Removes things that read badly aloud: URLs, markdown and emoji. */
 export function speakable(text) {
@@ -73,7 +74,9 @@ export function createSpeaker({ getSettings, onSpeakingChange, onWord }) {
     if (!voiceSupport.tts || !text.trim()) return;
     const s = getSettings();
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = Math.min(2, Math.max(0.6, s.voiceRate || 1));
+    u.rate = Math.min(2, Math.max(0.5, s.voiceRate || 1));
+    u.pitch = Math.min(2, Math.max(0.1, s.voicePitch || 1));
+    u.volume = Math.min(1, Math.max(0.05, s.voiceVolume ?? 1));
     u.lang = s.voiceLang || 'en-GB';
     const v = refreshVoices().find((x) => x.name === s.voiceName) || refreshVoices().find((x) => x.lang === u.lang && x.localService) || refreshVoices().find((x) => x.lang?.startsWith('en'));
     if (v) u.voice = v;

@@ -6,7 +6,8 @@ import { openHelp } from './crisis.js';
 import { mountChat, leaveChat } from './chat.js';
 import { mountToolkit, leaveTools } from './tools.js';
 import { mountLearn } from './learn.js';
-import { mountSettings, applyLook } from './settings.js';
+import { mountSettings } from './settings.js';
+import { applyLook, openAccessibility } from './accessibility.js';
 
 const NAV = [['chat', 'Chat'], ['tools', 'Toolkit'], ['learn', 'Learn'], ['settings', 'Settings']];
 const view = $('#view');
@@ -76,6 +77,9 @@ function welcome() {
 applyLook();
 $('#brand').prepend((() => { const m = phoenixSVG(4); m.style.setProperty('--ph-size', '38px'); return m; })());
 $('#help-btn').addEventListener('click', () => openHelp());
+$('#a11y-btn').addEventListener('click', () => openAccessibility());
+// Alt + A opens accessibility from anywhere.
+document.addEventListener('keydown', (e) => { if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'a') { e.preventDefault(); openAccessibility(); } });
 window.addEventListener('hashchange', () => { if (location.hash !== renderedHash) render(); });
 document.addEventListener('click', (e) => {
   // External links open outside the app (the desktop app blocks in-app navigation).

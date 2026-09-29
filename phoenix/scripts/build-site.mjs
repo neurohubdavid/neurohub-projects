@@ -20,6 +20,7 @@ const FILES = [
   { file: `Phoenix-Setup-${version}-x64.exe`, label: 'Windows installer', note: 'Most Windows PCs (Intel and AMD). Recommended.', primary: true },
   { file: `Phoenix-Portable-${version}-x64.exe`, label: 'Windows portable', note: 'No install: run it from a folder or a USB stick. Intel and AMD.' },
   { file: `Phoenix-Setup-${version}-arm64.exe`, label: 'Windows installer (ARM)', note: 'Windows on ARM (for example Surface Pro X, Snapdragon laptops).' },
+  { file: `Phoenix-Linux-${version}-x64.tar.gz`, label: 'Linux (experimental)', note: 'Unpack it and run the "phoenix" file inside. We have not been able to test this build on Linux, so please tell us if it does not work. If it refuses to start, try running it with --no-sandbox.' },
 ];
 const DOWNLOAD_BASE = process.env.DOWNLOAD_BASE ?? `https://github.com/neurohubdavid/neurohub-projects/releases/download/phoenix-v${version}`;
 const rows = [];
@@ -109,6 +110,7 @@ ${downloads}
     <div class="card"><h3>Neuro-affirming</h3><p>Built on the ideas in David Gray-Hammond's books. It treats neurodivergence as difference, not deficit. It never tells you to mask more, comply, or “try harder”.</p></div>
     <div class="card"><h3>Bring your own AI</h3><p>Free and private on your own computer (Ollama), a free online tier (Gemini, Groq…), or your own paid key. If you use a paid key, <strong>you pay your provider directly</strong>. Phoenix takes nothing and can enforce a daily cap you set.</p></div>
     <div class="card"><h3>Works with no AI</h3><p>A built-in helper and a Toolkit (breathing, grounding, sensory reset, energy check-ins, focus timer, task breaker, scripts, support plan) work offline.</p></div>
+    <div class="card"><h3>Accessibility built in</h3><p>Choose your font (including Lexend and OpenDyslexic), text size, line, letter and word spacing, light, dark, calm or high-contrast colours, and the speech voice, speed and pitch. Press Alt + A or the “Aa” button any time.</p></div>
     <div class="card"><h3>Knows NeuroHub</h3><p>It can draw on articles from neurohubcommunity.org and link them, so you can read more.</p></div>
   </div>
 

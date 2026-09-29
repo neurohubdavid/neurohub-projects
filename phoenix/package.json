@@ -1,7 +1,7 @@
 {
   "name": "phoenix-companion",
   "productName": "Phoenix",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Phoenix: a free, private, neurodivergent-affirming AI companion from NeuroHub Community.",
   "author": "NeuroHub Community",
   "license": "MIT",
@@ -15,9 +15,12 @@
     "sync-site": "node scripts/sync-site.mjs",
     "predist": "node scripts/sync-site.mjs",
     "dist": "electron-builder --win nsis portable --x64 --arm64 --publish never",
+    "dist:linux": "electron-builder --linux tar.gz --x64 --publish never",
     "dist:dir": "electron-builder --win dir --publish never"
   },
   "devDependencies": {
+    "@fontsource/lexend": "^5.3.0",
+    "@fontsource/opendyslexic": "^5.3.0",
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3",
     "playwright-core": "^1.63.0"
@@ -26,7 +29,10 @@
     "appId": "org.neurohubcommunity.phoenix",
     "productName": "Phoenix",
     "copyright": "NeuroHub Community",
-    "electronLanguages": ["en-GB", "en-US"],
+    "electronLanguages": [
+      "en-GB",
+      "en-US"
+    ],
     "compression": "maximum",
     "directories": {
       "output": "dist",
@@ -74,9 +80,10 @@
     },
     "linux": {
       "target": [
-        "AppImage"
+        "tar.gz"
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "artifactName": "Phoenix-Linux-${version}-${arch}.${ext}"
     }
   }
 }

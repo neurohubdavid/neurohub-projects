@@ -121,6 +121,18 @@ legend { font-family: var(--display); font-size: 1.15rem; padding: 0 .4rem; }
 /* ---- onboarding */
 .onboard { max-width: 38rem; margin: 0 auto; }
 
+/* ---- accessibility panel */
+.a11y h3 { margin: 1rem 0 0; }
+.a11y-row { display: grid; gap: .5rem; padding: .7rem 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 25%, transparent); }
+.a11y-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .8rem; }
+.a11y-label .muted { flex-basis: 100%; }
+.a11y-preview { position: sticky; top: 0; z-index: 2; padding: .8rem 1rem; box-shadow: var(--sh-sm); }
+.a11y-preview h3 { margin: 0 0 .2rem; font-size: 1rem; }
+.a11y-preview p { margin: 0 0 .4rem; }
+.seg { border-radius: 18px; }
+.modal-body:has(.a11y) { max-height: 68vh; overflow: auto; padding-right: .3rem; }
+select.input optgroup { font-weight: 700; }
+
 @media print {
   .top, .back, .composer, .btn, #toasts { display: none !important; }
   body, .view { height: auto !important; overflow: visible !important; background: #fff; color: #000; }

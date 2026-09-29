@@ -12,7 +12,16 @@ export const DEFAULTS = () => ({
     theme: 'auto',          // auto | light | dark | calm
     motion: 'auto',         // auto | reduced | full
     textScale: 1,
-    dyslexiaFont: false,
+    font: 'atkinson',       // atkinson | lexend | opendyslexic | system | serif | mono
+    lineHeight: 1.6,        // 1.3 to 2.4
+    letterSpacing: 0,       // em, 0 to 0.16
+    wordSpacing: 0,         // em, 0 to 0.5
+    underlineLinks: false,
+    bigFocus: false,
+    narrow: false,          // narrower reading column
+    boldText: false,
+    voicePitch: 1,
+    voiceVolume: 1,
     replyLength: 'short',   // short | normal | detailed
     tone: 'gentle',         // gentle | direct | playful
     literal: false,         // literal language: no idioms, sarcasm or figures of speech

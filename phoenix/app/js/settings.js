@@ -4,16 +4,11 @@ import { state, save, flush, resetAll, exportData, importData, isPaidProvider, e
 import { PRESETS, listModels, testConnection, providerConfig } from './providers.js';
 import { loadCrisis } from './crisis.js';
 import { loadSite, siteInfo, refreshSite } from './site.js';
+import { applyLook, buildAccessibilityPanel } from './accessibility.js';
 
 const NEUROTYPES = ['Autistic', 'ADHD', 'AuDHD', 'Dyslexic', 'Dyspraxic', 'Dyscalculic', 'Tourettic', 'OCD', 'Voice-hearer', 'Exploring / not sure', 'Multiply neurodivergent'];
 
-export function applyLook() {
-  const r = document.documentElement, p = state.prefs;
-  if (p.theme === 'auto') delete r.dataset.theme; else r.dataset.theme = p.theme;
-  if (p.motion === 'auto') delete r.dataset.motion; else r.dataset.motion = p.motion;
-  r.style.setProperty('--scale', String(p.textScale || 1));
-  if (p.dyslexiaFont) r.dataset.dyslexia = 'on'; else delete r.dataset.dyslexia;
-}
+export { applyLook }; // moved to accessibility.js, re-exported so existing imports keep working
 
 const seg = (options, get, set, label) => {
   const wrap = el('div', { class: 'seg', role: 'group', 'aria-label': label });
@@ -75,14 +70,8 @@ export function mountSettings(container, { focus } = {}) {
     toggle('Use neurohubcommunity.org articles', () => state.prefs.useSite, (v) => (state.prefs.useSite = v)),
     siteStatus, el('div', { class: 'row' }, refreshBtn))));
 
-  // ---------------------------------------------------- look & feel
-  const scale = el('input', { type: 'range', class: 'range', min: '0.9', max: '1.5', step: '0.05', value: String(state.prefs.textScale), 'aria-label': 'Text size' });
-  scale.addEventListener('input', () => { state.prefs.textScale = Number(scale.value); applyLook(); save(); });
-  root.append(el('fieldset', {}, el('legend', {}, 'Look and feel'), el('div', { class: 'stack' },
-    el('div', {}, el('div', { style: { fontWeight: 700, marginBottom: '.3rem' } }, 'Theme'), seg([['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark'], ['calm', 'Calm']], () => state.prefs.theme, (v) => { state.prefs.theme = v; applyLook(); }, 'Theme')),
-    el('div', {}, el('div', { style: { fontWeight: 700, marginBottom: '.3rem' } }, 'Movement'), seg([['auto', 'Match my device'], ['reduced', 'Reduced'], ['full', 'Full']], () => state.prefs.motion, (v) => { state.prefs.motion = v; applyLook(); }, 'Movement')),
-    el('label', { class: 'field' }, 'Text size', scale),
-    toggle('Dyslexia-friendly spacing', () => state.prefs.dyslexiaFont, (v) => { state.prefs.dyslexiaFont = v; applyLook(); }, 'Wider letter, word and line spacing.'))));
+  // ---------------------------------------------------- accessibility (font, size, spacing, theme, voice)
+  root.append(el('fieldset', { id: 'a11y-section' }, el('legend', {}, 'Accessibility and appearance'), buildAccessibilityPanel()));
 
   // ---------------------------------------------------- country
   const sel = el('select', { class: 'input', 'aria-label': 'Country for helplines' }, el('option', { value: '' }, 'Detect from my device language'));
