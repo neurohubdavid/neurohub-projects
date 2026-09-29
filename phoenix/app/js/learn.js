@@ -3,7 +3,7 @@ import { el, fmt } from './util.js';
 import { KB, GROUPS } from './kb.js';
 import { prefillChat } from './chat.js';
 
-export function mountLearn(container, { navigate }) {
+export function mountLearn(container, { navigate, open = '' }) {
   container.textContent = '';
   container.classList.remove('chat-view');
   const search = el('input', { class: 'input', type: 'search', placeholder: 'Search, for example “burnout” or “stimming”', 'aria-label': 'Search topics' });
@@ -14,7 +14,7 @@ export function mountLearn(container, { navigate }) {
   if (other.length) grouped.set('More', other);
   const byId = new Map(KB.map((e) => [e.id, e]));
 
-  const item = (e) => el('details', { class: 'card learn-item' },
+  const item = (e) => el('details', { class: 'card learn-item', id: 'learn-' + e.id, open: e.id === open ? true : null },
     el('summary', {}, e.title),
     el('div', { class: 'body stack' },
       el('p', { html: fmt(e.what) }), el('p', { html: fmt(e.why) }), el('p', { html: fmt('**What tends to help:** ' + e.helps) }),
@@ -36,4 +36,5 @@ export function mountLearn(container, { navigate }) {
   container.append(el('div', { class: 'view-title' }, el('h1', {}, 'Learn')),
     el('p', { class: 'muted' }, 'Plain explanations, drawn from NeuroHub Community and David Gray-Hammond’s books. Some ideas are community concepts or personal views, and the text says when. This is information, not medical advice.'),
     search, out);
+  if (open) requestAnimationFrame(() => { const n = container.querySelector('#learn-' + CSS.escape(open)); n?.scrollIntoView({ block: 'start' }); n?.querySelector('summary')?.focus(); });
 }

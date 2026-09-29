@@ -1,14 +1,33 @@
 {
+  "id": "/app/",
   "name": "Phoenix, a neuro-affirming AI assistant",
   "short_name": "Phoenix",
-  "description": "A free, private, neuro-affirming AI assistant for Autistic, ADHD and other neurodivergent people.",
-  "start_url": "./index.html",
+  "description": "A free, private, neuro-affirming AI assistant for Autistic, ADHD and other neurodivergent people. Works offline. Your data stays on your device.",
+  "lang": "en-GB",
+  "dir": "ltr",
+  "start_url": "./index.html?source=pwa",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#fffbf2",
   "theme_color": "#a66bff",
+  "categories": ["health", "lifestyle", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "screenshots/wide-chat.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "Chat with Phoenix, with calming tools one tap away" },
+    { "src": "screenshots/wide-toolkit.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "The Toolkit: breathing, grounding, check-ins, focus timer and more" },
+    { "src": "screenshots/narrow-chat.png", "sizes": "750x1334", "type": "image/png", "form_factor": "narrow", "label": "Chat with Phoenix" },
+    { "src": "screenshots/narrow-toolkit.png", "sizes": "750x1334", "type": "image/png", "form_factor": "narrow", "label": "The Toolkit" }
+  ],
+  "shortcuts": [
+    { "name": "Calm down: breathing", "short_name": "Breathing", "description": "Start the breathing guide", "url": "./index.html?source=shortcut#/tools/breathing", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Daily check-in", "short_name": "Check-in", "description": "Two minutes to see how you are doing", "url": "./index.html?source=shortcut#/checkin", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Chat with Phoenix", "short_name": "Chat", "description": "Open the chat", "url": "./index.html?source=shortcut#/chat", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

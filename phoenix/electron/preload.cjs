@@ -28,5 +28,13 @@ contextBridge.exposeInMainWorld('phoenixNative', {
     reveal: () => ipcRenderer.send('store:reveal'),
     wipe: () => ipcRenderer.sendSync('store:wipe'),
   },
+  reminders: {
+    set: (cfg) => ipcRenderer.send('reminders:set', { enabled: !!cfg.enabled, time: String(cfg.time || ''), launch: !!cfg.launch, doneDay: String(cfg.doneDay || '') }),
+    done: (day) => ipcRenderer.send('reminders:done', String(day)),
+    test: () => ipcRenderer.send('reminders:test'),
+  },
+  /** The main process asks the app to open a screen (for example when a reminder is clicked). Only '#/...' routes are accepted. */
+  onNavigate: (cb) => ipcRenderer.on('nav', (_e, hash) => { if (typeof hash === 'string' && hash.startsWith('#/')) cb(hash); }),
   platform: process.platform,
+  noAnalytics: process.env.PHOENIX_NO_ANALYTICS === '1', // tests and development switch counting off
 });

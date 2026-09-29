@@ -38,7 +38,11 @@ export const siteQuestionIntent = (t) => SITE_Q_RE.test(String(t || ''));
 
 export function siteListReply(hits, name = '') {
   if (!hits.length) return `${name ? name + ', ' : ''}I couldn't find anything on neurohubcommunity.org that matches that. Try different words, or ask me directly and I'll answer from what I know.`;
-  return `Here is what neurohubcommunity.org has that fits:\n${hits.map((h) => `- [${h.title}](${h.url})`).join('\n')}\n\nI only list what's actually on the site. Want me to explain the idea in my own words too?`;
+  const web = hits.filter((h) => h.kind !== 'presentation' && h.kind !== 'transcript'), decks = [...new Set(hits.filter((h) => h.kind === 'presentation').map((h) => h.deck))];
+  const parts = [];
+  if (web.length) parts.push(`Here is what neurohubcommunity.org has that fits:\n${web.map((h) => `- [${h.title}](${h.url})`).join('\n')}`);
+  if (decks.length) parts.push(`NeuroHub's training presentations also cover it:\n${decks.map((d) => `- ${d}`).join('\n')}`);
+  return `${parts.join('\n\n')}\n\nI only list what actually exists. Want me to explain the idea in my own words too?`;
 }
 
 /**

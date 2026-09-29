@@ -1,0 +1,757 @@
+{
+ "builtFrom": "neurohub-practitioner-app",
+ "docs": [
+  {
+   "id": "global",
+   "title": "6PF Global Assessment",
+   "short": "Six areas",
+   "icon": "🔍",
+   "kind": "rated",
+   "blurb": "A look at all six areas of your life (senses, daily living, connection, emotions, sense of self and strengths), with a 1 to 10 rating for each. Rate again every few weeks to see what changes.",
+   "source": "NeuroHub 6PF Global Assessment Record",
+   "sections": [
+    {
+     "id": "sensory",
+     "title": "Sensory Processing & Environment",
+     "color": "#7C3AED",
+     "guidance": "Sensory differences shape how the world feels, across all the senses: sound, sight, touch, movement, body signals, smell and taste. Being very sensitive and being under-sensitive are both real. Changing the environment can lower the load on everything else.",
+     "fields": [
+      {
+       "id": "sensory-1",
+       "label": "Sensory profile & known triggers",
+       "rows": 3
+      },
+      {
+       "id": "sensory-2",
+       "label": "Environmental adjustments in place / needed",
+       "rows": 3
+      },
+      {
+       "id": "sensory-3",
+       "label": "Sensory preferences & comforts",
+       "rows": 2
+      },
+      {
+       "id": "sensory-4",
+       "label": "Priorities & focus for this domain",
+       "rows": 2
+      }
+     ],
+     "rating": {
+      "id": "r-sensory",
+      "label": "Sensory wellbeing",
+      "min": 1,
+      "max": 10,
+      "higherIsBetter": true,
+      "domain": "sensory"
+     }
+    },
+    {
+     "id": "executive",
+     "title": "Executive Function & Daily Living",
+     "color": "#2563EB",
+     "guidance": "Planning, starting, remembering and switching between tasks all change with stress, load and burnout, so a hard day does not mean you are failing. Think about what you already do that works, and where more support would help.",
+     "fields": [
+      {
+       "id": "executive-1",
+       "label": "Current challenges with daily tasks & organisation",
+       "rows": 3
+      },
+      {
+       "id": "executive-2",
+       "label": "Strategies and supports in place",
+       "rows": 3
+      },
+      {
+       "id": "executive-3",
+       "label": "Executive function strengths (e.g. deep focus, pattern recognition)",
+       "rows": 2
+      },
+      {
+       "id": "executive-4",
+       "label": "Priorities & focus for this domain",
+       "rows": 2
+      }
+     ],
+     "rating": {
+      "id": "r-executive",
+      "label": "Daily functioning",
+      "min": 1,
+      "max": 10,
+      "higherIsBetter": true,
+      "domain": "executive"
+     }
+    },
+    {
+     "id": "social",
+     "title": "Social Communication & Connection",
+     "color": "#0D9488",
+     "guidance": "Autistic communication styles are valid and varied. Notice what drains and what restores your social energy, how much you mask, and which connections feel real. The aim is connection you do not have to perform, not “passing”.",
+     "fields": [
+      {
+       "id": "social-1",
+       "label": "Communication style & preferences",
+       "rows": 3
+      },
+      {
+       "id": "social-2",
+       "label": "Social support needs & masking load",
+       "rows": 3
+      },
+      {
+       "id": "social-3",
+       "label": "Meaningful connections & relational strengths",
+       "rows": 2
+      },
+      {
+       "id": "social-4",
+       "label": "Priorities & focus for this domain",
+       "rows": 2
+      }
+     ],
+     "rating": {
+      "id": "r-social",
+      "label": "Social wellbeing",
+      "min": 1,
+      "max": 10,
+      "higherIsBetter": true,
+      "domain": "social"
+     }
+    },
+    {
+     "id": "emotional",
+     "title": "Emotional Regulation & Mental Health",
+     "color": "#E11D48",
+     "guidance": "Feelings can be intense or hard to read, and long-term stress or past experiences make it harder. Anxiety and low mood are common alongside neurodivergence. Note what is weighing on you and what helps. If it is too much, the Help button is always there.",
+     "fields": [
+      {
+       "id": "emotional-1",
+       "label": "Current emotional regulation challenges",
+       "rows": 3
+      },
+      {
+       "id": "emotional-2",
+       "label": "Coping and regulation strategies used",
+       "rows": 3
+      },
+      {
+       "id": "emotional-3",
+       "label": "Emotional strengths (e.g. empathy, self-awareness, depth of feeling)",
+       "rows": 2
+      },
+      {
+       "id": "emotional-4",
+       "label": "Priorities & focus for this domain",
+       "rows": 2
+      }
+     ],
+     "rating": {
+      "id": "r-emotional",
+      "label": "Emotional wellbeing",
+      "min": 1,
+      "max": 10,
+      "higherIsBetter": true,
+      "domain": "emotional"
+     }
+    },
+    {
+     "id": "identity",
+     "title": "Identity, Autonomy & Wellbeing",
+     "color": "#D97706",
+     "guidance": "How you understand yourself matters for wellbeing. Think about your relationship with being neurodivergent, how much say you have in your daily life, and whether your life fits your values. Finding out late, internalised ableism and burnout can all affect this.",
+     "fields": [
+      {
+       "id": "identity-1",
+       "label": "Identity & self-concept (including relationship with Autism)",
+       "rows": 3
+      },
+      {
+       "id": "identity-2",
+       "label": "Autonomy, agency & sense of control in daily life",
+       "rows": 3
+      },
+      {
+       "id": "identity-3",
+       "label": "Values, sense of purpose & meaning",
+       "rows": 2
+      },
+      {
+       "id": "identity-4",
+       "label": "Priorities & focus for this domain",
+       "rows": 2
+      }
+     ],
+     "rating": {
+      "id": "r-identity",
+      "label": "Identity wellbeing",
+      "min": 1,
+      "max": 10,
+      "higherIsBetter": true,
+      "domain": "identity"
+     }
+    },
+    {
+     "id": "strengths",
+     "title": "Strengths, Interests & Capacity",
+     "color": "#EA580C",
+     "guidance": "Your strengths and deep interests are part of the plan, not a bonus. Burnout can hide them for a while, which does not mean they are gone. How much energy you have right now helps set realistic goals and pace.",
+     "fields": [
+      {
+       "id": "strengths-1",
+       "label": "Special and deep interests",
+       "rows": 3
+      },
+      {
+       "id": "strengths-2",
+       "label": "Cognitive and personal strengths",
+       "rows": 3
+      },
+      {
+       "id": "strengths-3",
+       "label": "Current capacity & energy levels",
+       "rows": 2
+      },
+      {
+       "id": "strengths-4",
+       "label": "Priorities & focus for this domain",
+       "rows": 2
+      }
+     ],
+     "rating": {
+      "id": "r-strengths",
+      "label": "Strengths & capacity",
+      "min": 1,
+      "max": 10,
+      "higherIsBetter": true,
+      "domain": "strengths"
+     }
+    }
+   ],
+   "summary": [
+    {
+     "id": "summary-1",
+     "label": "Key priorities identified",
+     "rows": 4
+    },
+    {
+     "id": "summary-2",
+     "label": "Support or next steps I want to look into",
+     "rows": 4
+    },
+    {
+     "id": "summary-3",
+     "label": "Goals I want to work towards",
+     "rows": 4
+    },
+    {
+     "id": "summary-4",
+     "label": "Review notes",
+     "rows": 4
+    }
+   ]
+  },
+  {
+   "id": "burnout",
+   "title": "6PF Burnout Recovery Plan",
+   "short": "Burnout plan",
+   "icon": "🌱",
+   "kind": "plan",
+   "blurb": "A gentle recovery plan for each of six areas, with tiny next steps (“lilipads”) that you can manage on a hard day.",
+   "source": "NeuroHub 6PF Burnout Recovery Planning Tool",
+   "top": [
+    {
+     "id": "f-stage",
+     "label": "Current burnout presentation / stage",
+     "rows": 2
+    },
+    {
+     "id": "f-goals",
+     "label": "My hopes for recovery",
+     "rows": 2
+    }
+   ],
+   "sections": [
+    {
+     "id": "d1",
+     "title": "Sensory & Environmental Recovery",
+     "sub": "Reduce load, identify safe spaces, restore regulation",
+     "color": "#7C3AED",
+     "fields": [
+      {
+       "id": "d1-contrib",
+       "label": "What is contributing to burnout here?",
+       "rows": 3
+      },
+      {
+       "id": "d1-protect",
+       "label": "Protective factors and strengths",
+       "rows": 3
+      },
+      {
+       "id": "d1-support",
+       "label": "Recovery supports needed",
+       "rows": 3
+      },
+      {
+       "id": "d1-lilipads",
+       "label": "Small next-step actions (lilipads)",
+       "rows": 2
+      },
+      {
+       "id": "d1-wellbeing",
+       "label": "Wellbeing indicators to monitor",
+       "rows": 2
+      }
+     ]
+    },
+    {
+     "id": "d2",
+     "title": "Identity & Self-Understanding",
+     "sub": "Rebuild self-trust, reduce masking, support authenticity",
+     "color": "#2563EB",
+     "fields": [
+      {
+       "id": "d2-contrib",
+       "label": "What is contributing to burnout here?",
+       "rows": 3
+      },
+      {
+       "id": "d2-protect",
+       "label": "Protective factors and strengths",
+       "rows": 3
+      },
+      {
+       "id": "d2-support",
+       "label": "Recovery supports needed",
+       "rows": 3
+      },
+      {
+       "id": "d2-lilipads",
+       "label": "Small next-step actions (lilipads)",
+       "rows": 2
+      },
+      {
+       "id": "d2-wellbeing",
+       "label": "Wellbeing indicators to monitor",
+       "rows": 2
+      }
+     ]
+    },
+    {
+     "id": "d3",
+     "title": "Relational & Social Ecosystem",
+     "sub": "Identify sustaining and draining relationships",
+     "color": "#0D9488",
+     "fields": [
+      {
+       "id": "d3-contrib",
+       "label": "What is contributing to burnout here?",
+       "rows": 3
+      },
+      {
+       "id": "d3-protect",
+       "label": "Protective factors and strengths",
+       "rows": 3
+      },
+      {
+       "id": "d3-support",
+       "label": "Recovery supports needed",
+       "rows": 3
+      },
+      {
+       "id": "d3-lilipads",
+       "label": "Small next-step actions (lilipads)",
+       "rows": 2
+      },
+      {
+       "id": "d3-wellbeing",
+       "label": "Wellbeing indicators to monitor",
+       "rows": 2
+      }
+     ]
+    },
+    {
+     "id": "d4",
+     "title": "Executive Function & Daily Living",
+     "sub": "Reduce demand and create lilipad-sized steps",
+     "color": "#D97706",
+     "fields": [
+      {
+       "id": "d4-contrib",
+       "label": "What is contributing to burnout here?",
+       "rows": 3
+      },
+      {
+       "id": "d4-protect",
+       "label": "Protective factors and strengths",
+       "rows": 3
+      },
+      {
+       "id": "d4-support",
+       "label": "Recovery supports needed",
+       "rows": 3
+      },
+      {
+       "id": "d4-lilipads",
+       "label": "Small next-step actions (lilipads)",
+       "rows": 2
+      },
+      {
+       "id": "d4-wellbeing",
+       "label": "Wellbeing indicators to monitor",
+       "rows": 2
+      }
+     ]
+    },
+    {
+     "id": "d5",
+     "title": "Mental Health & Distress",
+     "sub": "Recognise burnout indicators and support safety",
+     "color": "#E11D48",
+     "fields": [
+      {
+       "id": "d5-contrib",
+       "label": "What is contributing to burnout here?",
+       "rows": 3
+      },
+      {
+       "id": "d5-protect",
+       "label": "Protective factors and strengths",
+       "rows": 3
+      },
+      {
+       "id": "d5-support",
+       "label": "Recovery supports needed",
+       "rows": 3
+      },
+      {
+       "id": "d5-lilipads",
+       "label": "Small next-step actions (lilipads)",
+       "rows": 2
+      },
+      {
+       "id": "d5-wellbeing",
+       "label": "Wellbeing indicators to monitor",
+       "rows": 2
+      }
+     ]
+    },
+    {
+     "id": "d6",
+     "title": "Strengths, Interests & Capacities",
+     "sub": "Reconnect with monotropic joy and meaning",
+     "color": "#EA580C",
+     "fields": [
+      {
+       "id": "d6-contrib",
+       "label": "What is contributing to burnout here?",
+       "rows": 3
+      },
+      {
+       "id": "d6-protect",
+       "label": "Protective factors and strengths",
+       "rows": 3
+      },
+      {
+       "id": "d6-support",
+       "label": "Recovery supports needed",
+       "rows": 3
+      },
+      {
+       "id": "d6-lilipads",
+       "label": "Small next-step actions (lilipads)",
+       "rows": 2
+      },
+      {
+       "id": "d6-wellbeing",
+       "label": "Wellbeing indicators to monitor",
+       "rows": 2
+      }
+     ]
+    }
+   ],
+   "summary": [
+    {
+     "id": "f-plan",
+     "label": "My integrated recovery plan",
+     "rows": 6
+    }
+   ]
+  },
+  {
+   "id": "identity",
+   "title": "Building a Positive Autistic Identity",
+   "short": "Identity workbook",
+   "icon": "🪞",
+   "kind": "plan",
+   "blurb": "NeuroHub’s ten-week identity workbook. Take it one week at a time, at your own pace, and come back to it.",
+   "source": "NeuroHub “Building a Positive Autistic Identity” 10-week course",
+   "sections": [
+    {
+     "id": "ov",
+     "title": "Overview: where I am starting",
+     "sub": "",
+     "color": "#7C3AED",
+     "guidance": "This course draws on NeuroHub Community's Six-Point Framework: Understanding Autistic Experience (monotropism, the double empathy problem, the chaotic self), the Sensory and Emotional Landscape , Autistic Burnout , Identity, Language, and Disability Models , Trauma, Safety, and the Emotional Environment , and Learning from Autistic Community . Autism is not a checklist of deficits — it is a different neurocognitive profile, and this course is built around understanding and affirming that profile rather than correcting it.",
+     "fields": [
+      {
+       "id": "ov-hopes",
+       "label": "What brought you to this course? What are you hoping to get from it?",
+       "rows": 3
+      },
+      {
+       "id": "ov-baseline",
+       "label": "Right now, in your own words: what does being Autistic mean to you? (We'll come back to this in Week 10.)",
+       "rows": 3
+      }
+     ]
+    },
+    {
+     "id": "w1",
+     "title": "Week 1: Starting Point — Seeing Yourself Differently",
+     "sub": "Understanding Autistic Experience",
+     "color": "#2563EB",
+     "guidance": "Autistic people are not broken versions of non-Autistic people — they are a different kind of person, with different rhythms, strengths, needs, and ways of making meaning. This week is about noticing which messages about being Autistic came from outside, and which actually fit.",
+     "fields": [
+      {
+       "id": "w1-messages",
+       "label": "What messages have you received about being Autistic — from family, school, services, or society? Which of these feel true, and which feel imposed on you?",
+       "rows": 3
+      },
+      {
+       "id": "w1-difference",
+       "label": "Name one thing about how your mind works that you'd now describe as a difference rather than a flaw.",
+       "rows": 3
+      },
+      {
+       "id": "w1-understand",
+       "label": "What would you like the person supporting you to understand about you from the outset?",
+       "rows": 3
+      }
+     ]
+    },
+    {
+     "id": "w2",
+     "title": "Week 2: Your Attention — Monotropism",
+     "sub": "Understanding Autistic Experience",
+     "color": "#2563EB",
+     "guidance": "Monotropism describes how Autistic attention flows deeply into a small number of interests rather than being spread thinly. It explains why transitions cost so much, why special interests matter, and why demand stacking overwhelms quickly. None of this is a limitation to fix — it's a different architecture, with different strengths.",
+     "fields": [
+      {
+       "id": "w2-interests",
+       "label": "What are your special interests, past or present? How do they make you feel when you're in them?",
+       "rows": 3
+      },
+      {
+       "id": "w2-transition",
+       "label": "Think of a recent time you were called \"rigid\" or found a transition really hard. Reframe it through monotropism — what was actually happening?",
+       "rows": 3
+      },
+      {
+       "id": "w2-protect",
+       "label": "What would it look like to protect your interests, and to get more warning before transitions, in your daily life?",
+       "rows": 3
+      }
+     ]
+    },
+    {
+     "id": "w3",
+     "title": "Week 3: How You Connect — The Double Empathy Problem",
+     "sub": "Understanding Autistic Experience",
+     "color": "#2563EB",
+     "guidance": "Damian Milton's double empathy problem reframes communication difficulty as mutual: when two people with different ways of experiencing the world try to communicate, both find it harder — the difficulty is not a deficit located in the Autistic person. Autistic-to-Autistic communication is typically fluent and high-rapport.",
+     "fields": [
+      {
+       "id": "w3-directness",
+       "label": "Describe a time your directness, or your communication style, was called \"rude\" or \"odd.\" Whose standard was actually being applied?",
+       "rows": 3
+      },
+      {
+       "id": "w3-easy",
+       "label": "Think of someone — Autistic or otherwise — you connect with easily. What's different about those interactions compared with harder ones?",
+       "rows": 3
+      },
+      {
+       "id": "w3-share",
+       "label": "What would \"sharing the work of being understood\" look like in one relationship in your life?",
+       "rows": 3
+      }
+     ]
+    },
+    {
+     "id": "w4",
+     "title": "Week 4: The Changing Self — Capacity, Masking, and Self-Compassion",
+     "sub": "Understanding Autistic Experience",
+     "color": "#2563EB",
+     "guidance": "The \"chaotic self\" describes how Autistic capacity and presentation vary genuinely with conditions — this is not inconsistency or a character flaw. Masking hides that variation without changing it, and the cost accumulates. Supporting an authentic self means accepting variation rather than penalising it.",
+     "fields": [
+      {
+       "id": "w4-capacity",
+       "label": "Notice how your capacity changes across settings and days. When is it highest? When is it lowest? What's different about those times?",
+       "rows": 3
+      },
+      {
+       "id": "w4-masking",
+       "label": "Where, and with whom, do you mask the most? What would it feel like to unmask there, even a little, if it were safe to?",
+       "rows": 3
+      },
+      {
+       "id": "w4-compassion",
+       "label": "Write yourself a compassionate note about a day you couldn't do something you \"normally\" can.",
+       "rows": 3
+      }
+     ]
+    },
+    {
+     "id": "w5",
+     "title": "Week 5: Your Sensory World — Regulation, Not Symptoms",
+     "sub": "The Sensory and Emotional Landscape",
+     "color": "#0D9488",
+     "guidance": "Autistic sensory experience spans (at least) eight senses, not five, and differences in any of them shape attention, emotion, and capacity continuously. Stimming is a tool for regulation, focus, and expression — not a symptom to suppress, and not something that needs a reason beyond \"it helps.\"",
+     "fields": [
+      {
+       "id": "w5-profile",
+       "label": "Map your sensory profile: what overwhelms you? What do you seek out to feel regulated?",
+       "rows": 3
+      },
+      {
+       "id": "w5-stim",
+       "label": "How do you stim, and what does it do for you? Has anyone ever asked you to stop, mask it, or hide it? How did that feel?",
+       "rows": 3
+      },
+      {
+       "id": "w5-need",
+       "label": "Name one sensory need you're going to stop apologising for this week.",
+       "rows": 3
+      }
+     ]
+    },
+    {
+     "id": "w6",
+     "title": "Week 6: Energy and Burnout — Sustainable Living",
+     "sub": "Autistic Burnout",
+     "color": "#EA580C",
+     "guidance": "Autistic burnout is a state of systemic depletion from demands exceeding capacity for too long — not a personal failing. Recovery happens through reconnection: to the body, to daily life, to community, and to Autistic identity. A positive Autistic identity is itself protective against burnout.",
+     "fields": [
+      {
+       "id": "w6-burnout",
+       "label": "Have you experienced burnout? What did it feel like, and what was happening in your life leading up to it?",
+       "rows": 3
+      },
+      {
+       "id": "w6-signs",
+       "label": "What are your early warning signs that your capacity is dropping?",
+       "rows": 3
+      },
+      {
+       "id": "w6-reduce",
+       "label": "What's one demand in your current life that could be reduced, even slightly, this month?",
+       "rows": 3
+      }
+     ]
+    },
+    {
+     "id": "w7",
+     "title": "Week 7: Language and Identity — Naming Yourself",
+     "sub": "Identity, Language, and Disability Models",
+     "color": "#D97706",
+     "guidance": "The majority of Autistic people prefer identity-first language (\"Autistic person\"). Functioning labels describe observable behaviour, not internal experience, and cause real harm in both directions. Diagnosis is not the only valid gateway to identity — self-identification is valid too.",
+     "fields": [
+      {
+       "id": "w7-language",
+       "label": "Do you prefer identity-first (\"Autistic person\") or person-first (\"person with autism\") language, or something else? Why?",
+       "rows": 3
+      },
+      {
+       "id": "w7-labels",
+       "label": "Have you ever been given, or given yourself, a functioning label (\"high/low-functioning\", \"mild/severe\")? What did it cost you, or get you?",
+       "rows": 3
+      },
+      {
+       "id": "w7-means",
+       "label": "Complete this sentence honestly: \"Being Autistic means…\"",
+       "rows": 3
+      }
+     ]
+    },
+    {
+     "id": "w8",
+     "title": "Week 8: Safety and Trust — Understanding Your Trauma Responses",
+     "sub": "Trauma, Safety, and the Emotional Environment",
+     "color": "#E11D48",
+     "guidance": "Autistic trauma is often chronic and relational rather than a single event — accumulated sensory pain, invalidation, and pressure to mask. Masking is frequently a trauma response: a rational adaptation to environments where being visibly Autistic was unsafe. Genuine safety is built through predictability, autonomy, and being believed.",
+     "fields": [
+      {
+       "id": "w8-safe",
+       "label": "Where in your life do you feel most safe to be yourself? What makes it safe?",
+       "rows": 3
+      },
+      {
+       "id": "w8-hide",
+       "label": "Is there a place or relationship where you've learned to hide who you are? What taught you that it wasn't safe?",
+       "rows": 3
+      },
+      {
+       "id": "w8-believed",
+       "label": "What would \"being believed the first time\" feel like, and who in your life could offer you that?",
+       "rows": 3
+      }
+     ]
+    },
+    {
+     "id": "w9",
+     "title": "Week 9: Finding Your People — Autistic Community",
+     "sub": "Learning from Autistic Community",
+     "color": "#7C3AED",
+     "guidance": "Autistic people are the primary experts on Autistic experience. Community connection is protective, buffering the effects of stigma and isolation on wellbeing — it is a health issue, not a nice-to-have. Online and interest-based community both count as real connection.",
+     "fields": [
+      {
+       "id": "w9-connected",
+       "label": "Have you connected with other Autistic people or Autistic-led spaces (online or in person)? What was that like?",
+       "rows": 3
+      },
+      {
+       "id": "w9-explore",
+       "label": "Name one Autistic author, creator, or community space you could explore this week.",
+       "rows": 3
+      },
+      {
+       "id": "w9-belonging",
+       "label": "What would belonging to a community of people who genuinely \"get it\" change for you?",
+       "rows": 3
+      }
+     ]
+    },
+    {
+     "id": "w10",
+     "title": "Week 10: Integration — Your Positive Autistic Identity",
+     "sub": "Putting the Six Foundations Together",
+     "color": "#7C3AED",
+     "guidance": "The six foundations are not six separate topics — they are six views of one ecology. Autistic people thrive through connection, safety, autonomy, sensory respect, positive identity, and community. This week is about drawing the threads together into something the client can carry forward.",
+     "fields": [
+      {
+       "id": "w10-lookback",
+       "label": "Look back at what you wrote in the Overview about what being Autistic means to you. What's changed?",
+       "rows": 3
+      },
+      {
+       "id": "w10-statement",
+       "label": "Write your own positive Autistic identity statement — in your own words, for yourself.",
+       "rows": 3
+      },
+      {
+       "id": "w10-carry",
+       "label": "What's one thing from this course you'll carry forward into daily life?",
+       "rows": 3
+      },
+      {
+       "id": "w10-summary",
+       "label": "Facilitator's overall summary and recommendations for ongoing support",
+       "rows": 3
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -58,6 +58,19 @@ signing certificate to remove it.
 - **Before release, verify every helpline in `app/data/crisis.json` against each provider's own website**, fill in
   `lastReviewed`, and re-check every few months.
 
+## Daily check-in (6PF-Wellness)
+
+The **Check-in** tab is a two-minute daily check-in using the same six domains and 1–5 scale as NeuroHub's client portal (sensory, daily living, social, emotional, identity, strengths), plus a "one thing I'll protect today" prompt.
+
+- **Insights**: 7/30/90-day and all-time views, a line chart you can toggle by area, area averages with change against the previous period, best and hardest weekdays, a calendar heat map, streaks, and your own notes. Every chart has a text description and a table alternative, and uses dash patterns as well as colour.
+- **Advice** is built in and works offline (`app/js/sixpf.js`, unit tested): it describes patterns cautiously, never diagnoses, and links to Toolkit tools and Learn topics. Very low days show the Help button first. If a connected AI is allowed to read a short summary (Settings: by default only an AI running on this computer), Phoenix can also discuss the patterns in chat.
+- **Reminders** (Settings → Daily check-in): the desktop app schedules its own notification, lives in the system tray, and can start quietly at sign-in. The installed web app uses notifications (and periodic background sync where the browser allows it), and any device can add a repeating daily `.ics` calendar event. One reminder a day at most, skipped if you have already checked in.
+- Check-ins stay on the device, in the same shape as the portal (`{id, createdAt, overallMood, domains[], urgentNote}` plus `protect`), and can be exported as a summary or CSV.
+
+## Knowledge sources
+
+`app/data/site.json` (neurohubcommunity.org, `npm run sync-site`), `app/data/presentations.json` (training decks via `scripts/build-presentations.mjs`, then recorded conversations via `scripts/build-transcripts.mjs`), and the curated entries in `app/js/kb*.js`. Leave a deck or transcript out with `scripts/presentations-exclude.json` / `scripts/transcripts-exclude.json`. Check that everything you bundle is something you are happy to publish: the app and its data are public once deployed.
+
 ## Notes
 
 - Voice *output* works everywhere. Voice *input* uses the browser's speech service, which the desktop app does not have,
@@ -66,3 +79,16 @@ signing certificate to remove it.
   "acquired neurodivergence" as the authors' and community's positions, not settled fact.
 - API keys are stored on the device in plain text. Use keys with spending limits.
 - Mascot artwork, books and site content belong to David Gray-Hammond / NeuroHub Community. Code is MIT licensed.
+
+## Documents (PDF) and donations
+
+**Documents** (Check-in tab): NeuroHub's practitioner documents, read straight from `neurohub-practitioner-app` by `scripts/build-assessments.mjs` into `app/data/assessments.json`: the 6PF Global Assessment (six areas, 1 to 10 ratings), the Burnout Recovery Plan and the Positive Autistic Identity workbook. Staff-only parts (mentor and consultant names, safeguarding triage, facilitator notes) are dropped, and the Initial Consultation and Family Wellbeing records are left out on purpose. A person fills them in one section at a time; if a capable AI is connected, Phoenix can draft answers from the person's own messages (never its own replies, never ratings, never overwriting their words, drafts flagged until checked, consent shown first). `app/js/pdf.js` makes a real A4 PDF on the device with pdf-lib (bundled in `app/vendor`); "Print or save as PDF" covers alphabets the PDF fonts cannot draw. Saving ratings puts them in Insights, which then charts them over time and shows first-versus-latest change.
+
+**Donate**: the header button opens suggested amounts of £5, £10, £25 and £50 (`app/js/donate.js`). Each opens NeuroHub's PayPal page (`paypal.biz/emergentdivergence`), where the amount is typed, with Ko-fi as another way.
+## Privacy of people in the knowledge
+
+Names and personal details of private individuals are kept out of everything Phoenix can read or repeat (`scripts/privacy.mjs`, used by both build scripts, enforced by a unit test). Ideas, research citations, published-book credits and NeuroHub itself stay. Speakers, guests, colleagues, family and community members, places tied to people's lives, credentials, and any first-person account (including the founder's own health history) are dropped sentence by sentence, and deck titles carry no names. Highly personal conversations keep only impersonal, teaching sentences. Phoenix's instructions also tell it never to reveal such details, and it points to the ideas instead.
+
+## Licence
+
+The code is MIT licensed. The written content (knowledge, documents, training text) belongs to NeuroHub Community Ltd and is not MIT licensed: see [CONTENT-NOTICE.md](CONTENT-NOTICE.md).

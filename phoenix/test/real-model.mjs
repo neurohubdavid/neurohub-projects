@@ -11,7 +11,6 @@ const ud = fs.mkdtempSync(path.join(root, 'test', '.real-'));
 const app = await electron.launch({ args: [root, `--user-data-dir=${ud}`] });
 const page = await app.firstWindow();
 await page.waitForSelector('.modal');
-await page.fill('input[aria-label="What should Phoenix call you?"]', 'Sam');
 await page.click('button:has-text("Connect my AI")');
 await page.waitForSelector('#ai-section');
 await page.click('.tile:has-text("On this computer")');

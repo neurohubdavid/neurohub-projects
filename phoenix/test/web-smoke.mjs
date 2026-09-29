@@ -22,7 +22,9 @@ const page = await ctx.newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(base + '/');
 assert.match(await page.textContent('h1'), /Phoenix/);
-assert.ok((await page.locator('a[href*="/releases/download/phoenix-v"]').count()) >= 3, 'download links point at the GitHub release');
+assert.equal(await page.locator('a.btn-primary[href="/app/?install=1"]').count(), 1, 'the page leads with the one-tap PWA install');
+const dl = await page.locator('a[href*="/releases/"]').all(); // classic downloads are optional and only listed when installers were built
+for (const a of dl) assert.match(await a.getAttribute('href'), /\/releases\/download\/phoenix-v[\d.]+\//, 'download links point at the GitHub release');
 await page.goto(base + '/app/');
 await page.waitForSelector('.modal');
 await page.click('button:has-text("Start with the built-in helper")');

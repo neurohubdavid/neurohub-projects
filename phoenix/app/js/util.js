@@ -119,7 +119,8 @@ export async function copyText(text) {
 }
 
 export function download(filename, text, type = 'text/plain') {
-  const url = URL.createObjectURL(new Blob([text], { type: `${type};charset=utf-8` }));
+  const isBinary = typeof text !== 'string';
+  const url = URL.createObjectURL(new Blob([text], { type: isBinary ? type : `${type};charset=utf-8` }));
   const a = el('a', { href: url, download: filename });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);

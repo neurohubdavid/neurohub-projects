@@ -35,9 +35,13 @@ const askedAbout = /^(what|whats|what's|who|why|how|explain|tell me|define|meani
 export function offlineReply(question, { name = '', aiConfigured = false, lastAssistant = '', siteHits = null } = {}) {
   const raw = String(question || '').trim();
   const q = norm(raw);
-  const hi = name ? `${name}, ` : '';
+  const hi = name ? `${name}. ` : '';
   const A = (label, go) => ({ label, go });
-  const links = () => { const h = siteHits ? siteHits(raw) : []; return h.length ? '\n\n**From neurohubcommunity.org:**\n' + h.map((x) => `- [${x.title}](${x.url})`).join('\n') : ''; };
+  const links = () => {
+    const h = siteHits ? siteHits(raw) : [];
+    const web = h.filter((x) => x.kind !== 'presentation' && x.kind !== 'transcript' && x.url), decks = [...new Set(h.filter((x) => x.kind === 'presentation').map((x) => x.deck))].slice(0, 2);
+    return (web.length ? '\n\n**From neurohubcommunity.org:**\n' + web.map((x) => `- [${x.title}](${x.url})`).join('\n') : '') + (decks.length ? '\n\n**Also covered in NeuroHub presentations:**\n' + decks.map((d) => `- ${d}`).join('\n') : '');
+  };
 
   if (!raw) return { text: 'I am here whenever you want to say something.', actions: [] };
 

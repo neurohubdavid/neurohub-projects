@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const target = path.resolve(process.argv[2] || '');
 if (!process.argv[2]) throw new Error('usage: node scripts/export-source.mjs <target-folder>');
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'site', 'tools', '.git', 'shots']);
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'site', 'tools', '.git', 'shots', '.netlify']);
 const SKIP_FILES = new Set(['smoke.out', 'smoke.err']);
 let n = 0, bytes = 0;
 function copy(dir, out) {

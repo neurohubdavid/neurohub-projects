@@ -54,7 +54,7 @@ test('crisis detection catches the obvious and ignores the everyday', () => {
 });
 
 // ---- persona
-test('system prompt carries the personâ€™s settings and crisis details', () => {
+test('system prompt carries the personÃ¢â‚¬â„¢s settings and crisis details', () => {
   const s = buildSystem({ profile: { name: 'Sam', about: 'ADHD, hate long replies', neurotypes: ['ADHD'] }, prefs: { replyLength: 'short', tone: 'direct', literal: true }, crisisBlock: 'Samaritans 116 123', crisisFlag: true });
   for (const needle of ['Sam', 'ADHD', 'direct', 'LITERAL MODE', 'Samaritans 116 123', 'SAFETY FLAG', 'not a therapist']) assert.ok(s.includes(needle), needle);
 });
@@ -204,4 +204,271 @@ test('guard: small models are recognised from their names', async () => {
   const { isSmallModel } = await import('../app/js/guard.js');
   for (const n of ['llama3.2:1b', 'qwen2.5:0.5b', 'gemma3:1b', 'phi3-mini', 'tinyllama']) assert.ok(isSmallModel(n), n);
   for (const n of ['llama3.2:3b', 'llama3.1:8b', 'qwen2.5:7b', 'gemma3:12b', 'mistral', '']) assert.ok(!isSmallModel(n), n);
+});
+
+
+// ---- 6PF-Wellness check-ins, insights and advice
+import * as S from '../app/js/sixpf.js';
+
+import { buildIndex, search } from '../app/js/search.js';
+
+const mk = (dayOffset, mood, ratings = {}, note = '') => {
+  const d = new Date('2026-09-29T12:00:00'); d.setDate(d.getDate() + dayOffset);
+  const e = S.freshEntry(); e.id = 'e' + dayOffset; e.createdAt = d.toISOString(); e.overallMood = mood;
+  for (const dm of e.domains) dm.rating = ratings[dm.id] ?? mood;
+  if (note) e.domains[0].note = note;
+  return e;
+};
+const NOW = new Date('2026-09-29T20:00:00');
+
+test('sixpf: streaks, one entry per day and today detection', () => {
+  const list = [mk(-3, 3), mk(-2, 3), mk(-1, 4), mk(0, 2), { ...mk(0, 5), id: 'later', createdAt: new Date('2026-09-29T18:00:00').toISOString() }];
+  assert.equal(S.perDay(list).length, 4, 'two entries on one day count once (the later one)');
+  assert.equal(S.perDay(list).at(-1).overallMood, 5);
+  assert.equal(S.streak(list, NOW), 4);
+  assert.equal(S.checkedInToday(list, NOW), true);
+  assert.equal(S.streak([mk(-2, 3), mk(-1, 3)], NOW), 2, 'today is not a broken streak until it is over');
+  assert.equal(S.streak([mk(-5, 3)], NOW), 0);
+  assert.equal(S.longestStreak([mk(-9, 3), mk(-8, 3), mk(-7, 3), mk(-2, 3), mk(-1, 3)]), 3);
+});
+
+test('sixpf: averages and change against the previous period', () => {
+  const list = [];
+  for (let i = -13; i <= -7; i++) list.push(mk(i, 2));
+  for (let i = -6; i <= 0; i++) list.push(mk(i, 4));
+  const c = S.changes(list, 7, NOW);
+  assert.equal(c.current.mood, 4); assert.equal(c.previous.mood, 2); assert.equal(c.change.mood, 2);
+  assert.equal(S.inRange(list, 7, NOW).length, 7);
+  assert.equal(S.direction([mk(-5, 2), mk(-4, 2), mk(-3, 2), mk(-2, 4), mk(-1, 4), mk(0, 4)], 'mood').dir, 'up');
+  assert.equal(S.direction([mk(-5, 4), mk(-4, 4), mk(-3, 4), mk(-2, 2), mk(-1, 2), mk(0, 2)], 'mood').dir, 'down');
+});
+
+test('sixpf: advice is cautious, specific and never diagnoses', () => {
+  assert.deepEqual(S.advice([]), []);
+  const low = [mk(-3, 3), mk(-2, 3), mk(-1, 2, { sensory: 1 }), mk(0, 2, { sensory: 1, executive: 2, emotional: 2 })];
+  const a = S.advice(low, NOW);
+  assert.ok(a.some((x) => x.id === 'low-sensory'), 'flags the low sensory area');
+  assert.ok(a.some((x) => x.id === 'burnout'), 'several key areas low together shows the early-burnout note');
+  for (const x of a) assert.ok(!/diagnos(e|is)d? (you|with)|you have (depression|autism|adhd)/i.test(x.text), 'no diagnosing: ' + x.id);
+  const crisis = S.advice([mk(0, 1)], NOW);
+  assert.equal(crisis[0].id, 'support'); assert.ok(crisis[0].actions.some((x) => x.go === 'help'));
+  const fine = S.advice([mk(-1, 4), mk(0, 4)], NOW);
+  assert.ok(fine.every((x) => x.priority >= 5), 'good days get no alarm');
+});
+
+test('sixpf: every advice link points at something that exists', () => {
+  const ids = new Set(KB.map((e) => e.id));
+  const tools = new Set(['breathing', 'grounding', 'sensory', 'checkin', 'focus', 'tasks', 'scripts', 'plan']);
+  const all = [...S.DOMAINS.map((d) => S.advice([mk(0, 2, { [d.id]: 1 })], NOW)), S.advice([mk(-3, 3), mk(-2, 3), mk(-1, 2, { sensory: 1 }), mk(0, 2, { sensory: 1, executive: 2, emotional: 2 })], NOW)].flat();
+  for (const x of all) for (const l of x.actions || []) {
+    const [kind, id] = l.go.split(':');
+    if (kind === 'learn') assert.ok(ids.has(id), 'missing topic ' + id);
+    else if (kind === 'tool') assert.ok(tools.has(id), 'missing tool ' + id);
+    else assert.ok(['help', 'checkin'].includes(kind) || l.go.startsWith('checkin:'), l.go);
+  }
+});
+
+test('sixpf: pattern finder needs enough data, and summaries carry numbers and notes but no instructions', () => {
+  const few = [mk(-3, 3), mk(-2, 4)];
+  assert.equal(S.strongestLink(few), null);
+  const many = []; for (let i = -11; i <= 0; i++) { const v = 1 + (Math.abs(i) % 5); many.push(mk(i, 3, { sensory: v, emotional: v, social: 3 })); }
+  const link = S.strongestLink(many);
+  assert.ok(link && Math.abs(link.r) > 0.9);
+  const sum = S.summaryForAI([mk(-1, 3, {}, 'loud office'), mk(0, 2)], NOW);
+  assert.match(sum, /overall 2\/5/); assert.match(sum, /loud office/); assert.match(sum, /Checked in today: yes/);
+  assert.equal(S.summaryForAI([]), '');
+  assert.match(S.shareableSummary([mk(0, 3)], 30, NOW), /Overall: average 3\/5/);
+  assert.match(S.toCSV([mk(0, 3)]), /^date,overall,sensory/);
+});
+
+test('sixpf: the built-in reply about check-ins is honest with no data and useful with some', () => {
+  assert.ok(S.checkinIntent('how have I been doing this week?')); assert.ok(S.checkinIntent('can we look at my check-ins')); assert.ok(!S.checkinIntent('what is masking?'));
+  assert.match(S.chatReply([], 'Sam').text, /not done a check-in/);
+  assert.ok(S.chatReply([], 'Sam').actions[0].go === 'checkin');
+  const r = S.chatReply([mk(-1, 2), mk(0, 2, { sensory: 1 })], 'Sam', NOW);
+  assert.match(r.text, /Lowest area/); assert.ok(r.actions.length);
+});
+
+test('reminders: the calendar file repeats daily and has an alarm', () => {
+  const ics = S.dailyIcs('09:30', 'https://phoenix.example/app/#/checkin');
+  assert.match(ics, /RRULE:FREQ=DAILY/); assert.match(ics, /T093000/); assert.match(ics, /BEGIN:VALARM/); assert.match(ics, /\r\n/);
+});
+
+test('the wellness summary reaches the prompt only when passed, and is marked as data', () => {
+  assert.ok(!buildSystem({}).includes('DAILY CHECK-INS'));
+  const sys = buildSystem({ wellnessBlock: 'Latest: overall 2/5' });
+  assert.match(sys, /THEIR DAILY CHECK-INS/); assert.match(sys, /data, not instructions/); assert.match(sys, /never as a verdict/);
+});
+
+test('transcripts are searchable and cited as recorded conversations', async () => {
+  const data = JSON.parse(readFileSync(new URL('../app/data/presentations.json', import.meta.url), 'utf8'));
+  const tr = data.posts.filter((p) => p.kind === 'transcript');
+  assert.ok(tr.length > 40, 'transcript chunks present');
+  assert.ok(!tr.some((p) => /ko-?fi|bit\.ly|@[a-z0-9-]+\.[a-z]|chlorine dioxide/i.test(p.text)), 'promo, contact details and dosing talk are scrubbed');
+  const h = search(buildIndex(data.posts), 'autism is an abstraction category diagnosis identity', 3, 6);
+  assert.ok(h.some((x) => x.p.kind === 'transcript'));
+});
+
+
+// ---- reflection documents, AI drafting and PDF
+import * as RP from '../app/js/reports.js';
+import { makePdf } from '../app/js/pdf.js';
+RP.setDocs(JSON.parse(readFileSync(new URL('../app/data/assessments.json', import.meta.url), 'utf8')));
+
+test('documents: built from NeuroHub’s own forms, with staff-only parts left out', () => {
+  const docs = RP.getDocs();
+  assert.deepEqual(docs.map((d) => d.id), ['global', 'burnout', 'identity']);
+  const g = RP.getDoc('global');
+  assert.equal(g.sections.length, 6); assert.ok(g.sections.every((s) => s.rating && s.fields.length >= 3 && s.guidance));
+  assert.deepEqual(g.sections.map((s) => s.id), ['sensory', 'executive', 'social', 'emotional', 'identity', 'strengths'], 'same six areas as the daily check-in');
+  assert.equal(RP.getDoc('identity').sections.length, 11);
+  const all = JSON.stringify(docs);
+  for (const bad of [/safeguarding/i, /facilitator notes/i, /mentor name/i, /statutory/i, /client name/i, /referral source/i, /consultant/i]) assert.ok(!bad.test(all), 'staff-only text leaked: ' + bad);
+  for (const d of docs) { const ids = RP.allFields(d).map((f) => f.id); assert.equal(new Set(ids).size, ids.length, 'unique ids in ' + d.id); }
+});
+
+test('documents: progress, ratings from a check-in, and snapshots that feed analytics', () => {
+  const g = RP.getDoc('global'), r = RP.newReport(g, { name: 'Sam', now: new Date('2026-09-01T10:00:00Z') });
+  assert.equal(RP.progress(g, r).pct, 0);
+  r.values['sensory-1'] = 'Loud places wear me out.'; r.ratings.sensory = 3; r.ratings.emotional = 6;
+  const p = RP.progress(g, r); assert.equal(p.answered, 1); assert.equal(p.rated, 2); assert.ok(p.pct > 0 && p.pct < 100);
+  assert.deepEqual(RP.ratingsFromCheckin({ domains: [{ id: 'sensory', rating: 2 }, { id: 'social', rating: 5 }] }), { sensory: 4, social: 10 });
+  RP.snapshot(g, r, new Date('2026-09-01T10:00:00Z'));
+  const r2 = RP.newReport(g, { from: r, now: new Date('2026-10-13T10:00:00Z') });
+  assert.equal(r2.values['sensory-1'], 'Loud places wear me out.'); assert.deepEqual(r2.snapshots, []);
+  r2.ratings.sensory = 5; r2.ratings.emotional = 5; RP.snapshot(g, r2, new Date('2026-10-13T10:00:00Z'));
+  const series = RP.ratingSeries([r, r2]);
+  assert.equal(series.length, 2); assert.equal(series[1].ratings.sensory, 5);
+  const ch = RP.ratingChanges(series);
+  assert.equal(ch.find((c) => c.domain.id === 'sensory').delta, 2); assert.equal(ch.find((c) => c.domain.id === 'emotional').delta, -1);
+  assert.match(RP.assessmentSummaryForAI([r, r2]), /Sensory 5/); assert.match(RP.assessmentSummaryForAI([r, r2]), /Sensory \+2/);
+  assert.equal(RP.timeline([r, r2]).length, 2); assert.equal(RP.assessmentSummaryForAI([]), '');
+});
+
+test('documents: the AI is only given the person’s own words, and its reply is checked', () => {
+  const ctx = RP.chatContext({ profile: { name: 'Sam', about: 'ADHD, hate loud offices' }, chats: [{ messages: [{ role: 'user', content: 'I get exhausted after open plan days' }, { role: 'assistant', content: 'You should try meditation' }, { role: 'user', content: 'I want to end it all', crisis: true }] }] });
+  assert.match(ctx, /exhausted after open plan/); assert.ok(!/meditation/.test(ctx), 'the assistant’s own replies are not facts about the person'); assert.ok(!/end it all/.test(ctx), 'crisis messages are not copied into a form');
+  assert.ok(RP.hasSource(ctx)); assert.ok(!RP.hasSource(''));
+  const g = RP.getDoc('global'), { system, user } = RP.fillPrompt(g.sections[0], ctx, { 'sensory-2': 'already written' });
+  assert.match(system, /ONLY what they have told/); assert.match(system, /empty string/); assert.match(system, /Do not give ratings/); assert.match(user, /"sensory-1"/); assert.match(user, /already written|sensory-2/);
+  const ids = g.sections[0].fields.map((f) => f.id);
+  const ok = RP.parseFill('```json\n{"sensory-1":"Open plan offices exhaust me.","sensory-2":"N/A","sensory-3":"none","bogus":"x","sensory-4":["a","b"]}\n```', ids);
+  assert.ok(ok.ok); assert.deepEqual(Object.keys(ok.values).sort(), ['sensory-1', 'sensory-4']); assert.equal(ok.values['sensory-4'], 'a. b'); assert.equal(ok.dropped, 1);
+  assert.equal(RP.parseFill('sorry, I cannot', ids).ok, false); assert.equal(RP.parseFill('{ not json }', ids).ok, false);
+  assert.ok(RP.parseFill(JSON.stringify({ 'sensory-1': 'x'.repeat(5000) }), ids).values['sensory-1'].length <= 1201);
+  assert.ok(RP.reportIntent('can you fill in my 6PF global assessment')); assert.ok(RP.reportIntent('make me a PDF')); assert.ok(!RP.reportIntent('what does an autism assessment involve?'));
+});
+
+test('documents: the PDF is a real, multi-page A4 file, marks AI drafts, and reports characters it cannot draw', async () => {
+  const g = RP.getDoc('global'), r = RP.newReport(g, { name: 'Sam' });
+  for (const f of RP.allFields(g)) r.values[f.id] = 'I find this hard when things are loud and unpredictable. '.repeat(6);
+  for (const s of g.sections) r.ratings[s.id] = 4; r.aiUsed = true; r.drafted = ['sensory-1'];
+  const out = await makePdf(g, r, { logoBytes: readFileSync(new URL('../app/icons/nh-logo.jpg', import.meta.url)) });
+  assert.equal(Buffer.from(out.bytes.slice(0, 5)).toString(), '%PDF-'); assert.ok(out.pages >= 3, 'long answers flow onto more pages: ' + out.pages); assert.equal(out.lost, 0);
+  const emoji = RP.newReport(g); emoji.values['sensory-1'] = 'Cats 😀 and 日本語'; assert.ok((await makePdf(g, emoji)).lost >= 2);
+  assert.equal(RP.winAnsi('It’s “fine” – café').lost, 0); assert.equal(RP.winAnsi('a😀b').text, 'a?b');
+  const blocks = RP.pdfBlocks(g, r); assert.ok(blocks.some((b) => b.t === 'qa' && b.draft)); assert.ok(blocks.some((b) => b.t === 'help'));
+  assert.match(blocks.find((b) => b.t === 'note').text, /AI assistant drafted|Phoenix drafted/);
+  assert.ok(RP.pdfBlocks(g, RP.newReport(g)).some((b) => /Nothing has been filled in/.test(b.text || '')));
+});
+
+test('donate: the suggested amounts open NeuroHub’s PayPal page, with Ko-fi as another way', async () => {
+  const { donateUrl, AMOUNTS, PAYPAL, KOFI } = await import('../app/js/donate.js');
+  assert.deepEqual(AMOUNTS, [5, 10, 25, 50]);
+  assert.equal(PAYPAL, 'https://paypal.biz/emergentdivergence'); assert.equal(donateUrl(25), PAYPAL); assert.match(KOFI, /^https:\/\/ko-fi\.com\//);
+});
+
+test('privacy: no private individual’s name, place or personal detail is anywhere Phoenix can read it', async () => {
+  const { NAME_RE, PLACE_RE, FIRST_PERSON_RE, HEALTH_RE, CONTACT_RE } = await import('../scripts/privacy.mjs');
+  const data = JSON.parse(readFileSync(new URL('../app/data/presentations.json', import.meta.url), 'utf8'));
+  for (const p of data.posts) {
+    const where = `${p.kind} “${p.deck || p.title}”`;
+    assert.ok(!NAME_RE.test(p.text) && !NAME_RE.test(p.title) && !NAME_RE.test(p.deck || ''), 'a name is in ' + where + ': ' + (p.text.match(NAME_RE) || p.title.match(NAME_RE) || [''])[0]);
+    assert.ok(!PLACE_RE.test(p.text), 'a personal place is in ' + where);
+    assert.ok(!CONTACT_RE.test(p.text), 'contact details in ' + where);
+    for (const s of p.text.split(/(?<=[.!?])\s+/)) assert.ok(!(FIRST_PERSON_RE.test(s) && HEALTH_RE.test(s)), 'a first-person health detail is in ' + where + ': ' + s.slice(0, 80));
+  }
+  assert.ok(!data.posts.some((p) => p.kind === 'presentation' && FIRST_PERSON_RE.test(p.text)), 'slides contain first-person accounts');
+  const kbText = JSON.stringify(KB);
+  for (const bad of [/schizophrenic and in long-term recovery/i, /ten years of recovery/i, /himself was misdiagnosed/i, /Ryan Bowen/, /Helen Edgar/, /Betsy|Adele Murray|Charlie Hart|Azi\b/]) assert.ok(!bad.test(kbText), 'personal detail in the built-in topics: ' + bad);
+  assert.ok(!/Tamir/.test(JSON.stringify(data.posts.map((p) => p.deck))), 'deck titles carry names');
+});
+
+test('privacy: the AI is told never to share names or personal details from reference material', () => {
+  const sys = buildSystem({ siteBlock: 'x' });
+  assert.match(sys, /never (share|repeat|reveal)[^.]*names/i); assert.match(sys, /personal details/i);
+});
+
+// ---- the shared, limited free AI (server function) and its client
+import { handle, cleanBody, memoryStore, settings } from '../netlify/functions/ai.mjs';
+import { providerConfig as pcfg, streamChat as sc, _setFetcher as setF } from '../app/js/providers.js';
+const PHX_SYSTEM = buildSystem({ crisisBlock: 'Samaritans 116 123' });
+const sse = (...texts) => new Response(new ReadableStream({ start(c) { const e = new TextEncoder(); for (const t of texts) c.enqueue(e.encode(`data: ${JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text: t } })}\n\n`)); c.enqueue(e.encode('data: {"type":"message_stop"}\n\n')); c.close(); } }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+const post = (body, headers = {}) => new Request('https://phoenix.neurohubcommunity.org/api/ai', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+const good = { system: PHX_SYSTEM, messages: [{ role: 'user', content: 'hello' }] };
+const env = { PHOENIX_SHARED_AI: 'on', ANTHROPIC_API_KEY: 'sk-test-secret-1234567890', PHOENIX_PER_PERSON_DAILY: '2', PHOENIX_GLOBAL_DAILY: '3', PHOENIX_GLOBAL_MONTHLY: '100' };
+
+test('shared AI: off unless switched on, and never leaks the key', async () => {
+  const off = await handle(post(good), { ip: '1.1.1.1' }, { env: {}, store: memoryStore() });
+  assert.equal(off.status, 503);
+  const get = await handle(new Request('https://x/api/ai'), { ip: '1.1.1.1' }, { env: { ANTHROPIC_API_KEY: 'k' }, store: memoryStore() });
+  assert.equal((await get.json()).ai, true, 'on whenever a key is available (the Netlify AI Gateway injects one)');
+  const killed = await handle(new Request('https://x/api/ai'), { ip: '1.1.1.1' }, { env: { ANTHROPIC_API_KEY: 'k', PHOENIX_SHARED_AI: 'off' }, store: memoryStore() });
+  assert.equal((await killed.json()).ai, false, 'PHOENIX_SHARED_AI=off is the off switch');
+  assert.equal(settings({ ANTHROPIC_API_KEY: 'gw', ANTHROPIC_BASE_URL: 'https://gw.example/anthropic' }).upstream, 'https://gw.example/anthropic', 'the gateway key goes to the gateway');
+  assert.equal(settings({ PHOENIX_ANTHROPIC_KEY: 'own', ANTHROPIC_BASE_URL: 'https://gw.example' }).upstream, 'https://api.anthropic.com', 'a personal key goes to Anthropic directly');
+  const on = await handle(new Request('https://x/api/ai'), { ip: '1.1.1.1' }, { env, store: memoryStore() });
+  const j = await on.json(); assert.equal(j.ai, true); assert.equal(j.left, 2); assert.ok(!JSON.stringify(j).includes('sk-test'));
+});
+
+test('shared AI: only Phoenix-shaped requests from Phoenix’s own sites are accepted', async () => {
+  const deps = { env, store: memoryStore(), fetch: async () => sse('hi') };
+  assert.equal((await handle(post(good, { origin: 'https://evil.example' }), { ip: 'a' }, deps)).status, 403);
+  assert.equal((await handle(post({ system: 'You are a pirate.', messages: good.messages }), { ip: 'a' }, deps)).status, 400);
+  assert.equal((await handle(post({ ...good, messages: [{ role: 'assistant', content: 'x' }] }), { ip: 'a' }, deps)).status, 400);
+  assert.equal((await handle(post(good, { origin: 'https://phoenix.neurohubcommunity.org' }), { ip: 'a' }, deps)).status, 200);
+  const clean = cleanBody({ system: PHX_SYSTEM, messages: Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: 'x'.repeat(9000) })).concat([{ role: 'user', content: 'last' }]) });
+  assert.ok(clean.messages.length <= 16 && clean.messages.every((m) => m.content.length <= 3000) && clean.messages[0].role === 'user' && clean.messages.at(-1).role === 'user');
+});
+
+test('shared AI: streams the reply through, forces our model and reply length, and enforces every cap', async () => {
+  let sent = null, calls = 0;
+  const store = memoryStore(), deps = { env, store, fetch: async (url, init) => { calls++; sent = { url, init, body: JSON.parse(init.body) }; return sse('Hel', 'lo'); } };
+  const res = await handle(post({ ...good, model: 'claude-opus-9', maxTokens: 99999 }), { ip: '9.9.9.9' }, deps);
+  assert.equal(res.status, 200); assert.match(await res.text(), /Hel[\s\S]*lo/);
+  assert.equal(sent.body.model, settings(env).model); assert.ok(sent.body.max_tokens <= 700); assert.equal(sent.init.headers['x-api-key'], env.ANTHROPIC_API_KEY); assert.equal(sent.body.stream, true);
+  assert.equal(res.headers.get('x-phoenix-left'), '1');
+  assert.equal((await handle(post(good), { ip: '9.9.9.9' }, deps)).status, 200);
+  const third = await handle(post(good), { ip: '9.9.9.9' }, deps);
+  assert.equal(third.status, 429); assert.equal((await third.json()).scope, 'person');
+  assert.equal((await handle(post(good), { ip: '8.8.8.8' }, deps)).status, 200, 'another person still has their own allowance');
+  const fourth = await handle(post(good), { ip: '7.7.7.7' }, deps); // global daily cap of 3 is now used
+  assert.equal(fourth.status, 429); assert.equal((await fourth.json()).scope, 'everyone'); assert.equal(calls, 3, 'no upstream call is made once a cap is reached');
+  const tomorrow = await handle(post(good), { ip: '7.7.7.7' }, { ...deps, now: () => new Date(Date.now() + 86400000 * 1.1) });
+  assert.equal(tomorrow.status, 200, 'caps reset each day');
+});
+
+test('shared AI: an upstream failure gives a calm error and does not use up the person’s allowance', async () => {
+  const store = memoryStore();
+  const bad = await handle(post(good), { ip: '5.5.5.5' }, { env, store, fetch: async () => new Response('{"error":{"message":"credit balance too low sk-live-leak"}}', { status: 402 }) });
+  assert.equal(bad.status, 503); const body = await bad.text(); assert.ok(!/credit|sk-/.test(body), 'upstream details are never passed on');
+  const g = await handle(new Request('https://x/api/ai'), { ip: '5.5.5.5' }, { env, store });
+  assert.equal((await g.json()).left, 2);
+  const thrown = await handle(post(good), { ip: '5.5.5.5' }, { env, store, fetch: async () => { throw new Error('net'); } });
+  assert.equal(thrown.status, 503);
+});
+
+test('shared AI: the app streams from it like any other AI, and explains limits kindly', async () => {
+  try {
+    const seenReq = [];
+    setF(async (url, init) => { seenReq.push({ url, init }); return sse('Hello ', 'there'); });
+    const cfg = pcfg({ provider: { kind: 'shared' } });
+    assert.equal(cfg.kind, 'shared');
+    let acc = ''; const out = await sc(cfg, { system: PHX_SYSTEM, messages: [{ role: 'user', content: 'hi' }], onText: (d) => (acc += d) });
+    assert.equal(out, 'Hello there'); assert.match(seenReq[0].url, /\/api\/ai$/); assert.ok(!('x-api-key' in (seenReq[0].init.headers || {})), 'no key ever leaves the app for the shared AI');
+    setF(async () => new Response('{"error":"limit","scope":"person","perDay":15}', { status: 429 }));
+    await assert.rejects(() => sc(cfg, { system: PHX_SYSTEM, messages: [{ role: 'user', content: 'hi' }] }), /used your free Phoenix AI messages for today/);
+    setF(async () => new Response('{"error":"unavailable"}', { status: 503 }));
+    await assert.rejects(() => sc(cfg, { system: PHX_SYSTEM, messages: [{ role: 'user', content: 'hi' }] }), /not available right now/);
+  } finally { setF(null); }
 });

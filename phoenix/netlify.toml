@@ -1,0 +1,13 @@
+# Phoenix on Netlify: the static site is built into ./site by scripts/build-site.mjs; the shared free AI is one function.
+[build]
+  publish = "site"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex"

@@ -1,10 +1,13 @@
 // Settings: about me, how Phoenix talks, connecting an AI, appearance, your data.
 import { el, toast, modal, download, dayKey, fmtDate } from './util.js';
 import { state, save, flush, resetAll, exportData, importData, isPaidProvider, estimatedCost, resetUsage, storageInfo, revealStorage } from './store.js';
-import { PRESETS, listModels, testConnection, providerConfig } from './providers.js';
+import { PRESETS, listModels, testConnection, providerConfig, sharedStatus } from './providers.js';
 import { loadCrisis } from './crisis.js';
 import { loadSite, siteInfo, refreshSite } from './site.js';
 import { applyLook, buildAccessibilityPanel } from './accessibility.js';
+import { installPanel } from './install.js';
+import { openDonate } from './donate.js';
+import { isDesktop, notifSupport, setReminder, testReminder, downloadIcs } from './reminders.js';
 
 const NEUROTYPES = ['Autistic', 'ADHD', 'AuDHD', 'Dyslexic', 'Dyspraxic', 'Dyscalculic', 'Tourettic', 'OCD', 'Voice-hearer', 'Exploring / not sure', 'Multiply neurodivergent'];
 
@@ -50,6 +53,11 @@ export function mountSettings(container, { focus } = {}) {
     el('div', {}, el('div', { style: { fontWeight: 700, marginBottom: '.3rem' } }, 'Tone'), seg([['gentle', 'Gentle'], ['direct', 'Direct'], ['playful', 'Playful']], () => state.prefs.tone, (v) => (state.prefs.tone = v), 'Tone')),
     toggle('Literal language', () => state.prefs.literal, (v) => (state.prefs.literal = v), 'No idioms, sarcasm or hints. Says exactly what it means. Applies when an AI is connected.'))));
 
+  // ---------------------------------------------------- daily check-in reminder
+  const remBox = el('fieldset', { id: 'reminders-section' }, el('legend', {}, 'Daily check-in'));
+  root.append(remBox);
+  drawReminders(remBox);
+
   // ---------------------------------------------------- AI
   const aiBox = el('fieldset', { id: 'ai-section' }, el('legend', {}, 'Connect an AI (optional)'));
   root.append(aiBox);
@@ -57,7 +65,7 @@ export function mountSettings(container, { focus } = {}) {
 
   // ---------------------------------------------------- neurohubcommunity.org knowledge
   const siteStatus = el('p', { class: 'muted small', 'aria-live': 'polite' });
-  const drawSite = () => { const i = siteInfo(); siteStatus.textContent = i.count ? `${i.count} articles and pages, ${i.source === 'refreshed' ? 'refreshed' : 'built into the app'} ${i.syncedAt ? 'on ' + fmtDate(i.syncedAt) : ''}.` : 'No articles loaded yet.'; };
+  const drawSite = () => { const i = siteInfo(); siteStatus.textContent = i.count ? `${i.articles} articles and pages from neurohubcommunity.org (${i.source === 'refreshed' ? 'refreshed' : 'built into the app'}${i.syncedAt ? ' on ' + fmtDate(i.syncedAt) : ''}), plus ${i.presentations} sections from NeuroHub’s training presentations and recorded conversations.` : 'Nothing loaded yet.'; };
   loadSite().then(drawSite);
   const refreshBtn = el('button', { class: 'btn btn-sm', onclick: async () => {
     refreshBtn.disabled = true; siteStatus.textContent = 'Contacting neurohubcommunity.org…';
@@ -65,9 +73,9 @@ export function mountSettings(container, { focus } = {}) {
     catch (e) { toast(e.message || 'Could not refresh', { icon: '⚠️', ms: 4200 }); }
     refreshBtn.disabled = false; drawSite();
   } }, 'Refresh from neurohubcommunity.org');
-  root.append(el('fieldset', {}, el('legend', {}, 'Knowledge from neurohubcommunity.org'), el('div', { class: 'stack' },
-    el('p', { class: 'muted small' }, 'Phoenix can draw on NeuroHub Community’s own articles and pages when it answers, and link them so you can read more. This uses a copy stored in the app, so nothing is sent anywhere when you chat. If you use an online AI, the few relevant passages are sent to it along with your message, like anything else.'),
-    toggle('Use neurohubcommunity.org articles', () => state.prefs.useSite, (v) => (state.prefs.useSite = v)),
+  root.append(el('fieldset', {}, el('legend', {}, 'Knowledge from NeuroHub Community'), el('div', { class: 'stack' },
+    el('p', { class: 'muted small' }, 'Phoenix can draw on NeuroHub Community’s own articles, pages and training presentations when it answers, and link the articles so you can read more. This uses a copy stored in the app, so nothing is sent anywhere when you chat. If you use an online AI, the few relevant passages are sent to it along with your message, like anything else.'),
+    toggle('Use NeuroHub articles and presentations', () => state.prefs.useSite, (v) => (state.prefs.useSite = v)),
     siteStatus, el('div', { class: 'row' }, refreshBtn))));
 
   // ---------------------------------------------------- accessibility (font, size, spacing, theme, voice)
@@ -79,6 +87,9 @@ export function mountSettings(container, { focus } = {}) {
   sel.addEventListener('change', () => { state.prefs.country = sel.value; save(); });
   root.append(el('fieldset', {}, el('legend', {}, 'Where are you?'), el('p', { class: 'muted small' }, 'Used only to show the right helplines and emergency number. It never leaves this device.'), sel));
 
+  // ---------------------------------------------------- install as an app (web version only)
+  if (!globalThis.phoenixNative) root.append(el('fieldset', { id: 'install-section' }, el('legend', {}, 'Install as an app'), installPanel()));
+
   // ---------------------------------------------------- data
   const file = el('input', { type: 'file', accept: 'application/json,.json', hidden: true });
   file.addEventListener('change', async () => {
@@ -88,6 +99,8 @@ export function mountSettings(container, { focus } = {}) {
   root.append(el('fieldset', {}, el('legend', {}, 'Your data'),
     el('p', { class: 'muted small' }, 'Everything Phoenix remembers (chats, check-ins, tasks, settings and any API key) lives only on this device. There is no account and no server, so nobody else can read it, and nobody can recover it for you. Back it up if it matters.'),
     storageInfo() ? el('p', { class: 'small' }, 'Saved as a file on this computer, with a daily backup kept for a week: ', el('code', {}, storageInfo().file), ' ', el('button', { class: 'btn btn-sm', onclick: () => revealStorage() }, 'Show in folder')) : el('p', { class: 'muted small' }, 'Saved in this browser. Your browser has been asked to keep it, but clearing site data would erase it, so download a backup now and then.'),
+    toggle('Remind me about donating, at most once a week', () => state.prefs.donateReminders !== false, (v) => (state.prefs.donateReminders = v), 'A small card, never a notification. It waits a week after you start, stays away after hard days, and rests for a month if you open the donate options.'),
+    toggle('Share anonymous usage counts with NeuroHub', () => state.prefs.analytics !== false, (v) => (state.prefs.analytics = v), 'Counts app opens, installs and which kind of AI is chosen, as daily totals. No identifier, no cookies, and nothing you write or check in. It helps NeuroHub keep Phoenix free. Off means nothing is sent.'),
     el('div', { class: 'row' },
       el('button', { class: 'btn', onclick: () => download(`phoenix-backup-${dayKey()}.json`, exportData(), 'application/json') }, 'Download a backup'),
       el('button', { class: 'btn', onclick: () => file.click() }, 'Restore a backup'), file,
@@ -98,10 +111,49 @@ export function mountSettings(container, { focus } = {}) {
   root.append(el('fieldset', {}, el('legend', {}, 'About Phoenix'), el('div', { class: 'stack small' },
     el('p', {}, 'Phoenix is a free, neuro-affirming AI assistant for Autistic, ADHD and other neurodivergent people, made by NeuroHub Community, an Autistic-led organisation. It is built around the ideas in David Gray-Hammond’s books. Full catalogue: ', el('a', { href: 'https://mybook.to/dgh-full-catalogue', target: '_blank', rel: 'noopener noreferrer' }, 'mybook.to/dgh-full-catalogue')),
     el('p', {}, 'Community: ', el('a', { href: 'https://connect.neurohubcommunity.org/p/join', target: '_blank', rel: 'noopener noreferrer' }, 'connect.neurohubcommunity.org'), ' · ', el('a', { href: 'https://neurohubcommunity.org', target: '_blank', rel: 'noopener noreferrer' }, 'neurohubcommunity.org')),
+    el('p', {}, 'Phoenix is free, with no ads and no account. NeuroHub Community is a small Autistic-led social enterprise, and donations help keep it going. ', el('button', { class: 'btn btn-sm donate-btn', onclick: () => openDonate() }, '♥ Donate to NeuroHub Community'), ' There is never any pressure, and Phoenix works the same either way.'),
     el('p', { class: 'muted' }, 'Phoenix is not a therapist, doctor or crisis service, and it cannot diagnose. Nothing it says is medical advice. If you are in danger or thinking of harming yourself, use the red Help button, or call your local emergency number.'),
-    el('p', { class: 'muted' }, 'Version 1.0.0'))));
+    el('p', { class: 'muted' }, 'Version 1.2.0'))));
 
   if (focus === 'ai') requestAnimationFrame(() => aiBox.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  if (focus === 'install') requestAnimationFrame(() => document.getElementById('install-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  if (focus === 'reminders') requestAnimationFrame(() => remBox.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+}
+
+// ---------------------------------------------------------------- daily check-in reminder and who can see check-ins
+function drawReminders(box) {
+  const r = state.reminders;
+  const status = el('p', { class: 'small', 'aria-live': 'polite' });
+  const desktop = isDesktop();
+  const drawStatus = (extra = '') => {
+    const perm = notifSupport();
+    status.textContent = extra || (!r.enabled ? 'The reminder is off.'
+      : desktop ? `Phoenix will remind you each day at ${r.time} if you have not checked in${r.launch ? ', even after you restart your computer' : ''}. It stays in the system tray when you close the window, and Quit in the tray menu stops it.`
+      : perm === 'granted' ? `Phoenix will send a notification each day at ${r.time} if you have not checked in. Web browsers only allow this while the app is open or installed, so for a reminder you can rely on, also add the daily event to your calendar.`
+      : perm === 'denied' ? 'Notifications are blocked for Phoenix in this browser. Allow them in the site settings, or use the calendar event below.'
+      : 'Notifications are not available here. Use the calendar event below for a reminder on any device.');
+  };
+  const timeIn = el('input', { class: 'input', type: 'time', value: r.time, 'aria-label': 'Reminder time', style: { maxWidth: '9rem' } });
+  timeIn.addEventListener('change', async () => { const res = await setReminder({ time: timeIn.value }); if (!res.ok) toast(res.message, { icon: '⚠️' }); drawStatus(res.message); });
+  const on = el('input', { type: 'checkbox', checked: !!r.enabled });
+  on.addEventListener('change', async () => { const res = await setReminder({ enabled: on.checked }); on.checked = state.reminders.enabled; drawStatus(res.message); });
+  const launch = el('input', { type: 'checkbox', checked: !!r.launch });
+  launch.addEventListener('change', async () => { await setReminder({ launch: launch.checked }); drawStatus(); });
+  const seeSel = el('select', { class: 'input', 'aria-label': 'Can the AI see my check-ins?' },
+    el('option', { value: 'auto' }, 'Only an AI running on this computer (recommended)'), el('option', { value: 'yes' }, 'Any AI I have connected'), el('option', { value: 'no' }, 'No, never'));
+  seeSel.value = state.prefs.aiSeesCheckins; seeSel.addEventListener('change', () => { state.prefs.aiSeesCheckins = seeSel.value; save(); });
+  drawStatus();
+  box.append(el('div', { class: 'stack' },
+    el('p', { class: 'muted small' }, 'A short daily check-in across six areas of your life shows how you are doing over time, and what might help. A reminder can nudge you once a day. It never repeats, never scolds and is easy to switch off.'),
+    el('div', {}, el('label', { class: 'switch' }, on, el('span', {}, 'Remind me every day to check in'))),
+    el('label', { class: 'field' }, 'Reminder time', timeIn),
+    desktop ? el('div', {}, el('label', { class: 'switch' }, launch, el('span', {}, 'Start Phoenix quietly when I sign in, so the reminder still works')), el('div', { class: 'muted small' }, 'Only takes effect in the installed app.')) : null,
+    status,
+    el('div', { class: 'row' },
+      el('button', { class: 'btn btn-sm', onclick: async () => { const ok = await testReminder(); toast(ok ? 'Test notification sent.' : 'Could not show a notification here. The calendar event still works.', { icon: ok ? '🔔' : '⚠️' }); } }, 'Send a test notification'),
+      el('button', { class: 'btn btn-sm', onclick: () => { downloadIcs(); toast('Open the file to add the daily event to your calendar.'); } }, 'Add to my calendar (.ics)')),
+    el('label', { class: 'field' }, 'Can the AI read my check-ins?',
+      el('span', { class: 'hint' }, 'A short summary of your scores and notes helps it talk with you about how you have been. Your check-ins never leave this device, except this summary when the AI you have chosen reads it. Online AI services receive it with your message.'), seeSel)));
 }
 
 // ---------------------------------------------------------------- you pay your own tokens
@@ -136,6 +188,7 @@ function drawAI(box) {
   const p = state.provider;
   const kinds = [
     ['offline', '🧰', 'Built-in helper', 'No AI. Works offline. Explains ideas, helps you calm down and get started.'],
+    ['shared', '🔥', 'Phoenix free AI (limited)', 'No key or setup. A limited number of free messages a day, paid for by NeuroHub Community.'],
     ['ollama', '💻', 'On this computer (Ollama)', 'Free and private. Nothing leaves your machine.'],
     ['openai', '☁️', 'Free online (Gemini, Groq…)', 'Use your own free key from a provider with a free tier.'],
     ['anthropic', '✨', 'Claude (Anthropic)', 'Use your own Anthropic API key.'],
@@ -209,6 +262,16 @@ function drawAI(box) {
       el('label', { class: 'field' }, 'Model', mp.input, mp.dl),
       el('div', { class: 'row' }, mp.fetchBtn, testBtn()),
       isPaidProvider() ? billingPanel(box) : el('p', { class: 'muted small' }, 'This address is on your own computer, so there is nothing to pay.'));
+  }
+
+  if (p.kind === 'shared') {
+    const left = el('p', { class: 'small', 'aria-live': 'polite' }, 'Checking…');
+    sharedStatus().then((s) => { left.textContent = !s ? 'Could not reach the free AI just now. Check your internet connection.' : s.ai ? `Available. You have ${s.left} of ${s.perDay} free messages left today.` : 'The free AI is switched off at the moment. The built-in helper still works.'; });
+    panel.append(
+      el('div', { class: 'notice' }, el('strong', {}, 'Free, but not private in the same way. '), 'Your messages are sent to NeuroHub Community’s server, which passes them to Anthropic’s Claude to write a reply. NeuroHub does not store or read them, and only keeps anonymous counters to enforce the daily limit. Please avoid names and identifying details. For fully private conversations, use the built-in helper or an AI on your own computer (Ollama).'),
+      el('p', {}, 'There is a small daily limit for each person and for everyone together, so that NeuroHub can keep it free. When it runs out, the built-in helper and Toolkit still work, and you can connect your own AI at any time.'),
+      left, el('div', { class: 'row' }, testBtn()),
+      el('p', { class: 'muted small' }, 'Your daily check-ins are not sent to the free AI unless you choose “Any AI I have connected” under Daily check-in.'));
   }
 
   if (p.kind === 'anthropic') {

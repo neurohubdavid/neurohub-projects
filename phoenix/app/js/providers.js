@@ -2,7 +2,8 @@
 //   ollama    - runs on the person's own computer. Free and private, nothing leaves the machine.
 //   openai    - any OpenAI-compatible service: Google Gemini, Groq, OpenRouter, LM Studio, and many more.
 //   anthropic - Claude, with the person's own API key.
-// All three stream tokens as they arrive.
+//   shared    - Phoenix's own limited free AI, answered by NeuroHub's server (see netlify/functions/ai.mjs). No key needed.
+// All of them stream tokens as they arrive.
 import { netFetch } from './net.js';
 
 export const PRESETS = {
@@ -24,6 +25,13 @@ export class AIError extends Error {
 
 /** Turns low-level failures into plain sentences a person can act on. */
 function explain(cfg, status, bodyText, cause) {
+  if (cfg.kind === 'shared') {
+    let code = ''; let scope = ''; try { const j = JSON.parse(bodyText); code = j.error; scope = j.scope; } catch { /* not JSON */ }
+    if (cause) return new AIError('offline', 'I could not reach Phoenix’s free AI. Check your internet connection, or pick another AI in Settings.');
+    if (status === 429 || code === 'limit') return new AIError('limit', scope === 'everyone' ? 'Phoenix’s free AI has been very busy and has reached its limit for now. It resets each day. The built-in helper and Toolkit still work, or you can connect your own AI in Settings.' : 'You have used your free Phoenix AI messages for today. They come back tomorrow. The built-in helper and Toolkit still work, or you can connect your own AI in Settings.', 429);
+    if (status === 503 || code === 'unavailable' || code === 'busy') return new AIError('server', 'Phoenix’s free AI is not available right now. The built-in helper and Toolkit still work, or you can connect your own AI in Settings.', status);
+    return new AIError('other', 'Phoenix’s free AI could not answer that. Try again, or pick another AI in Settings.', status);
+  }
   const who = cfg.kind === 'ollama' ? 'Ollama' : cfg.kind === 'anthropic' ? 'Anthropic' : 'the AI service';
   if (cause) {
     if (cfg.kind === 'ollama') return new AIError('offline', 'I could not reach Ollama. Is it running? Open the Ollama app (or run `ollama serve`), then try again.');
@@ -63,9 +71,18 @@ function config(state) {
   if (p.kind === 'ollama') return { kind: 'ollama', url: trimSlash(p.ollama.url) || 'http://localhost:11434', model: p.ollama.model };
   if (p.kind === 'openai') return { kind: 'openai', url: trimSlash(p.openai.baseUrl), key: p.openai.key, model: p.openai.model };
   if (p.kind === 'anthropic') return { kind: 'anthropic', url: 'https://api.anthropic.com', key: p.anthropic.key, model: p.anthropic.model };
+  if (p.kind === 'shared') return { kind: 'shared', url: sharedBase() };
   return { kind: 'offline' };
 }
 export { config as providerConfig };
+
+/** Where the shared AI lives: this site when Phoenix runs in a browser, NeuroHub's address when it runs as the desktop app. */
+export const SHARED_HOME = 'https://phoenix.neurohubcommunity.org';
+export const sharedBase = () => (typeof location !== 'undefined' && /^https?:/.test(location.protocol) ? location.origin : SHARED_HOME);
+/** Is the shared AI switched on, and how many messages does this person have left today? Returns null if it cannot be reached. */
+export async function sharedStatus() {
+  try { const res = await fetcher(`${sharedBase()}/api/ai`, { method: 'GET' }); if (!res.ok) return null; const j = await res.json(); return typeof j.ai === 'boolean' ? j : null; } catch { return null; }
+}
 
 async function request(cfg, url, init, signal) {
   let res;
@@ -109,6 +126,15 @@ export async function streamChat(cfg, { system, messages, signal, onText, maxTok
       let j; try { j = JSON.parse(data); } catch { continue; }
       if (j.error) throw explain(cfg, 500, JSON.stringify({ error: j.error }));
       push(j.choices?.[0]?.delta?.content);
+    }
+  } else if (cfg.kind === 'shared') {
+    const res = await request(cfg, `${cfg.url}/api/ai`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system, messages, maxTokens }) }, signal);
+    for await (const line of lines(res.body, signal)) {
+      if (!line.startsWith('data:')) continue;
+      let j; try { j = JSON.parse(line.slice(5)); } catch { continue; }
+      if (j.type === 'content_block_delta' && j.delta?.type === 'text_delta') push(j.delta.text);
+      else if (j.type === 'error') throw explain(cfg, 503, JSON.stringify({ error: 'unavailable' }));
+      else if (j.type === 'message_delta' && j.delta?.stop_reason === 'refusal') push("I can't help with that one here. If things are hard right now, the Help button shows people you can reach.");
     }
   } else if (cfg.kind === 'anthropic') {
     const res = await request(cfg, `${cfg.url}/v1/messages`, {
@@ -156,6 +182,11 @@ export async function listModels(cfg, signal) {
 
 /** Quick check used by the "Test connection" button. Returns {ok, message}. */
 export async function testConnection(cfg) {
+  if (cfg.kind === 'shared') {
+    const s = await sharedStatus();
+    if (!s) return { ok: false, message: 'Could not reach Phoenix’s free AI. Check your internet connection.' };
+    return s.ai ? { ok: true, message: `Phoenix’s free AI is available. You have ${s.left} message${s.left === 1 ? '' : 's'} left today (${s.perDay} a day).` } : { ok: false, message: 'Phoenix’s free AI is switched off at the moment.' };
+  }
   try {
     const models = await listModels(cfg);
     if (cfg.model && models.length && !models.includes(cfg.model) && cfg.kind !== 'anthropic') {

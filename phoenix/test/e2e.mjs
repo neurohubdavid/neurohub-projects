@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shots = path.join(root, 'test', 'shots');
 fs.mkdirSync(shots, { recursive: true });
+process.env.PHOENIX_NO_ANALYTICS = '1'; // tests never send usage counts to the live site
 const userData = fs.mkdtempSync(path.join(root, 'test', '.userdata-'));
 
 // A fake Ollama that streams a reply and records what it was sent.
@@ -17,9 +18,14 @@ const seen = [];
 const mock = http.createServer((req, res) => {
   let b = ''; req.on('data', (c) => (b += c));
   req.on('end', () => {
-    if (req.url === '/api/tags') return res.end(JSON.stringify({ models: [{ name: 'test-model:1b' }] }));
+    if (req.url === '/api/tags') return res.end(JSON.stringify({ models: [{ name: 'test-model:8b' }] }));
     if (req.url === '/api/chat') {
       const j = JSON.parse(b); seen.push(j);
+      const last = j.messages.at(-1)?.content || '';
+      if (last.includes('FORM SECTION')) { // Phoenix asking for a drafted form section: answer with JSON for the first field only
+        const ids = [...last.matchAll(/^- "([\w-]+)":/gm)].map((m) => m[1]);
+        return res.end(JSON.stringify({ message: { content: JSON.stringify({ [ids[0]]: 'Open plan offices exhaust me.', [ids[1]]: 'N/A' }) }, done: true }) + '\n');
+      }
       const words = ['That ', 'sounds ', 'like ', 'a ', 'lot. ', 'I ', 'am ', 'here.'];
       let i = 0;
       const t = setInterval(() => {
@@ -47,12 +53,21 @@ let failed = 0;
 const send = async (text) => { await page.fill('textarea[aria-label="Message Phoenix"]', text); await page.click('button:has-text("Send")'); };
 const lastMsg = () => page.locator('.msg.assistant').last();
 
+await step('tests never send usage counts to the live site', async () => {
+  assert.equal(await page.evaluate(() => window.phoenixNative.noAnalytics), true);
+});
+
 await step('welcome screen and first start', async () => {
   await page.screenshot({ path: path.join(shots, '01-welcome.png') });
-  await page.fill('input[aria-label="What should Phoenix call you?"]', 'Sam');
+  assert.equal(await page.evaluate(async () => (await import('./js/store.js')).state.provider.kind), 'shared', 'new people start on Phoenix free AI');
   await page.click('button:has-text("Start with the built-in helper")');
-  await page.waitForSelector('.welcome h1');
-  assert.match(await page.textContent('.welcome h1'), /Hi Sam/);
+  await page.waitForSelector('.name-ask'); // Phoenix asks what to call them on first meeting
+  assert.match(await page.textContent('.welcome h1'), /I.m Phoenix/);
+  await page.screenshot({ path: path.join(shots, '01b-name-ask.png') });
+  await page.fill('input[aria-label="What should Phoenix call you?"]', 'Sam');
+  await page.click('button:has-text("That’s me")');
+  await page.waitForFunction(() => /Hi Sam/.test(document.querySelector('.welcome h1')?.textContent || ''));
+  assert.equal(await page.locator('.name-ask').count(), 0, 'asked only once');
   await page.screenshot({ path: path.join(shots, '02-chat-empty.png') });
 });
 
@@ -225,11 +240,167 @@ await step('crisis with AI on: helplines appear immediately AND the AI still rep
   assert.ok(seen.at(-1).messages[0].content.includes('SAFETY FLAG'));
 });
 
+await step('documents: fill in the 6PF assessment, let the AI draft from chats (checked, never overwriting), download a real PDF', async () => {
+  await page.click('#nav button:has-text("Check-in")');
+  await page.click('.seg button:has-text("Documents")');
+  await page.waitForSelector('.doc-card');
+  assert.equal(await page.locator('.doc-card').count(), 3);
+  await page.screenshot({ path: path.join(shots, '30-documents.png') });
+  await page.click('.doc-card:has-text("6PF Global Assessment") button:has-text("Start")');
+  await page.waitForSelector('#sec-h');
+  assert.match(await page.textContent('#sec-h'), /Sensory/);
+  await page.fill('#f-sensory-3', 'Soft clothes and dim light help.'); // the person's own words come first
+  await page.click('label[for="r-sensory-3"]');
+  await page.click('button:has-text("Draft everything I can")');
+  await page.waitForSelector('.modal:has-text("What is sent to the AI")');
+  assert.match(await page.textContent('.modal'), /never changes anything you have already written|Ratings are never filled in/);
+  await page.click('.modal button:has-text("Draft it")');
+  await page.waitForFunction(() => /Phoenix drafted/.test(document.querySelector('[role=status]')?.textContent || ''), null, { timeout: 15000 });
+  assert.equal(await page.inputValue('#f-sensory-1'), 'Open plan offices exhaust me.');
+  assert.equal(await page.inputValue('#f-sensory-3'), 'Soft clothes and dim light help.', 'own answers are never overwritten');
+  assert.equal(await page.inputValue('#f-sensory-2'), '', '"N/A" filler is dropped, the field is left for the person');
+  assert.ok(await page.locator('.draft-badge:visible').count() >= 1, 'drafted answers are flagged until checked');
+  assert.equal(await page.isChecked('#r-sensory-3'), true, 'ratings are never set by the AI');
+  await page.fill('#f-sensory-1', 'Open plan offices exhaust me. Headphones help.'); // editing clears the flag
+  assert.equal(await page.locator('.draft-badge:visible').count(), 0);
+  await page.click('button:has-text("Start ratings from my latest check-in")').catch(() => {}); // only appears when there are check-ins
+  await page.evaluate(() => { // capture the download instead of a save dialog
+    window.__blobs = []; const o = URL.createObjectURL.bind(URL); URL.createObjectURL = (b) => { window.__blobs.push(b); return o(b); };
+    HTMLAnchorElement.prototype.click = function () { if (this.hasAttribute('download')) window.__dl = this.getAttribute('download'); };
+  });
+  await page.click('button:has-text("Download as PDF")');
+  await page.waitForFunction(() => window.__dl, null, { timeout: 15000 });
+  const bytes = await page.evaluate(async () => Array.from(new Uint8Array(await window.__blobs.at(-1).arrayBuffer())));
+  assert.equal(Buffer.from(bytes.slice(0, 5)).toString(), '%PDF-');
+  assert.match(await page.evaluate(() => window.__dl), /^phoenix-global-\d{4}-\d{2}-\d{2}\.pdf$/);
+  fs.writeFileSync(path.join(shots, 'documents-e2e.pdf'), Buffer.from(bytes));
+});
+
+await step('documents: ratings saved to Insights, then again later, show the change', async () => {
+  await page.click('button:has-text("Save my ratings to Insights")');
+  await page.waitForSelector('svg.chart[aria-label*="self-assessment"]');
+  assert.match(await page.textContent('.view'), /Save another self-assessment in a few weeks/);
+  await page.click('.seg button:has-text("Documents")');
+  await page.click('button:has-text("Do it again from this")');
+  await page.waitForSelector('#sec-h');
+  await page.click('label[for="r-sensory-7"]');
+  await page.click('button:has-text("Save my ratings to Insights")');
+  await page.waitForSelector('table.data:has-text("Change")');
+  assert.match(await page.textContent('.view'), /Sensory[\s\S]*▲ 4/);
+  assert.match(await page.textContent('.view'), /moved most in the right direction/);
+  await page.screenshot({ path: path.join(shots, '31-documents-insights.png'), fullPage: true });
+  await page.click('#nav button:has-text("Chat")');
+});
+
+await step('donate: the weekly reminder appears only when due, is kind, and can be switched off', async () => {
+  const out = await page.evaluate(async () => {
+    const { state } = await import('./js/store.js'); const { checkDonateNudge } = await import('./js/donate.js');
+    const host = document.getElementById('donate-nudge-host'); host.textContent = '';
+    const day = 86400000; state.donate = { firstSeen: Date.now() - 20 * day, lastShown: 0, lastClick: 0 };
+    state.chats.forEach((c) => c.messages.forEach((m) => { delete m.crisis; })); state.wellness = []; state.prefs.donateReminders = true;
+    await checkDonateNudge(host); const shown = !!host.querySelector('.donate-nudge');
+    host.textContent = ''; await checkDonateNudge(host); const again = !!host.querySelector('.donate-nudge'); // shown a moment ago, so not again
+    return { shown, again };
+  });
+  assert.equal(out.shown, true); assert.equal(out.again, false, 'not twice within a week');
+  await page.evaluate(async () => { const { state } = await import('./js/store.js'); const { checkDonateNudge } = await import('./js/donate.js'); state.donate.lastShown = 0; await checkDonateNudge(document.getElementById('donate-nudge-host')); });
+  await page.waitForSelector('.donate-nudge');
+  await page.screenshot({ path: path.join(shots, '33-donate-nudge.png') });
+  await page.click('.donate-nudge button:has-text("Don’t remind me")');
+  assert.equal(await page.locator('.donate-nudge').count(), 0);
+  assert.equal(await page.evaluate(async () => (await import('./js/store.js')).state.prefs.donateReminders), false);
+  await page.evaluate(async () => { (await import('./js/store.js')).state.prefs.donateReminders = true; });
+});
+await step('donate: a noticeable but calm button opens suggested amounts', async () => {
+  const btn = page.locator('#donate-btn');
+  assert.ok(await btn.isVisible());
+  await btn.click();
+  await page.waitForSelector('.modal:has-text("Support NeuroHub Community")');
+  const amounts = await page.locator('.donate-amounts a').allTextContents();
+  assert.deepEqual(amounts, ['£5', '£10', '£25', '£50']);
+  for (const a of await page.locator('.donate-amounts a').all()) assert.match((await a.getAttribute('href')) || '', /^https:\/\/paypal\.biz\/emergentdivergence$/);
+  await page.screenshot({ path: path.join(shots, '32-donate.png') });
+  await page.click('.modal button:has-text("Maybe later")');
+});
+
 await step('AI failure gives a helpful message, not a crash', async () => {
   mock.close(); mock.closeAllConnections?.();
   await send('are you there?');
   await page.waitForFunction(() => /Ollama|reach/.test(document.querySelector('.msg.assistant:last-of-type')?.textContent || ''), null, { timeout: 8000 });
   await page.screenshot({ path: path.join(shots, '14-ai-error.png') });
+});
+
+await step('daily check-in: guided flow saves an entry and shows advice', async () => {
+  await page.waitForSelector('#nav button:has-text("Check-in") .nav-dot');
+  await page.click('#nav button:has-text("Check-in")');
+  await page.waitForSelector('h2:has-text("Start your first check-in")');
+  await page.screenshot({ path: path.join(shots, '20-checkin-home.png') });
+  await page.click('button:has-text("Start check-in")');
+  await page.waitForSelector('h2:has-text("How are you doing overall today?")');
+  await page.click('label[for="mood-2"]'); await page.click('button:has-text("Next")');
+  await page.waitForSelector('h2:has-text("Sensory & Environment")');
+  await page.click('label[for="d-sensory-1"]');
+  await page.fill('textarea[aria-label^="Note about Sensory"]', 'open plan office was loud');
+  await page.screenshot({ path: path.join(shots, '21-checkin-step.png') });
+  await page.click('button:has-text("Next")');
+  await page.click('label[for="d-executive-2"]'); await page.click('button:has-text("Next")');
+  await page.click('button:has-text("Skip this one")'); // social
+  await page.click('label[for="d-emotional-2"]'); await page.click('button:has-text("Next")');
+  await page.click('button:has-text("Next")'); // identity untouched stays at the middle value
+  await page.click('button:has-text("Next")'); // strengths
+  await page.waitForSelector('h2:has-text("one thing to protect")');
+  await page.click('.chip-btn >> nth=0');
+  await page.click('button:has-text("Save check-in")');
+  await page.waitForSelector('h2:has-text("Saved. Thank you")');
+  assert.ok((await page.locator('.advice-card').count()) >= 1, 'advice shown');
+  assert.ok(/sensory/i.test(await page.textContent('.view')), 'the lowest area is named');
+  await page.screenshot({ path: path.join(shots, '22-checkin-results.png'), fullPage: true });
+  await page.waitForFunction(() => !document.querySelector('#nav .nav-dot'), null, { timeout: 3000 }); // the reminder dot goes once you have checked in
+});
+
+await step('daily check-in: insights draw accessible charts, table, exports and history', async () => {
+  // Backfill a fortnight of earlier days so there is something to chart (same shape the app saves).
+  await page.evaluate(async () => {
+    const { state, save } = await import('./js/store.js');
+    const { freshEntry } = await import('./js/sixpf.js');
+    for (let i = 14; i >= 1; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i); d.setHours(11, 0, 0, 0);
+      const e = freshEntry(); e.id = 'seed' + i; e.createdAt = d.toISOString(); e.overallMood = 2 + (i % 3);
+      e.domains.forEach((x, k) => { x.rating = 1 + ((i + k) % 5); });
+      state.wellness.push(e);
+    }
+    save();
+  });
+  await page.click('button:has-text("Insights")');
+  await page.waitForSelector('svg.chart[role="img"]');
+  assert.ok((await page.locator('svg.chart').count()) >= 3, 'line, domain and calendar charts');
+  for (const svg of await page.locator('svg.chart').all()) assert.ok(((await svg.getAttribute('aria-label')) || '').length > 20, 'each chart has a text description');
+  assert.ok((await page.locator('.kpi').count()) === 4);
+  await page.click('summary:has-text("numbers as a table")');
+  assert.ok((await page.locator('table.data tbody tr').count()) >= 8, 'table alternative');
+  await page.click('button:has-text("90 days")'); await page.waitForSelector('button[aria-pressed="true"]:has-text("90 days")');
+  await page.check('#sh-sensory'); await page.uncheck('#sh-mood');
+  assert.match((await page.getAttribute('.chart-box svg', 'aria-label')) || '', /Sensory/);
+  await page.screenshot({ path: path.join(shots, '23-checkin-insights.png'), fullPage: true });
+  await page.click('button:has-text("History")');
+  await page.waitForSelector('details.card summary');
+  assert.ok((await page.locator('details.card').count()) >= 10);
+});
+
+await step('daily check-in: the chat answers about check-ins from your own numbers, and reminders can be set', async () => {
+  await page.click('#nav button:has-text("Settings")');
+  await page.waitForSelector('#reminders-section');
+  await page.selectOption('select[aria-label="Can the AI see my check-ins?"]', 'no'); // then the built-in reply answers, not the AI
+  await page.check('#reminders-section .switch input');
+  await page.waitForFunction(() => /remind you each day at/.test(document.querySelector('#reminders-section [aria-live]')?.textContent || ''));
+  await page.fill('#reminders-section input[type=time]', '08:30'); await page.locator('#reminders-section input[type=time]').dispatchEvent('change');
+  await page.waitForFunction(() => /08:30/.test(document.querySelector('#reminders-section [aria-live]')?.textContent || ''));
+  await page.screenshot({ path: path.join(shots, '24-settings-reminders.png') });
+  await page.click('#nav button:has-text("Chat")');
+  await page.click('button:has-text("New chat")');
+  await send('How have I been doing this week?');
+  await page.waitForFunction(() => /Lowest area/.test(document.querySelector('.msg.assistant:last-of-type')?.textContent || ''), null, { timeout: 8000 });
+  assert.ok(await page.locator('.msg.assistant:last-of-type button:has-text("insights"), .msg.assistant:last-of-type button:has-text("Check in")').count());
 });
 
 await step('data persists across restart', async () => {

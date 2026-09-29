@@ -7,7 +7,7 @@ const KEY = 'phoenix.v1';
 export const DEFAULTS = () => ({
   v: 1,
   onboarded: false,
-  profile: { name: '', about: '', neurotypes: [] },
+  profile: { name: '', nameAsked: false, about: '', neurotypes: [] }, // nameAsked: Phoenix asks what to call someone once, on first meeting
   prefs: {
     theme: 'auto',          // auto | light | dark | calm
     motion: 'auto',         // auto | reduced | full
@@ -34,9 +34,16 @@ export const DEFAULTS = () => ({
     showMascot: true,
     focusChime: true,
     useSite: true,          // let the assistant draw on neurohubcommunity.org articles
+    donateReminders: true,  // a gentle reminder to donate, at most once a week, see donate.js
+    analytics: true,       // share anonymous usage counts (app opens, installs) with NeuroHub, see analytics.js
+    aiSeesCheckins: 'auto', // auto (only an AI on this computer) | yes | no: may the AI read a summary of daily check-ins?
   },
+  donate: { firstSeen: 0, lastShown: 0, lastClick: 0 }, // timestamps for the weekly donate reminder
+  wellness: [],            // 6PF-Wellness daily check-ins, see sixpf.js
+  reports: [],              // reflection documents (6PF assessment, burnout plan, identity workbook), see reports.js
+  reminders: { enabled: false, time: '10:00', lastShown: '', snoozedUntil: 0, launch: false },
   provider: {
-    kind: 'offline',        // offline | ollama | openai | anthropic
+    kind: 'shared',         // shared (Phoenix free AI, limited) | offline (built-in helper) | ollama | openai | anthropic. New people start on the free AI and can opt out in Settings.
     ollama: { url: 'http://localhost:11434', model: '' },
     openai: { preset: 'custom', baseUrl: '', key: '', model: '' },
     anthropic: { key: '', model: 'claude-sonnet-5-5' },
@@ -137,6 +144,7 @@ export const providerReady = () => {
   if (p.kind === 'ollama') return !!p.ollama.model;
   if (p.kind === 'openai') return !!(p.openai.baseUrl && p.openai.model);
   if (p.kind === 'anthropic') return !!(p.anthropic.key && p.anthropic.model);
+  if (p.kind === 'shared') return true; // Phoenix's own limited free AI: no key or model to set
   return false;
 };
 export const aiActive = () => providerReady();
@@ -149,7 +157,15 @@ export function isPaidProvider() {
   if (p.kind === 'openai') return !/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])/i.test(p.openai.baseUrl || '');
   return false;
 }
-const estTokens = (chars) => Math.ceil(chars / 4); // rough rule of thumb for English; real counts differ
+/** True when the connected AI runs on this computer (Ollama, or an OpenAI-compatible server on localhost), so nothing leaves the device. */
+export const aiIsLocal = () => aiActive() && (state.provider.kind === 'ollama' || (state.provider.kind === 'openai' && /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])/i.test(state.provider.openai.baseUrl || '')));
+/** May the AI read a short summary of the daily check-ins? 'auto' means only an AI running on this computer. */
+export function aiMaySeeCheckins() {
+  const v = state.prefs.aiSeesCheckins;
+  if (!aiActive() || v === 'no') return false;
+  return v === 'yes' || aiIsLocal();
+}
+const estTokens =(chars) => Math.ceil(chars / 4); // rough rule of thumb for English; real counts differ
 function rollover() {
   const b = state.billing, now = new Date();
   const month = `${now.getFullYear()}-${now.getMonth() + 1}`, day = now.toDateString();

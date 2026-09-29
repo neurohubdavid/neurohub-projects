@@ -5,6 +5,7 @@
 // Each entry: id, title, terms (phrases that trigger it), what (what it is), why (what is going on), helps (what tends to help).
 
 import { KB_BOOKS, GROUPS } from './kb-books.js';
+import { KB_TRAINING } from './kb-training.js';
 
 const KB_CORE = [
   {
@@ -247,7 +248,7 @@ const KB_CORE = [
   },
 ];
 
-export const KB = [...KB_CORE, ...KB_BOOKS];
+export const KB = [...KB_CORE, ...KB_BOOKS, ...KB_TRAINING];
 export { GROUPS };
 
 // Ways to help when someone says "I need to..."

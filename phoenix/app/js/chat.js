@@ -1,7 +1,9 @@
 // The chat screen: Phoenix the mascot, the conversation, voice in and out, and the safety layer.
 import { el, fmt, modal, toast, announce, prefersReducedMotion, copyText, fmtDate, sleep } from './util.js';
 import { phoenixSVG, setPhoenixState } from './mascot.js';
-import { state, save, currentChat, newChat, deleteChat, aiActive, checkBudget, recordUsage } from './store.js';
+import { state, save, currentChat, newChat, deleteChat, aiActive, checkBudget, recordUsage, aiMaySeeCheckins } from './store.js';
+import { checkinIntent, chatReply, summaryForAI, checkedInToday, streak } from './sixpf.js';
+import { reportIntent, reportReply, assessmentSummaryForAI } from './reports.js';
 import { CRISIS_RE, EMERGENCY_RE, crisisText, crisisReply, loadCrisis, guessCountry, openHelp } from './crisis.js';
 import { KB } from './kb.js';
 import { medicationIntent, medicationReply, siteQuestionIntent, siteListReply, validateCrisisReply, CRISIS_FOLLOWUP, isSmallModel } from './guard.js';
@@ -58,6 +60,12 @@ export function mountChat(container, { navigate }) {
   const histBtn = el('button', { class: 'btn btn-ghost btn-sm', onclick: openHistory }, 'History');
   container.append(el('div', { class: 'chat-head' }, mascot, el('div', { class: 'who' }, el('strong', {}, 'Phoenix'), statusEl), pillEl, histBtn, newBtn));
 
+  if (!checkedInToday(state.wellness)) {
+    const n = streak(state.wellness);
+    container.append(el('div', { class: 'checkin-nudge', role: 'region', 'aria-label': 'Daily check-in' },
+      el('span', {}, state.wellness.length ? `Not checked in today${n ? ` (${n}-day streak so far)` : ''}. Two minutes, whenever you have the energy.` : 'Try a two-minute daily check-in. It shows how you are doing over time, and what might help.'),
+      el('button', { class: 'btn btn-sm btn-purple', onclick: () => go('checkin') }, 'Check in')));
+  }
   listEl = el('div', { class: 'chat-list', role: 'log', 'aria-live': 'polite', 'aria-label': 'Conversation with Phoenix' });
   chipsEl = el('div', { class: 'chips' });
   container.append(listEl, chipsEl);
@@ -88,14 +96,39 @@ function updatePill() {
   const label = !aiActive() ? 'Built-in helper (no AI)'
     : p.kind === 'ollama' ? `AI on this computer · ${p.ollama.model}`
     : p.kind === 'anthropic' ? `Claude · ${p.anthropic.model}`
+    : p.kind === 'shared' ? 'Phoenix free AI'
     : `AI · ${p.openai.model}`;
   pillEl.textContent = label;
 }
 
+/** Names are shown back and sent to the AI, so keep them short and plain. */
+export const cleanName = (s) => String(s || '').replace(/[\r\n\t<>`]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
+
+/** First meeting: Phoenix asks what to call the person. A name, a nickname or nothing at all are all fine, and it is asked only once. */
+function nameCard() {
+  const input = el('input', { class: 'input', maxlength: '40', autocomplete: 'off', 'aria-label': 'What should Phoenix call you?', placeholder: 'A name, a nickname, or leave it blank' });
+  const done = (skip) => { const v = skip ? '' : cleanName(input.value); state.profile.name = v; state.profile.nameAsked = true; save(); renderChat(); announce(v ? `Nice to meet you, ${v}.` : 'No problem, no name needed.'); };
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done(false); } });
+  return el('section', { class: 'card name-ask', 'aria-labelledby': 'name-h' },
+    el('h2', { id: 'name-h' }, 'What should I call you?'),
+    el('p', { class: 'muted small' }, 'A first name, a nickname, or anything you like. You can change it any time in Settings, and you can skip this.'),
+    input,
+    el('div', { class: 'row-wrap', style: { marginTop: '.6rem' } }, el('button', { class: 'btn btn-primary', onclick: () => done(false) }, 'That’s me'), el('button', { class: 'btn btn-ghost', onclick: () => done(true) }, 'Skip, no name needed')));
+}
+
+/** Switches to Phoenix's free AI after saying plainly where messages go. Nothing is sent until the person agrees. */
+function turnOnSharedAI() {
+  modal({ title: 'Turn on Phoenix free AI?',
+    body: el('div', { class: 'stack' },
+      el('p', {}, 'Phoenix’s free AI is run by NeuroHub Community, with a daily limit for each person. Your messages go to NeuroHub’s server, which passes them to Anthropic’s Claude to write a reply. They are not stored or read by NeuroHub. Please avoid names and identifying details.'),
+      el('p', { class: 'muted small' }, 'You can switch back to the built-in helper, or use an AI on your own computer, any time in Settings. Your daily check-ins are not sent to it.')),
+    actions: [{ label: 'Not now' }, { label: 'Turn it on', class: 'btn-primary', onclick: () => { state.provider.kind = 'shared'; save(); renderChat(); toast('Phoenix AI is on.', { icon: '🔥' }); } }] });
+}
+
 function chipsFor() {
   return aiActive()
-    ? ['I am overwhelmed', 'Help me get started on something', 'Explain masking to me', 'Help me reply to a message', 'I just want to talk']
-    : ['I am overwhelmed', 'What is monotropism?', 'I can’t start my task', 'What can you do?'];
+    ? ['I am overwhelmed', 'How have I been doing this week?', 'Help me get started on something', 'Explain masking to me', 'I just want to talk']
+    : ['I am overwhelmed', 'How have I been doing this week?', 'What is monotropism?', 'I can’t start my task', 'What can you do?'];
 }
 
 function renderChat() {
@@ -104,13 +137,18 @@ function renderChat() {
   listEl.textContent = '';
   chipsEl.textContent = '';
   if (!chat.messages.length) {
+    const needName = !state.profile.name && !state.profile.nameAsked; // first meeting: ask what to call them
     const hi = state.profile.name ? `Hi ${state.profile.name}.` : 'Hi.';
     const big = phoenixSVG(4); big.style.setProperty('--ph-size', '120px');
     listEl.append(el('div', { class: 'welcome' }, big,
-      el('h1', {}, `${hi} I'm Phoenix.`),
+      el('h1', {}, needName ? 'Hi, I’m Phoenix.' : `${hi} I'm Phoenix.`),
+      needName ? nameCard() : null,
       el('p', {}, 'A neuro-affirming AI assistant for Autistic, ADHD and other neurodivergent minds. You are not broken. You do not have to mask here. You can say as much or as little as you like, and stop any time.'),
-      aiActive() ? null : el('p', { class: 'muted small' }, 'No AI is connected yet, so I am running as the built-in helper. I can explain ideas, help you calm down and get started, and give you wording for hard messages. To talk freely, connect an AI in Settings. It can be free and private.')));
-    for (const t of chipsFor()) chipsEl.append(el('button', { class: 'chip-btn', onclick: () => send(t) }, t));
+      aiActive() ? null : el('div', { class: 'stack' },
+        el('p', { class: 'muted small' }, 'I am running as the built-in helper: I can explain ideas, help you calm down and get started, and give you wording for hard messages, and nothing you type leaves this device. For open conversation you can turn on Phoenix’s free AI, or connect your own in Settings.'),
+        el('button', { class: 'btn btn-primary', onclick: turnOnSharedAI }, 'Turn on Phoenix free AI'))));
+    if (!needName) for (const t of chipsFor()) chipsEl.append(el('button', { class: 'chip-btn', onclick: () => send(t) }, t));
+    else setTimeout(() => { if (!document.querySelector('.modal-overlay')) document.querySelector('.name-ask input')?.focus(); }, 350);
   } else {
     chat.messages.forEach(renderMessage);
   }
@@ -192,6 +230,14 @@ export async function send(text, { viaVoice = false } = {}) {
       await loadSite();
       addMessage('assistant', siteListReply(siteHits(text, 4), state.profile.name)); announce('Phoenix replied'); return;
     }
+    if (!crisis && !emergency && reportIntent(text)) {
+      const r = reportReply(state.profile.name);
+      const { m, node } = addMessage('assistant', r.text, { actions: r.actions }); node.replaceWith(renderMessage(m)); announce('Phoenix replied'); return;
+    }
+    if (!crisis && !emergency && checkinIntent(text) && !(aiActive() && aiMaySeeCheckins())) {
+      const r = chatReply(state.wellness, state.profile.name);
+      const { m, node } = addMessage('assistant', r.text, { actions: r.actions }); node.replaceWith(renderMessage(m)); announce('Phoenix replied'); return;
+    }
     if (!aiActive()) {
       if (crisis || emergency) return; // the vetted reply above is the whole answer; nothing clever to add
       const prev = currentChat().messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.content || '';
@@ -238,7 +284,7 @@ export async function send(text, { viaVoice = false } = {}) {
     await loadSite();
     const prevUser = currentChat().messages.filter((m) => m.role === 'user').slice(-2, -1)[0]?.content || '';
     const sb = state.prefs.useSite ? siteBlock(`${text} ${prevUser}`) : '';
-    const system = buildSystem({ profile: state.profile, prefs: state.prefs, crisisBlock: block, crisisFlag: crisis, siteBlock: [topicNotes, sb].filter(Boolean).join('\n\n'), small });
+    const system = buildSystem({ profile: state.profile, prefs: state.prefs, crisisBlock: block, crisisFlag: crisis, siteBlock: [topicNotes, sb].filter(Boolean).join('\n\n'), small, wellnessBlock: aiMaySeeCheckins() ? [summaryForAI(state.wellness), assessmentSummaryForAI(state.reports)].filter(Boolean).join('\n') : '' });
     const history = currentChat().messages.filter((m) => !m.crisis && m.content && (m.role === 'user' || m.role === 'assistant')).slice(-20).map(({ role, content }) => ({ role, content }));
     while (history.length && history[0].role !== 'user') history.shift();
 
@@ -276,6 +322,13 @@ export async function send(text, { viaVoice = false } = {}) {
         console.warn(e);
         m.content = acc ? acc : (e.message || 'I could not reach the AI.');
         if (!acc) m.error = true;
+        if (!acc && state.provider.kind === 'shared') {
+          // The free shared AI is busy, out for today, or unreachable: never leave the person with nothing. The built-in helper answers.
+          try {
+            const r = offlineReply(text, { name: state.profile.name, aiConfigured: false, siteHits: state.prefs.useSite ? (q) => siteHits(q, 2) : null });
+            m.content = `${e.message}\n\nUntil then, here is what the built-in helper can offer:\n\n${r.text}`; m.error = false; m.actions = r.actions;
+          } catch { /* keep the plain message */ }
+        }
         // during a crisis the person must never be left with nothing: the helplines are already on screen above
       }
       save();
