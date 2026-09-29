@@ -21,11 +21,13 @@ const FILES = [
   { file: `Phoenix-Portable-${version}-x64.exe`, label: 'Windows portable', note: 'No install: run it from a folder or a USB stick. Intel and AMD.' },
   { file: `Phoenix-Setup-${version}-arm64.exe`, label: 'Windows installer (ARM)', note: 'Windows on ARM (for example Surface Pro X, Snapdragon laptops).' },
 ];
+const DOWNLOAD_BASE = process.env.DOWNLOAD_BASE ?? `https://github.com/neurohubdavid/neurohub-projects/releases/download/phoenix-v${version}`;
 const rows = [];
 for (const f of FILES) {
   const src = path.join(root, 'dist', f.file);
   if (!fs.existsSync(src)) { console.warn('missing', f.file); continue; }
-  fs.copyFileSync(src, path.join(site, 'downloads', f.file));
+  // The installers are served from the GitHub release (free bandwidth), not from Netlify. Set DOWNLOAD_BASE="" to serve them locally.
+  if (!DOWNLOAD_BASE) fs.copyFileSync(src, path.join(site, 'downloads', f.file));
   const hash = crypto.createHash('sha256').update(fs.readFileSync(src)).digest('hex');
   rows.push({ ...f, hash, mb: (fs.statSync(src).size / 1048576).toFixed(0) });
 }
@@ -47,7 +49,7 @@ const downloads = rows.map((r) => `
           <p>${esc(r.note)}</p>
           <details><summary>SHA-256 checksum</summary><code>${r.hash}</code></details>
         </div>
-        <a class="btn ${r.primary ? 'btn-primary' : ''}" href="downloads/${esc(r.file)}" download>Download · ${r.mb} MB</a>
+        <a class="btn ${r.primary ? 'btn-primary' : ''}" href="${DOWNLOAD_BASE ? DOWNLOAD_BASE + '/' : 'downloads/'}${esc(r.file)}" rel="noopener">Download · ${r.mb} MB</a>
       </div>`).join('\n');
 
 const html = `<!doctype html>
