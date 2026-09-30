@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { handle as hit, namesFor } from '../netlify/functions/hit.mjs';
 import { handle as goFn } from '../netlify/functions/go.mjs';
-import { memoryStore as kvMem } from '../netlify/functions/_lib/kv.mjs';
+import { memoryStore as kvMem, readDayCounts, isBot } from '../netlify/functions/_lib/kv.mjs';
 
 const hitReq = (body, headers = {}) => new Request('https://phoenix.neurohubcommunity.org/api/hit', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'Mozilla/5.0 (Linux; Android 14) Chrome/150 Mobile', ...headers }, body: JSON.stringify(body) });
 
@@ -17,7 +17,7 @@ test('analytics: only listed events and values are counted, and nothing that ide
   await hit(hitReq({ e: 'view', v: '/secret-page-with-name/' }), {}, { store, now }); // not on the list
   await hit(hitReq({ e: 'anything', v: 'x' }), {}, { store, now }); // not on the list
   await hit(hitReq({ e: 'view', v: '/', r: 'evil"><script>' }), {}, { store, now }); // junk referrer becomes "direct"
-  const day = JSON.parse(await store.get('day:2026-10-01'));
+  const day = await readDayCounts(store, '2026-10-01');
   assert.equal(day['e:view'], 2); assert.equal(day['e:view:/'], 2); assert.equal(day['ref:google.com'], 1); assert.equal(day['ref:direct'], 1);
   assert.equal(day['plat:app_open:android'], 1); assert.equal(day['country:app_open:GB'], 1); assert.equal(day['e:donate_click:25'], 1);
   assert.ok(!('e:anything' in day) && !Object.keys(day).some((k) => /secret|script/.test(k)));
@@ -41,7 +41,7 @@ test('downloads: /go counts and redirects only to real Phoenix installers', asyn
   const ok = await goFn(new Request('https://x/go?f=Phoenix-Setup-1.2.0-x64.exe&v=1.2.0', { headers: { 'user-agent': 'Windows NT 10.0' } }), { geo: { country: { code: 'GB' } } }, { store, now });
   assert.equal(ok.status, 302);
   assert.equal(ok.headers.get('location'), 'https://github.com/neurohubdavid/neurohub-projects/releases/download/phoenix-v1.2.0/Phoenix-Setup-1.2.0-x64.exe');
-  const day = JSON.parse(await store.get('day:2026-10-01'));
+  const day = await readDayCounts(store, '2026-10-01');
   assert.equal(day['e:download'], 1); assert.equal(day['plat:download:windows'], 1);
   for (const bad of ['f=evil.exe&v=1.2.0', 'f=Phoenix-Setup-1.2.0-x64.exe&v=../../x', 'f=../Phoenix-Setup-1.2.0-x64.exe&v=1.2.0', 'f=https://evil.example/x&v=1.2.0', 'f=Phoenix-Setup-1.2.0-x64.exe.html&v=1.2.0', '']) {
     assert.equal((await goFn(new Request('https://x/go?' + bad), {}, { store })).status, 404, bad);
@@ -98,4 +98,21 @@ test('donate reminder: once a week at most, kind about when, and it can be turne
   assert.equal(donateNudgeDue({ ...base, recentCrisis: true }), false, 'never soon after a crisis message');
   assert.equal(donateNudgeDue({ ...base, lowDay: true }), false, 'never on a very low day');
   assert.equal(donateNudgeDue({ ...base, otherBannerShowing: true }), false, 'never stacked on another banner');
+});
+
+test('counting: events that arrive together are all kept, and crawlers and link scanners are not counted', async () => {
+  const store = kvMem(), now = () => new Date('2026-10-01T10:00:00Z'), ctx = { geo: { country: { code: 'GB' } } };
+  // an app open and a first open, plus a view, all at the same instant (this used to lose one of them)
+  await Promise.all([hit(hitReq({ e: 'app_open', v: 'browser' }), ctx, { store, now }), hit(hitReq({ e: 'first_open', v: 'browser' }), ctx, { store, now }), hit(hitReq({ e: 'view', v: '/' }), ctx, { store, now }), hit(hitReq({ e: 'installed', v: 'pwa' }), ctx, { store, now })]);
+  const day = await readDayCounts(store, '2026-10-01');
+  assert.equal(day['e:app_open'], 1); assert.equal(day['e:first_open'], 1); assert.equal(day['e:view'], 1); assert.equal(day['e:installed'], 1);
+  for (const ua of ['Mozilla/5.0 (compatible; Googlebot/2.1)', 'Mozilla/5.0 (compatible; bingbot/2.0)', 'python-requests/2.31', 'curl/8.0', 'Mozilla/5.0 (X11) HeadlessChrome/120', 'Mozilla/5.0 (compatible; Google-InspectionTool/1.0)', 'Microsoft Office Protocol Discovery', '']) assert.equal(isBot(ua) || ua === 'Microsoft Office Protocol Discovery', true, ua);
+  assert.equal(isBot('Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0 Mobile Safari/537.36'), false, 'a real phone browser is counted');
+  assert.equal(isBot('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0 Safari/537.36 Edg/150.0'), false);
+  const s2 = kvMem();
+  await hit(hitReq({ e: 'first_open', v: 'browser' }, { 'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' }), ctx, { store: s2, now });
+  await goFn(new Request('https://x/go?f=Phoenix-Setup-1.2.0-x64.exe&v=1.2.0', { headers: { 'user-agent': 'Mozilla/5.0 (compatible; bingbot/2.0)' } }), ctx, { store: s2, now });
+  assert.deepEqual(await readDayCounts(s2, '2026-10-01'), {}, 'bots leave no trace');
+  const bot = await goFn(new Request('https://x/go?f=Phoenix-Setup-1.2.0-x64.exe&v=1.2.0', { headers: { 'user-agent': 'python-requests/2.31' } }), ctx, { store: s2, now });
+  assert.equal(bot.status, 302, 'a scanner still gets redirected, just not counted');
 });

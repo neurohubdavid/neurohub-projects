@@ -8,7 +8,7 @@
   var el = function (t, a, kids) { var n = document.createElement(t); for (var k in a || {}) n.setAttribute(k, a[k]); [].concat(kids === undefined ? [] : kids).forEach(function (c) { if (c != null) n.append(c.nodeType ? c : document.createTextNode(String(c))); }); return n; };
   var svg = function (t, a, kids) { var n = document.createElementNS(NS, t); for (var k in a || {}) n.setAttribute(k, a[k]); [].concat(kids === undefined ? [] : kids).forEach(function (c) { n.append(c.nodeType ? c : document.createTextNode(String(c))); }); return n; };
   var api = function (path, opts) { return fetch('/api/admin/' + path, Object.assign({ credentials: 'same-origin', headers: { 'x-admin-csrf': '1', 'content-type': 'application/json' } }, opts || {})); };
-  var view = $('app'), tab = 'checkins', me = null;
+  var view = $('app'), tab = 'report', me = null;
 
   function showLogin(msg) { view.hidden = true; $('login').hidden = false; $('msg').textContent = msg || ''; $('u').focus(); }
   $('form').addEventListener('submit', function (e) {
@@ -30,15 +30,56 @@
   function render() {
     view.textContent = '';
     var bar = el('div', { 'class': 'row' }, [
-      el('span', {}, 'Signed in as ' + me.user), el('button', { type: 'button', 'aria-pressed': String(tab === 'checkins') }, 'Check-ins'), el('button', { type: 'button', 'aria-pressed': String(tab === 'usage') }, 'Usage'),
+      el('span', {}, 'Signed in as ' + me.user), el('button', { type: 'button', 'aria-pressed': String(tab === 'report') }, 'Report'), el('button', { type: 'button', 'aria-pressed': String(tab === 'checkins') }, 'Check-in details'), el('button', { type: 'button', 'aria-pressed': String(tab === 'usage') }, 'Users and usage'),
       el('button', { type: 'button', id: 'out' }, 'Sign out')]);
-    bar.children[1].onclick = function () { tab = 'checkins'; render(); };
-    bar.children[2].onclick = function () { tab = 'usage'; render(); };
-    bar.children[3].onclick = function () { api('logout', { method: 'POST' }).then(function () { me = null; showLogin('Signed out.'); }); };
+    bar.children[1].onclick = function () { tab = 'report'; render(); };
+    bar.children[2].onclick = function () { tab = 'checkins'; render(); };
+    bar.children[3].onclick = function () { tab = 'usage'; render(); };
+    bar.children[4].onclick = function () { api('logout', { method: 'POST' }).then(function () { me = null; showLogin('Signed out.'); }); };
     view.append(bar);
     var body = el('div'); view.append(body);
-    (tab === 'checkins' ? checkins(body) : usage(body));
+    (tab === 'report' ? report(body) : tab === 'checkins' ? checkins(body) : usage(body));
     if (me.recent && me.recent.length) view.append(el('details', { 'class': 'card' }, [el('summary', {}, 'Recent sign-in attempts'), el('table', {}, [el('tbody', {}, me.recent.map(function (a) { return el('tr', {}, [el('td', {}, new Date(a.at).toLocaleString()), el('td', {}, a.user), el('td', {}, a.ok ? 'signed in' : 'FAILED'), el('td', {}, a.from)]); }))])]));
+  }
+
+  // ---------------------------------------------------------------- the readable report, with a PDF
+  function report(body) {
+    body.append(el('p', { 'class': 'muted' }, 'Loading…'));
+    get('report?weeks=12').then(function (r) {
+      body.textContent = '';
+      var s = r.sample, f1 = function (v) { return v == null ? '-' : (Math.round(v * 10) / 10).toFixed(1); }, sg = function (v) { return v == null ? '-' : (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1); };
+      body.append(el('div', { 'class': 'row' }, [el('h2', { style: 'margin:.4rem 1rem .4rem 0' }, 'Wellbeing and identity over time')]));
+      var pdfBtn = el('button', { type: 'button', id: 'pdf' }, 'Download as PDF'), pdfMsg = el('span', { 'class': 'muted', role: 'status' });
+      body.append(el('p', { 'class': 'row' }, [pdfBtn, pdfMsg]));
+      pdfBtn.onclick = function () {
+        pdfBtn.disabled = true; pdfMsg.textContent = 'Making the PDF…';
+        Promise.all([import('./admin-pdf.js'), fetch('/assets/icon-192.png').then(function (x) { return x.ok ? x.arrayBuffer() : null; }).catch(function () { return null; })]).then(function (m) {
+          return m[0].makeReportPdf(r, { logoBytes: m[1] ? new Uint8Array(m[1]) : null });
+        }).then(function (out) {
+          var a = el('a', { href: URL.createObjectURL(new Blob([out.bytes], { type: 'application/pdf' })), download: 'phoenix-wellbeing-identity-report-' + r.generated.slice(0, 10) + '.pdf' }); document.body.append(a); a.click(); a.remove();
+          pdfMsg.textContent = 'Downloaded (' + out.pages + ' pages).'; pdfBtn.disabled = false;
+        }).catch(function () { pdfMsg.textContent = 'Could not make the PDF.'; pdfBtn.disabled = false; });
+      };
+      body.append(el('div', { 'class': 'kpis' }, [kpi('Devices that have used Phoenix', s.devices == null ? 'n/a' : s.devices), kpi('People sharing check-ins', s.participants), kpi('Check-ins shared', s.checkins), kpi('Shared over a week or more', r.change ? r.change.n : 0)]));
+      var hl = el('div', { 'class': 'card' }, [el('h3', { style: 'margin-top:0' }, 'What the numbers show')]);
+      r.headlines.forEach(function (h) { hl.append(el('p', {}, h)); }); body.append(hl);
+      var shown = r.tenure.filter(function (w) { return w.means; });
+      var two = function (title, pts, ticks, label) {
+        var card = el('div', { 'class': 'card' }, [el('h3', { style: 'margin-top:0' }, title)]);
+        if (pts.length < 2) { card.append(el('p', { 'class': 'muted' }, 'Not shown yet: at least ' + r.minN + ' people need to have shared over several weeks.')); return card; }
+        card.append(lineChart([{ label: 'Overall wellbeing', color: '#16121f', w: 4, pts: pts.map(function (p, i) { return [i, p.a]; }) }, { label: 'Identity', color: '#E11D48', w: 3, pts: pts.map(function (p, i) { return [i, p.b]; }) }], { n: pts.length, ticks: ticks, label: label }));
+        card.append(el('p', { 'class': 'muted' }, 'Black: overall wellbeing. Rose: identity and autonomy. Scores 1 to 5. People behind each point: ' + pts.map(function (p) { return p.label + ': ' + p.n; }).join(' · ')));
+        return card;
+      };
+      body.append(two('By weeks of using Phoenix', shown.map(function (w) { return { label: 'w' + (w.k + 1), a: w.means[0], b: w.means[5], n: w.n }; }), shown.map(function (w, i) { return [i, 'w' + (w.k + 1)]; }), 'Overall wellbeing and identity by weeks since each person first checked in'));
+      var wk = r.weekly.filter(function (w) { return w.means; });
+      body.append(two('By calendar week', wk.map(function (w) { return { label: w.week.slice(5), a: w.means[0], b: w.means[5], n: w.n }; }), wk.map(function (w, i) { return [i, w.week.slice(5)]; }), 'Group average overall wellbeing and identity by calendar week'));
+      var g = el('div', { 'class': 'grid' });
+      if (r.change) g.append(el('div', { 'class': 'card' }, [el('h3', { style: 'margin-top:0' }, 'First to latest check-in'), el('table', {}, [el('thead', {}, el('tr', {}, ['Area', 'First', 'Latest', 'Change'].map(function (h, i) { return el('th', { 'class': i ? 'n' : '' }, h); }))), el('tbody', {}, r.names.map(function (nm, i) { return el('tr', {}, [el('td', {}, nm), el('td', { 'class': 'n' }, f1(r.change.firstMean[i])), el('td', { 'class': 'n' }, f1(r.change.latestMean[i])), el('td', { 'class': 'n' }, sg(r.change.delta[i]))]); }))])]));
+      g.append(el('div', { 'class': 'card' }, [el('h3', { style: 'margin-top:0' }, 'By how often people checked in'), el('table', {}, [el('thead', {}, el('tr', {}, ['Group', 'People', 'Wellbeing', 'Identity'].map(function (h, i) { return el('th', { 'class': i ? 'n' : '' }, h); }))), el('tbody', {}, r.usage.map(function (b) { return el('tr', {}, [el('td', {}, b.label), el('td', { 'class': 'n' }, b.n), el('td', { 'class': 'n' }, b.delta ? sg(b.delta[0]) : 'hidden'), el('td', { 'class': 'n' }, b.delta ? sg(b.delta[5]) : 'hidden')]); }))])]));
+      body.append(g);
+      var notes = el('details', { 'class': 'card', open: 'open' }, [el('summary', {}, 'How to read this report')]); r.notes.forEach(function (n) { notes.append(el('p', { 'class': 'muted' }, n)); }); body.append(notes);
+    }).catch(function () { /* signed out: the login screen is showing */ });
   }
 
   // ---------------------------------------------------------------- check-ins
@@ -108,7 +149,13 @@
   function usage(body) {
     body.append(el('p', { 'class': 'muted' }, 'Loading…'));
     get('usage?days=30').then(function (d) {
-      body.textContent = ''; var days = d.days, t = d.totals;
+      body.textContent = ''; var days = d.days, t = d.totals, u = d.users;
+      body.append(el('h2', {}, 'Users'));
+      body.append(el('p', { 'class': 'muted' }, 'Phoenix has no accounts, so users are counted as devices that have opened it. One person on two devices counts twice, and clearing browser data counts again. Counting since ' + u.since + '.'));
+      body.append(el('div', { 'class': 'kpis' }, [kpi('Devices that have used Phoenix', u.devicesAllTime), kpi('New devices, last 7 days', u.newDevices.last7), kpi('New devices, last 30 days', u.newDevices.last30), kpi('New devices today', u.newDevices.last1), kpi('App opens, last 7 days', u.appOpens.last7), kpi('Installed as an app', u.installedAsApp), kpi('Classic downloads', u.downloads)]));
+      body.append(bars('New devices per day (last 60 days)', u.newDevicesPerDay.map(function (x) { return x.n; })), bars('App opens per day (last 60 days)', u.newDevicesPerDay.map(function (x) { return x.opens; })));
+      var ug = el('div', { 'class': 'grid' }); ug.append(tbl('New devices by type', u.byPlatform.slice(0, 10)), tbl('New devices by how Phoenix is used', u.byHowUsed), tbl('New devices by country', u.byCountry)); body.append(ug);
+      body.append(el('h2', {}, 'Website and app activity (last 30 days)'));
       body.append(el('div', { 'class': 'kpis' }, [kpi('Website visits', sum(days, 'e:view')), kpi('Install clicks', sum(days, 'e:install_click:landing')), kpi('Downloads', sum(days, 'e:download')), kpi('App opens', sum(days, 'e:app_open')), kpi('New devices', sum(days, 'e:first_open')), kpi('Installs as an app', sum(days, 'e:installed')), kpi('Donate clicks', sum(days, 'e:donate_click')), kpi('Free AI messages (30 days)', days.reduce(function (n, x) { return n + (x.sharedAi || 0); }, 0)), kpi('Free AI this month', d.sharedAiMonth || 0)]));
       body.append(bars('Website visits per day', days.map(function (x) { return x.counts['e:view'] || 0; })), bars('App opens per day', days.map(function (x) { return x.counts['e:app_open'] || 0; })), bars('Free AI messages per day', days.map(function (x) { return x.sharedAi || 0; })));
       var g = el('div', { 'class': 'grid' }); g.append(tbl('Where visitors came from', top(t, 'ref:')), tbl('Countries (visits)', top(t, 'country:view:')), tbl('Devices (app opens)', top(t, 'plat:app_open:')), tbl('Which AI people use', top(t, 'e:ai_kind:')), tbl('Donation amounts clicked', top(t, 'e:donate_click:')), tbl('Downloads by file', top(t, 'e:download:'))); body.append(g);

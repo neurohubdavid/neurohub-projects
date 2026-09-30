@@ -2,7 +2,7 @@
 // Privacy by design: no cookies, no IDs, no IP address, no user agent and no message or health content is stored. Each event adds 1
 // to a few daily counters (event, coarse device type, country, referring website). Do Not Track and Global Privacy Control are
 // respected by the app and the site (they send nothing). See the privacy page for the plain-language version.
-import { openStore, dayOf, bump, platformOf } from './_lib/kv.mjs';
+import { openStore, dayOf, bump, platformOf, dayKeyFor, isBot } from './_lib/kv.mjs';
 
 export const config = { path: '/api/hit' };
 
@@ -41,10 +41,10 @@ export async function handle(req, ctx = {}, deps = {}) {
   const cors = origin ? { 'access-control-allow-origin': origin, vary: 'origin' } : {};
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...cors, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type', 'access-control-max-age': '86400' } });
   if (req.method !== 'POST') return new Response(null, { status: 405 });
-  if (req.headers.get('dnt') === '1' || req.headers.get('sec-gpc') === '1') return new Response(null, { status: 204, headers: cors });
+  if (req.headers.get('dnt') === '1' || req.headers.get('sec-gpc') === '1' || isBot(req.headers.get('user-agent') || '')) return new Response(null, { status: 204, headers: cors });
   let body; try { body = JSON.parse(await req.text()); } catch { return new Response(null, { status: 204, headers: cors }); }
   const names = namesFor(body, { ua: req.headers.get('user-agent') || '', country: ctx.geo?.country?.code || '' });
-  if (names) { try { await bump(deps.store || (await openStore('phoenix-stats')), `day:${dayOf(deps.now ? deps.now() : new Date())}`, names); } catch { /* counting must never break the page */ } }
+  if (names) { try { await bump(deps.store || (await openStore('phoenix-stats')), dayKeyFor(dayOf(deps.now ? deps.now() : new Date()), body.e), names); } catch { /* counting must never break the page */ } }
   return new Response(null, { status: 204, headers: { 'cache-control': 'no-store', ...cors } });
 }
 export default async (req, ctx) => handle(req, ctx);

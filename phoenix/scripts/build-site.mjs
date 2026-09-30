@@ -82,6 +82,8 @@ fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'install.js'), path.jo
 fs.mkdirSync(path.join(site, 'admin'), { recursive: true });
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin.html'), path.join(site, 'admin', 'index.html'));
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin.js'), path.join(site, 'admin', 'admin.js'));
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin-pdf.js'), path.join(site, 'admin', 'admin-pdf.js')); // the PDF report is drawn in the admin's own browser
+fs.copyFileSync(path.join(root, 'app', 'vendor', 'pdf-lib.esm.min.js'), path.join(site, 'admin', 'pdf-lib.esm.min.js'));
 fs.writeFileSync(path.join(site, '_redirects'), '/stats /admin/ 301\n/stats/* /admin/ 301\n');
 
 fs.writeFileSync(path.join(site, '_headers'), `/downloads/*

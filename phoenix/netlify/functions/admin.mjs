@@ -4,9 +4,11 @@
 //   GET  /api/admin/me       -> { user }
 //   GET  /api/admin/usage    -> anonymous usage counts (visits, installs, downloads, app opens, free AI use)
 //   GET  /api/admin/checkins -> how the people who chose to share their check-ins are doing, in aggregate
-import { openStore, dayOf, readJson } from './_lib/kv.mjs';
+import { openStore, dayOf, readJson, readDayCounts } from './_lib/kv.mjs';
 import { adminUsers, hasAdminRole, verifyPassword, checkTotp, signUserSession, adminFromRequest, sessionCookie, ipHash, COOKIE } from './_lib/admin.mjs';
 import { summarise, trajectories, MEASURES, MIN_N } from './_lib/cohort.mjs';
+import { buildReport } from './_lib/report.mjs';
+import { sinceLaunch, usersSummary } from './_lib/usage.mjs';
 
 export const config = { path: '/api/admin/*' };
 
@@ -66,12 +68,13 @@ export async function handle(req, ctx = {}, deps = {}) {
     const n = Math.min(Math.max(parseInt(u.searchParams.get('days') || '30', 10) || 30, 1), 400);
     const stats = deps.usageStore || (await openStore('phoenix-stats')), usage = deps.aiStore || (await openStore('phoenix-ai-usage'));
     const days = [];
-    for (let i = n - 1; i >= 0; i--) { const day = dayOf(new Date(now.getTime() - i * 86400000)); days.push({ day, counts: await readJson(stats, `day:${day}`), sharedAi: Number((await usage.get(`d:${day}`)) || 0) }); }
+    for (let i = n - 1; i >= 0; i--) { const day = dayOf(new Date(now.getTime() - i * 86400000)); days.push({ day, counts: await readDayCounts(stats, day), sharedAi: Number((await usage.get(`d:${day}`)) || 0) }); }
     const totals = {}; for (const d of days) for (const [k, v] of Object.entries(d.counts)) totals[k] = (totals[k] || 0) + v;
-    return json({ generated: now.toISOString(), days, totals, sharedAiMonth: Number((await usage.get(`m:${dayOf(now).slice(0, 7)}`)) || 0) });
+    const users = usersSummary(await sinceLaunch(stats, now));
+    return json({ generated: now.toISOString(), users, days, totals, sharedAiMonth: Number((await usage.get(`m:${dayOf(now).slice(0, 7)}`)) || 0) });
   }
 
-  if (route === 'checkins') {
+  if (route === 'checkins' || route === 'report') {
     const store = deps.checkinStore || (await openStore('phoenix-checkins'));
     const idx = JSON.parse((await store.get('index')) || '[]') || [], people = [];
     const cutoff = new Date(now.getTime() - 730 * 86400000).toISOString().slice(0, 10), keep = [];
@@ -82,6 +85,7 @@ export async function handle(req, ctx = {}, deps = {}) {
     }
     if (keep.length !== idx.length) await store.set('index', JSON.stringify(keep));
     const weeks = Math.min(Math.max(parseInt(u.searchParams.get('weeks') || '12', 10) || 12, 4), 52);
+    if (route === 'report') { const devices = usersSummary(await sinceLaunch(deps.usageStore || (await openStore('phoenix-stats')), now)).devicesAllTime; return json(buildReport(people, { now, weeks, devices })); }
     return json({ generated: now.toISOString(), measures: MEASURES, minN: MIN_N, summary: summarise(people, { now, weeks }), trajectories: u.searchParams.get('individual') === '1' ? trajectories(people) : undefined });
   }
   return json({ error: 'not_found' }, 404);
