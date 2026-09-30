@@ -5,7 +5,6 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { handle as hit, namesFor } from '../netlify/functions/hit.mjs';
 import { handle as goFn } from '../netlify/functions/go.mjs';
-import { handle as statsFn } from '../netlify/functions/stats.mjs';
 import { memoryStore as kvMem } from '../netlify/functions/_lib/kv.mjs';
 
 const hitReq = (body, headers = {}) => new Request('https://phoenix.neurohubcommunity.org/api/hit', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'Mozilla/5.0 (Linux; Android 14) Chrome/150 Mobile', ...headers }, body: JSON.stringify(body) });
@@ -51,18 +50,6 @@ test('downloads: /go counts and redirects only to real Phoenix installers', asyn
   assert.equal(dnt.status, 302, 'Do Not Track still gets the download, just uncounted');
 });
 
-test('stats: private behind a key, and summarises the days', async () => {
-  const store = kvMem(), aiStore = kvMem(), env = { PHOENIX_STATS_KEY: 'a-long-secret-key-12345' }, now = () => new Date('2026-10-02T10:00:00Z');
-  await store.set('day:2026-10-01', JSON.stringify({ 'e:view': 5, 'e:app_open': 3 })); await store.set('day:2026-10-02', JSON.stringify({ 'e:view': 2 }));
-  await aiStore.set('d:2026-10-02', '7'); await aiStore.set('m:2026-10', '19');
-  const call = (headers) => statsFn(new Request('https://x/api/stats?days=3', { headers }), {}, { env, store, aiStore, now });
-  assert.equal((await call({})).status, 401); assert.equal((await call({ 'x-stats-key': 'wrong' })).status, 401);
-  assert.equal((await statsFn(new Request('https://x/api/stats', { headers: { 'x-stats-key': 'x' } }), {}, { env: {}, store, aiStore, now })).status, 503, 'no key configured: closed');
-  const res = await call({ 'x-stats-key': env.PHOENIX_STATS_KEY }), j = await res.json();
-  assert.equal(res.status, 200); assert.equal(j.days.length, 3); assert.equal(j.totals['e:view'], 7); assert.equal(j.days[2].sharedAi, 7); assert.equal(j.sharedAiMonth, 19);
-  assert.match(res.headers.get('x-robots-tag'), /noindex/);
-});
-
 test('website: sitemap, robots, canonical, structured data and one h1 per page', () => {
   execFileSync(process.execPath, ['scripts/build-site.mjs'], { cwd: new URL('..', import.meta.url), stdio: 'pipe' });
   const rd = (p) => readFileSync(new URL('../site/' + p, import.meta.url), 'utf8');
@@ -88,8 +75,12 @@ test('website: sitemap, robots, canonical, structured data and one h1 per page',
   for (const q of faq.mainEntity) assert.ok(home.includes(q.name.replace(/&/g, '&amp;')), 'FAQ question is visible on the page: ' + q.name);
   assert.ok(readFileSync(new URL('../site/assets/og-image.png', import.meta.url)).length > 10000);
   assert.match(rd('_headers'), /\/app\/\*\n {2}Cache-Control: no-cache\n {2}X-Robots-Tag: noindex/);
-  assert.match(rd('_headers'), /\/stats\/\*\n {2}X-Robots-Tag: noindex, nofollow/);
-  assert.match(rd('stats/index.html'), /noindex/);
+  assert.match(rd('_headers'), /\/admin\/\*\n {2}X-Robots-Tag: noindex, nofollow/);
+  assert.ok(rd('_headers').includes("Content-Security-Policy: default-src 'none'; script-src 'self'"));
+  assert.ok(rd('robots.txt').includes('Disallow: /admin/'));
+  assert.ok(rd('_redirects').includes('/stats /admin/ 301'));
+  assert.match(rd('admin/index.html'), /noindex/);
+  assert.ok(!/innerHTML/.test(readFileSync(new URL('../site/admin/admin.js', import.meta.url), 'utf8')), 'the backend never writes data into the page as HTML');
 });
 
 

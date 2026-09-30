@@ -311,6 +311,19 @@ await step('donate: the weekly reminder appears only when due, is kind, and can 
   assert.equal(await page.evaluate(async () => (await import('./js/store.js')).state.prefs.donateReminders), false);
   await page.evaluate(async () => { (await import('./js/store.js')).state.prefs.donateReminders = true; });
 });
+await step('sharing check-ins with NeuroHub is optional, off by default, and needs an explicit adult confirmation', async () => {
+  await page.click('#nav button:has-text("Settings")');
+  await page.waitForSelector('#share-section');
+  assert.equal(await page.evaluate(async () => (await import('./js/store.js')).state.share.on), false, 'off by default');
+  assert.match(await page.textContent('#share-section'), /What is never sent[\s\S]*Admin role/);
+  assert.equal(await page.isDisabled('#share-section button:has-text("Share my check-in scores")'), true, 'cannot be switched on before ticking the box');
+  await page.check('#share-age');
+  assert.equal(await page.isDisabled('#share-section button:has-text("Share my check-in scores")'), false);
+  await page.uncheck('#share-age'); // leave it off
+  await page.screenshot({ path: path.join(shots, '34-share-consent.png') });
+  await page.click('#nav button:has-text("Chat")');
+});
+
 await step('donate: a noticeable but calm button opens suggested amounts', async () => {
   const btn = page.locator('#donate-btn');
   assert.ok(await btn.isVisible());

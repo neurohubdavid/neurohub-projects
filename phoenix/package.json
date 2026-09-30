@@ -10,7 +10,7 @@
   "scripts": {
     "start": "electron .",
     "web": "node scripts/serve.mjs",
-    "test": "node --test test/core.test.mjs test/site.test.mjs",
+    "test": "node --test test/core.test.mjs test/site.test.mjs test/admin.test.mjs",
     "smoke": "node scripts/smoke-electron.mjs",
     "sync-site": "node scripts/sync-site.mjs",
     "predist": "node scripts/sync-site.mjs",

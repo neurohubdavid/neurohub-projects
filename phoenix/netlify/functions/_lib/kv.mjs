@@ -1,5 +1,5 @@
-// A tiny key-value store for anonymous counters. Netlify Blobs in production, memory in tests.
-export function memoryStore() { const m = new Map(); return { get: async (k) => m.get(k) ?? null, set: async (k, v) => { m.set(k, String(v)); } }; }
+// A tiny key-value store for anonymous counters and consented data. Netlify Blobs in production, memory in tests.
+export function memoryStore() { const m = new Map(); return { get: async (k) => m.get(k) ?? null, set: async (k, v) => { m.set(k, String(v)); }, delete: async (k) => { m.delete(k); } }; }
 export async function openStore(name) { try { const { getStore } = await import('@netlify/blobs'); return getStore(name); } catch { return memoryStore(); } }
 export const dayOf = (d = new Date()) => d.toISOString().slice(0, 10);
 export const readJson = async (store, key) => { try { return JSON.parse((await store.get(key)) || '{}') || {}; } catch { return {}; } };

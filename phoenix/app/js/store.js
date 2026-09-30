@@ -38,6 +38,7 @@ export const DEFAULTS = () => ({
     analytics: true,       // share anonymous usage counts (app opens, installs) with NeuroHub, see analytics.js
     aiSeesCheckins: 'auto', // auto (only an AI on this computer) | yes | no: may the AI read a summary of daily check-ins?
   },
+  share: { on: false, pid: '', since: '', pending: [], asked: false }, // optional anonymous sharing of check-in scores, off by default, see share.js
   donate: { firstSeen: 0, lastShown: 0, lastClick: 0 }, // timestamps for the weekly donate reminder
   wellness: [],            // 6PF-Wellness daily check-ins, see sixpf.js
   reports: [],              // reflection documents (6PF assessment, burnout plan, identity workbook), see reports.js

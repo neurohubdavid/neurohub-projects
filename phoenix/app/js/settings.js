@@ -7,6 +7,7 @@ import { loadSite, siteInfo, refreshSite } from './site.js';
 import { applyLook, buildAccessibilityPanel } from './accessibility.js';
 import { installPanel } from './install.js';
 import { openDonate } from './donate.js';
+import { startSharing, stopSharing } from './share.js';
 import { isDesktop, notifSupport, setReminder, testReminder, downloadIcs } from './reminders.js';
 
 const NEUROTYPES = ['Autistic', 'ADHD', 'AuDHD', 'Dyslexic', 'Dyspraxic', 'Dyscalculic', 'Tourettic', 'OCD', 'Voice-hearer', 'Exploring / not sure', 'Multiply neurodivergent'];
@@ -57,6 +58,11 @@ export function mountSettings(container, { focus } = {}) {
   const remBox = el('fieldset', { id: 'reminders-section' }, el('legend', {}, 'Daily check-in'));
   root.append(remBox);
   drawReminders(remBox);
+
+  // ---------------------------------------------------- optional: share check-in scores with NeuroHub (off by default)
+  const shareBox = el('fieldset', { id: 'share-section' }, el('legend', {}, 'Help NeuroHub understand wellbeing (optional)'));
+  root.append(shareBox);
+  drawShare(shareBox);
 
   // ---------------------------------------------------- AI
   const aiBox = el('fieldset', { id: 'ai-section' }, el('legend', {}, 'Connect an AI (optional)'));
@@ -117,7 +123,46 @@ export function mountSettings(container, { focus } = {}) {
 
   if (focus === 'ai') requestAnimationFrame(() => aiBox.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   if (focus === 'install') requestAnimationFrame(() => document.getElementById('install-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  if (focus === 'share') requestAnimationFrame(() => shareBox.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   if (focus === 'reminders') requestAnimationFrame(() => remBox.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+}
+
+// ---------------------------------------------------------------- optional sharing of check-in scores
+function drawShare(box) {
+  box.querySelectorAll(':scope > :not(legend)').forEach((n) => n.remove());
+  const s = state.share || (state.share = { on: false, pid: '', since: '', pending: [], asked: false });
+  const status = el('p', { class: 'small', 'aria-live': 'polite', role: 'status' });
+  if (s.on) {
+    box.append(el('div', { class: 'stack' },
+      el('p', {}, '✅ You are sharing your check-in scores, anonymously, since ' + fmtDate(s.since) + '. Thank you. It helps NeuroHub see what people need.'),
+      el('p', { class: 'muted small' }, 'What is sent: a random ID made on this device, the date, and seven numbers from 1 to 5. Nothing you write is ever sent.'),
+      el('div', { class: 'row-wrap' },
+        el('button', { class: 'btn', onclick: async () => { await stopSharing({ erase: false }); drawShare(box); toast('Sharing stopped. What was shared before stays until you delete it.'); } }, 'Stop sharing'),
+        el('button', { class: 'btn btn-danger', onclick: () => modal({ title: 'Stop sharing and delete what you shared?', body: el('p', {}, 'This stops sharing and deletes every score you have shared from NeuroHub’s server. It cannot be undone. Your own check-ins on this device are not affected.'),
+          actions: [{ label: 'Keep sharing' }, { label: 'Stop and delete', class: 'btn-danger', keepOpen: true, onclick: async (close) => { const r = await stopSharing({ erase: true }); close(); drawShare(box); toast(r.deleted ? 'Stopped, and what you shared has been deleted.' : 'Sharing is stopped, but the deletion could not reach the server. Please try again when you are online.', { ms: 5000 }); return false; } }] }) }, 'Stop and delete what I shared')),
+      status));
+    return;
+  }
+  const adult = el('input', { type: 'checkbox', id: 'share-age' });
+  const past = el('input', { type: 'checkbox', id: 'share-past' });
+  const go = el('button', { class: 'btn btn-primary', disabled: true, onclick: async () => {
+    go.disabled = true; status.textContent = 'Turning on…';
+    try { await startSharing({ includePast: past.checked }); toast('Thank you. Sharing is on.', { icon: '💜' }); drawShare(box); }
+    catch { status.textContent = 'Sharing is on, but your earlier check-ins could not be sent just now. They will not be sent unless you try again.'; state.share.on = true; drawShare(box); }
+  } }, 'Share my check-in scores');
+  adult.addEventListener('change', () => { go.disabled = !adult.checked; });
+  box.append(el('div', { class: 'stack' },
+    el('p', {}, 'NeuroHub Community would like to understand how people are doing over time, and what helps, so it can improve Phoenix and its services. If you choose, Phoenix can share your check-in scores with NeuroHub. This is completely optional, and off unless you turn it on.'),
+    el('ul', {},
+      el('li', {}, el('strong', {}, 'What is sent: '), 'the date and seven numbers from 1 to 5 (your overall score and the six areas), each time you check in, with a random ID made on this device to link them. That is all.'),
+      el('li', {}, el('strong', {}, 'What is never sent: '), 'your name, anything you write (notes, “what I will protect”, chats, documents), your location, or any way to identify your device.'),
+      el('li', {}, el('strong', {}, 'Who sees it: '), 'only people at NeuroHub with the Admin role, in a private, signed-in backend. Results are combined into group trends. Individual lines show only as anonymous labels, and only once at least five people share.'),
+      el('li', {}, el('strong', {}, 'What it is used for: '), 'understanding wellbeing and improving Phoenix. NeuroHub may publish anonymous, combined findings, never anything about an individual.'),
+      el('li', {}, el('strong', {}, 'Stopping: '), 'you can stop at any time, and delete everything you shared with one tap. Scores are kept until you delete them, or for two years, whichever is sooner.'),
+      el('li', {}, el('strong', {}, 'Not a safety net: '), 'nobody watches this live and NeuroHub cannot contact you, so it is not a way to get help. If you are struggling, use the red Help button.')),
+    el('label', { class: 'switch' }, adult, el('span', {}, 'I am 16 or over, and I understand and agree to the above')),
+    el('label', { class: 'switch' }, past, el('span', {}, 'Also share the check-ins I have already made (optional)')),
+    el('div', { class: 'row-wrap' }, go), status));
 }
 
 // ---------------------------------------------------------------- daily check-in reminder and who can see check-ins

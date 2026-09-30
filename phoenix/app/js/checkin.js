@@ -7,6 +7,7 @@ import { prefillChat } from './chat.js';
 import { lineChart, barChart, heatmap } from './charts.js';
 import { nudgeAfterCheckin } from './reminders.js';
 import * as S from './sixpf.js';
+import { shareCheckin } from './share.js';
 import * as R from './reports.js';
 import { mountReports, leaveReports } from './reports-ui.js';
 import { assessmentChart } from './charts.js';
@@ -145,6 +146,7 @@ function flow(body, navigate) {
     state.wellness = state.wellness.slice(-1500);
     save();
     nudgeAfterCheckin();
+    shareCheckin(entry); // does nothing unless the person has chosen to share their scores
     results(entry);
   }
 
@@ -158,6 +160,16 @@ function flow(body, navigate) {
     container.append(el('h3', {}, 'Ideas based on your check-ins'), ...adv.slice(0, 3).map((a) => adviceCard(a, navigate)));
     const lowest = [...entry.domains].sort((a, b) => a.rating - b.rating)[0];
     const dLabel = S.DOMAINS.find((d) => d.id === lowest.id)?.short.toLowerCase();
+    // A single, gentle, one-time question after a few check-ins: never a pop-up, and never asked again once answered.
+    state.share ||= { on: false, pid: '', since: '', pending: [], asked: false };
+    if (!state.share.on && !state.share.asked && state.wellness.length >= 3 && !risky) {
+      container.append(el('section', { class: 'card', 'aria-labelledby': 'sh-h' },
+        el('h3', { id: 'sh-h' }, 'Help NeuroHub understand what helps? (optional)'),
+        el('p', { class: 'muted small' }, 'If you are 16 or over, you can choose to share just your check-in scores, anonymously, so NeuroHub can see how people are doing over time. No name, no notes, and you can stop and delete it any time.'),
+        el('div', { class: 'row-wrap' },
+          el('button', { class: 'btn btn-sm', onclick: () => { state.share.asked = true; save(); navigate('settings:share'); } }, 'Tell me more'),
+          el('button', { class: 'btn btn-sm btn-ghost', onclick: (e) => { state.share.asked = true; save(); e.target.closest('section').remove(); } }, 'No thanks'))));
+    }
     container.append(el('div', { class: 'row-wrap' }, talkButton(navigate, `I just did my check-in. ${dLabel} was the hardest (${lowest.rating}/5). Can we talk about it?`), el('button', { class: 'btn', onclick: () => navigate('checkin:insights') }, 'See my insights'), el('button', { class: 'btn btn-ghost', onclick: () => navigate('checkin') }, 'Done')));
     announce('Check-in saved');
     container.querySelector('#step-h')?.focus();

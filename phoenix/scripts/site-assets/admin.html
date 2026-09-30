@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<title>Phoenix backend (private)</title>
+<style>
+:root{--bg:#fffbf2;--card:#fff;--text:#16121f;--muted:#55506b;--line:#16121f;--accent:#6d35d6;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#120f1c;--card:#1d1833;--text:#f4f0ff;--muted:#bdb5d6;--line:#cdbdff;--accent:#b98aff;--bad:#ff9a92}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:1rem/1.6 system-ui,sans-serif}main{max-width:66rem;margin:0 auto;padding:1rem 1rem 4rem}
+h1,h2,h3{line-height:1.2}.card{background:var(--card);border:2.5px solid var(--line);border-radius:14px;padding:1rem;margin:1rem 0}
+.kpis{display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr))}.kpi{border:2px solid var(--line);border-radius:12px;padding:.6rem .8rem;background:var(--card)}.kpi b{display:block;font-size:1.8rem;line-height:1.1}.kpi span{color:var(--muted);font-size:.9rem}
+button,input,select{font:inherit;padding:.55em 1em;border:2px solid var(--line);border-radius:999px;background:var(--card);color:var(--text);min-height:44px}button{font-weight:700;cursor:pointer}button[aria-pressed=true]{background:var(--accent);color:#fff}input{border-radius:10px}
+label{display:block;margin:.5rem 0;font-weight:700}label input{display:block;width:100%;max-width:22rem;font-weight:400}
+table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid color-mix(in srgb,var(--text) 20%,transparent);padding:.3rem .5rem;text-align:left}td.n,th.n{text-align:right}
+.bars{display:flex;align-items:flex-end;gap:2px;height:120px;border-bottom:2px solid var(--line)}.bars i{flex:1;background:var(--accent);min-width:2px;border-radius:3px 3px 0 0}
+.grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr))}.muted{color:var(--muted)}.err{color:var(--bad);font-weight:700}.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+svg.chart{width:100%;height:auto}.chart .grid-l{stroke:color-mix(in srgb,var(--text) 18%,transparent)}.chart text{fill:var(--muted);font-size:11px}
+.tg label{display:inline-flex;gap:.4rem;align-items:center;margin:.2rem .8rem .2rem 0;font-weight:400}.tg input{width:auto;min-height:0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Phoenix backend</h1>
+  <p class="muted">Private. For people with the Admin role only.</p>
+  <div class="card" id="login" hidden>
+    <h2>Sign in</h2>
+    <form id="form" autocomplete="off">
+      <label>Username <input id="u" autocomplete="username" required></label>
+      <label>Password <input id="p" type="password" autocomplete="current-password" required></label>
+      <label>Code from your authenticator app <input id="c" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" autocomplete="one-time-code" required></label>
+      <p><button id="go" type="submit">Sign in</button> <span id="msg" class="err" role="status"></span></p>
+    </form>
+  </div>
+  <div id="app" hidden></div>
+</main>
+<script src="admin.js"></script>
+</body>
+</html>

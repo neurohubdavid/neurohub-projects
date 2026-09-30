@@ -70,7 +70,6 @@ export function layout({ path, title, description, body, jsonld = [], noindex = 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
-<meta name="google-site-verification" content="gG5UgbY3SdeSLvg94oS8I1uFTZ5g2AGvmZS4qwvPic0" />
 <link rel="canonical" href="${url}">
 <meta name="robots" content="${noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1'}">
 <link rel="icon" href="/favicon.png" type="image/png">
@@ -198,6 +197,16 @@ ${FAQ.map(([q, a]) => `    <details><summary>${esc(q)}</summary><p>${esc(a)}</p>
     <li><strong>An AI on your own computer (Ollama, LM Studio):</strong> nothing leaves your computer.</li>
     <li><strong>Phoenix free AI (limited), where new people start:</strong> your messages go to NeuroHub Community’s server, which passes them to Anthropic’s Claude to write a reply. They are not stored or logged by NeuroHub. Only anonymous counters are kept to enforce a daily limit. Your daily check-ins are not sent unless you allow it. You can opt out at any time in Settings by choosing the built-in helper or another AI.</li>
     <li><strong>Your own key (Claude, Gemini, Groq and others):</strong> your messages go from your device straight to that provider under its own terms. Free tiers may use conversations to improve their products, so avoid personal details.</li>
+  </ul>
+  <h2>Sharing check-in scores (optional, off by default)</h2>
+  <p>If you are 16 or over, Settings lets you choose to share your daily check-in scores with NeuroHub Community Ltd, so we can see how people are doing over time and what helps. <strong>You have to turn it on yourself</strong>, and nothing is shared before that.</p>
+  <ul>
+    <li><strong>What is sent:</strong> the date and seven whole numbers from 1 to 5 (your overall score and the six areas) each time you check in, with a random ID made on your own device to link them. That is all.</li>
+    <li><strong>What is never sent:</strong> your name, anything you write (notes, chats, documents, what you plan to protect), your location, IP address or device details.</li>
+    <li><strong>Who can see it:</strong> only people at NeuroHub who have been given the Admin role and who sign in with a password and a code from an authenticator app. Results are shown as group trends. Individual lines appear with anonymous labels, and only once at least five people share, so nobody can be picked out.</li>
+    <li><strong>Why:</strong> to understand wellbeing and improve Phoenix. We may publish combined, anonymous findings, never anything about one person.</li>
+    <li><strong>Legal basis and your rights:</strong> your explicit consent, which you can withdraw at any time in Settings. Because the scores are about wellbeing they count as health information, so we treat them with extra care. NeuroHub Community Ltd is the data controller. You can stop sharing, and delete everything you have shared, with one tap in Settings. Scores are deleted after two years at the latest. Because we hold no name or contact details, we can only find your data through the ID on your device.</li>
+    <li><strong>Not a safety net:</strong> nobody watches this live and we cannot contact you, so it is not a way to get help. If you are struggling, use the red Help button.</li>
   </ul>
   <h2>Anonymous counts</h2>
   <p>To learn how many people find and use Phoenix, NeuroHub counts visits to this website, clicks on Install and download, app opens and installs. It stores only daily totals, plus a coarse device type (for example Android or Windows), a country code and the website that referred you. It uses no cookies and stores no IP address, no identifier, no message or health information. If your browser sends Do Not Track or Global Privacy Control, nothing is counted. In the app you can switch counting off in Settings, under Your data.</p>

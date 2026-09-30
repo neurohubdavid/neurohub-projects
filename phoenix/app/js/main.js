@@ -13,6 +13,7 @@ import { mountCheckin, leaveCheckin } from './checkin.js';
 import { initReminders } from './reminders.js';
 import { openDonate, checkDonateNudge } from './donate.js';
 import { trackStart } from './analytics.js';
+import { flushShared } from './share.js';
 import { checkedInToday } from './sixpf.js';
 
 const NAV = [['chat', 'Chat'], ['checkin', 'Check-in'], ['tools', 'Toolkit'], ['learn', 'Learn'], ['settings', 'Settings']];
@@ -24,7 +25,7 @@ let renderedHash = null;
 export function navigate(route) {
   if (route === 'help') return openHelp();
   const hash = route === 'chat' ? '#/chat' : route === 'learn' ? '#/learn' : route.startsWith('learn:') ? '#/learn/' + route.slice(6) : route === 'settings' ? '#/settings'
-    : route === 'settings:ai' ? '#/settings/ai' : route === 'settings:reminders' ? '#/settings/reminders'
+    : route === 'settings:ai' ? '#/settings/ai' : route === 'settings:reminders' ? '#/settings/reminders' : route === 'settings:share' ? '#/settings/share'
     : route === 'checkin' ? '#/checkin' : route.startsWith('checkin:') ? '#/checkin/' + route.slice(8)
     : route.startsWith('tool:') ? '#/tools/' + route.slice(5) : '#/chat';
   if (location.hash !== hash) location.hash = hash;
@@ -119,6 +120,7 @@ if (!state.onboarded) welcome();
 
 initReminders();
 trackStart();
+flushShared(); // if sharing is on and an earlier check-in could not be sent, try again now
 // A gentle weekly donate reminder, shown a few seconds after opening (so it never competes with the first screen or the install card).
 setTimeout(() => checkDonateNudge($('#donate-nudge-host')), 4000);
 navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.type === 'navigate' && /^#\//.test(e.data.hash || '')) location.hash = e.data.hash; });

@@ -72,16 +72,17 @@ for (const [route, html] of Object.entries(pageMap)) {
   fs.writeFileSync(path.join(dir, 'index.html'), html);
 }
 fs.writeFileSync(path.join(site, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pageMap).map((r) => `  <url><loc>${ORIGIN}${r}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`);
-fs.writeFileSync(path.join(site, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /go\nDisallow: /stats/\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
+fs.writeFileSync(path.join(site, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /go\nDisallow: /admin/\nDisallow: /stats/\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 const ogSrc = path.join(root, 'brand', 'og-image.png');
 if (fs.existsSync(ogSrc)) fs.copyFileSync(ogSrc, path.join(site, 'assets', 'og-image.png')); else console.warn('missing brand/og-image.png (run node scripts/make-og.mjs)');
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'hit.js'), path.join(site, 'assets', 'hit.js'));
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'install.js'), path.join(site, 'assets', 'install.js'));
-// Google Search Console ownership file (must stay at the site root for Google to keep the site verified)
-fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'googlefbe7f9f7eaa18187.html'), path.join(site, 'googlefbe7f9f7eaa18187.html'));
-fs.mkdirSync(path.join(site, 'stats'), { recursive: true });
-fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'stats.html'), path.join(site, 'stats', 'index.html'));
-fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'stats.js'), path.join(site, 'stats', 'stats.js'));
+// The private backend: a sign-in page and its script. The server (netlify/functions/admin.mjs) refuses everything that is not a
+// signed-in person with the Admin role; the old /stats/ address is sent here.
+fs.mkdirSync(path.join(site, 'admin'), { recursive: true });
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin.html'), path.join(site, 'admin', 'index.html'));
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin.js'), path.join(site, 'admin', 'admin.js'));
+fs.writeFileSync(path.join(site, '_redirects'), '/stats /admin/ 301\n/stats/* /admin/ 301\n');
 
 fs.writeFileSync(path.join(site, '_headers'), `/downloads/*
   Content-Type: application/octet-stream
@@ -104,9 +105,12 @@ fs.writeFileSync(path.join(site, '_headers'), `/downloads/*
   Cache-Control: public, max-age=86400
 /assets/fonts/*
   Cache-Control: public, max-age=31536000, immutable
-/stats/*
+/admin/*
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-store
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
 /sitemap.xml
   Content-Type: application/xml; charset=utf-8
   Cache-Control: public, max-age=3600
