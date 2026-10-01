@@ -1,5 +1,6 @@
 // The chat screen: Phoenix the mascot, the conversation, voice in and out, and the safety layer.
 import { el, fmt, modal, toast, announce, prefersReducedMotion, copyText, fmtDate, sleep } from './util.js';
+import { trackFeature, trackEmbedChat } from './analytics.js';
 import { phoenixSVG, setPhoenixState } from './mascot.js';
 import { state, save, currentChat, newChat, deleteChat, aiActive, aiMaySeeCheckins } from './store.js';
 import { checkinIntent, chatReply, summaryForAI, checkedInToday, streak } from './sixpf.js';
@@ -117,7 +118,7 @@ export const cleanName = (s) => String(s || '').replace(/[\r\n\t<>`]/g, ' ').rep
 /** First meeting: Phoenix asks what to call the person. A name, a nickname or nothing at all are all fine, and it is asked only once. */
 function nameCard() {
   const input = el('input', { class: 'input', maxlength: '40', autocomplete: 'off', 'aria-label': 'What should Phoenix call you?', placeholder: 'A name, a nickname, or leave it blank' });
-  const done = (skip) => { const v = skip ? '' : cleanName(input.value); state.profile.name = v; state.profile.nameAsked = true; save(); renderChat(); announce(v ? `Nice to meet you, ${v}.` : 'No problem, no name needed.'); };
+  const done = (skip) => { const v = skip ? '' : cleanName(input.value); state.profile.name = v; state.profile.nameAsked = true; if (v) trackFeature('name_given'); save(); renderChat(); announce(v ? `Nice to meet you, ${v}.` : 'No problem, no name needed.'); };
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done(false); } });
   return el('section', { class: 'card name-ask', 'aria-labelledby': 'name-h' },
     el('h2', { id: 'name-h' }, 'What should I call you?'),
@@ -197,7 +198,7 @@ async function crisisCard() {
   const d = await loadCrisis();
   const code = guessCountry();
   const text = crisisReply(d, d.countries[code] ? code : '');
-  const { node } = addMessage('assistant', text, { crisis: true });
+  trackFeature('crisis_shown'); const { node } = addMessage('assistant', text, { crisis: true });
   node.append(el('div', { class: 'msg-actions' }, el('button', { class: 'btn btn-danger btn-sm', onclick: () => openHelp() }, 'Show more help and helplines')));
   phoenixReact('concerned', 4500);
   return text;
@@ -252,6 +253,7 @@ export async function send(text, { viaVoice = false } = {}) {
       if (crisis || emergency) return; // the vetted reply above is the whole answer; nothing clever to add
       const prev = currentChat().messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.content || '';
       await loadSite();
+      trackFeature('chat_helper'); trackEmbedChat();
       const r = offlineReply(text, { name: state.profile.name, aiConfigured: false, lastAssistant: prev, siteHits: state.prefs.useSite ? (q) => siteHits(q, 2) : null });
       await sleep(prefersReducedMotion() ? 0 : 350);
       const { m, node } = addMessage('assistant', '', { actions: r.actions });
@@ -301,6 +303,7 @@ export async function send(text, { viaVoice = false } = {}) {
     let acc = '';
     abortCtl = new AbortController();
     try {
+      trackFeature('chat_ai'); trackEmbedChat();
       await streamChat(providerConfig(state), {
         system, messages: history, signal: abortCtl.signal, maxTokens: small ? 220 : 1200,
         onText: (delta) => {
@@ -328,6 +331,7 @@ export async function send(text, { viaVoice = false } = {}) {
       if (aborted) { m.content = acc ? acc + ' …' : '(stopped)'; }
       else {
         console.warn(e);
+        trackFeature(e.kind === 'limit' ? 'chat_limit' : 'chat_ai_error');
         m.content = acc ? acc : (e.message || 'I could not reach the AI.');
         if (!acc) m.error = true;
         if (!acc && state.provider.kind === 'shared') {

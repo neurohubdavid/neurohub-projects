@@ -2,6 +2,7 @@
 // Everything here is applied instantly and saved on the device. theme-boot.js applies the same settings before first
 // paint so there is no flash of the wrong look.
 import { el, modal, toast } from './util.js';
+import { trackFeature } from './analytics.js';
 import { state, save } from './store.js';
 import { voiceSupport, listVoices, allVoices } from './voice.js';
 
@@ -150,6 +151,7 @@ export function buildAccessibilityPanel() {
 }
 
 export function openAccessibility() {
+  trackFeature('a11y_open');
   const body = buildAccessibilityPanel();
   modal({ title: 'Accessibility', body, wide: true, actions: [{ label: 'Done', class: 'btn-primary' }] });
 }

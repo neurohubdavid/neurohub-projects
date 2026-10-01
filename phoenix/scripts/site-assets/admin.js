@@ -143,7 +143,7 @@
 
   // ---------------------------------------------------------------- usage
   var sum = function (days, name) { return days.reduce(function (n, d) { return n + (d.counts[name] || 0); }, 0); };
-  var top = function (t, prefix) { return Object.keys(t).filter(function (k) { return k.indexOf(prefix) === 0; }).map(function (k) { return [k.slice(prefix.length), t[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 10); };
+  var top = function (t, prefix, n) { return Object.keys(t).filter(function (k) { return k.indexOf(prefix) === 0; }).map(function (k) { return [k.slice(prefix.length), t[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, n || 10); };
   var tbl = function (title, rows) { return el('div', { 'class': 'card' }, [el('h2', {}, title), el('table', {}, [el('tbody', {}, rows.length ? rows.map(function (r) { return el('tr', {}, [el('td', {}, r[0]), el('td', { 'class': 'n' }, r[1])]); }) : [el('tr', {}, el('td', {}, 'Nothing yet'))])])]); };
   var bars = function (title, vals) { var max = Math.max.apply(null, vals.concat([1])), b = el('div', { 'class': 'bars', role: 'img', 'aria-label': title + ', most recent on the right. Peak ' + max }); vals.forEach(function (v) { var i = el('i', { title: String(v) }); i.style.height = Math.max(v ? 3 : 0, Math.round((v / max) * 118)) + 'px'; b.append(i); }); return el('div', { 'class': 'card' }, [el('h2', {}, title), b]); };
   function usage(body) {
@@ -159,6 +159,42 @@
       body.append(el('div', { 'class': 'kpis' }, [kpi('Website visits', sum(days, 'e:view')), kpi('Install clicks', sum(days, 'e:install_click:landing')), kpi('Downloads', sum(days, 'e:download')), kpi('App opens', sum(days, 'e:app_open')), kpi('New devices', sum(days, 'e:first_open')), kpi('Installs as an app', sum(days, 'e:installed')), kpi('Donate clicks', sum(days, 'e:donate_click')), kpi('Free AI messages (30 days)', days.reduce(function (n, x) { return n + (x.sharedAi || 0); }, 0)), kpi('Free AI this month', d.sharedAiMonth || 0)]));
       body.append(bars('Website visits per day', days.map(function (x) { return x.counts['e:view'] || 0; })), bars('App opens per day', days.map(function (x) { return x.counts['e:app_open'] || 0; })), bars('Free AI messages per day', days.map(function (x) { return x.sharedAi || 0; })));
       var g = el('div', { 'class': 'grid' }); g.append(tbl('Where visitors came from', top(t, 'ref:')), tbl('Countries (visits)', top(t, 'country:view:')), tbl('Devices (app opens)', top(t, 'plat:app_open:')), tbl('Which AI people use', top(t, 'e:ai_kind:')), tbl('Donation amounts clicked', top(t, 'e:donate_click:')), tbl('Downloads by file', top(t, 'e:download:'))); body.append(g);
+      var s30 = function (name) { return sum(days, name); }, perDay = function (name) { return days.map(function (x) { return x.counts[name] || 0; }); };
+      var F = function (n) { return 'e:feature:' + n; };
+      var tools = ['breathing', 'grounding', 'sensory', 'checkin', 'focus', 'tasks', 'scripts', 'plan'].map(function (n) { return ['Toolkit: ' + n, s30(F('tool_' + n))]; });
+
+      body.append(el('h2', {}, 'How people use the app (last 30 days)'));
+      body.append(el('p', { 'class': 'muted' }, 'Anonymous counts of features used. Nothing anyone writes is ever counted, only that the feature was used.'));
+      body.append(el('div', { 'class': 'kpis' }, [kpi('Messages answered by Phoenix AI', s30(F('chat_ai'))), kpi('Messages answered by the built-in helper', s30(F('chat_helper'))), kpi('Daily check-ins completed', s30(F('checkin_done'))), kpi('Insights page opened', s30(F('insights_open'))), kpi('Documents started', s30(F('doc_started'))), kpi('PDFs downloaded', s30(F('doc_pdf'))), kpi('AI drafts of documents', s30(F('doc_ai_draft'))), kpi('Learn pages opened', s30(F('learn_open'))), kpi('Help button opened', s30(F('help_open'))), kpi('Crisis messages shown', s30(F('crisis_shown'))), kpi('People who gave a name', s30(F('name_given')))]));
+      body.append(bars('Daily check-ins completed per day', perDay(F('checkin_done'))), bars('Messages answered by Phoenix AI per day', perDay(F('chat_ai'))));
+      var fg = el('div', { 'class': 'grid' });
+      fg.append(tbl('Toolkit use', tools.sort(function (a, b) { return b[1] - a[1]; })), tbl('Settings choices', [['Switched Phoenix AI on', s30(F('ai_on'))], ['Switched to the built-in helper', s30(F('ai_off'))], ['Daily reminders on', s30(F('reminders_on'))], ['Daily reminders off', s30(F('reminders_off'))], ['Check-in sharing on', s30(F('share_on'))], ['Check-in sharing off', s30(F('share_off'))], ['Accessibility panel opened', s30(F('a11y_open'))], ['Install help opened', s30(F('install_sheet'))], ['Backups downloaded', s30(F('backup_export'))], ['Everything deleted', s30(F('data_deleted'))]]));
+      body.append(fg);
+
+      body.append(el('h2', {}, 'Phoenix AI (last 30 days)'));
+      var ai = function (n) { return s30('e:ai_event:' + n); };
+      body.append(el('div', { 'class': 'kpis' }, [kpi('AI replies given', ai('reply')), kpi('Daily limit reached (a person)', ai('limit_person')), kpi('Daily limit reached (everyone)', ai('limit_everyone')), kpi('Claude errors', ai('upstream_error')), kpi('Asked while switched off', ai('off')), kpi('Replies this month', d.sharedAiMonth || 0), kpi('Average replies per day', Math.round(ai('reply') / Math.max(days.length, 1)))]));
+      body.append(bars('AI replies per day', perDay('e:ai_event:reply')), bars('Limit reached per day (a person)', perDay('e:ai_event:limit_person')));
+
+      body.append(el('h2', {}, 'Donations (last 30 days)'));
+      var clicks = s30('e:donate_click');
+      var monthly = ['m5', 'm10', 'm25', 'm50', 'mother'].reduce(function (n, k) { return n + s30('e:donate_click:' + k); }, 0);
+      body.append(el('p', { 'class': 'muted' }, 'Clicks show who went to the payment page. The Thank-you page views are people who finished paying (it is where Stripe sends them), so they are the closest number here to real donations. Check Stripe for amounts.'));
+      body.append(el('div', { 'class': 'kpis' }, [kpi('Donate window opened in the app', s30(F('donate_open'))), kpi('Donate clicks', clicks), kpi('Monthly clicks', monthly), kpi('One-off clicks', clicks - monthly), kpi('Thank-you page views (completed)', s30('e:view:/thanks/')), kpi('Weekly reminders shown', s30(F('nudge_shown'))), kpi('Reminders dismissed', s30(F('nudge_dismissed'))), kpi('Reminders switched off', s30(F('nudge_off'))), kpi('Hit the AI limit', s30(F('chat_limit')))]));
+      body.append(bars('Donate clicks per day', perDay('e:donate_click')), bars('Thank-you page views per day', perDay('e:view:/thanks/')));
+
+      body.append(el('h2', {}, 'Website widget (last 30 days)'));
+      body.append(el('p', { 'class': 'muted' }, 'The floating Phoenix button other websites add with one line of code (see /add-to-your-site/). Loads are page views on those sites, opens are visitors who pressed the button, chats are messages sent inside it.'));
+      body.append(el('div', { 'class': 'kpis' }, [kpi('Widget loads', s30('e:embed_load')), kpi('Widget opened', s30('e:embed_open')), kpi('Widget messages sent', s30('e:embed_chat')), kpi('Websites using it', top(t, 'embedhost:embed_load:', 500).length), kpi('Open rate', s30('e:embed_load') ? Math.round(100 * s30('e:embed_open') / s30('e:embed_load')) + '%' : '-')]));
+      body.append(bars('Widget loads per day', perDay('e:embed_load')), bars('Widget opens per day', perDay('e:embed_open')));
+      var wg = el('div', { 'class': 'grid' });
+      wg.append(tbl('Websites with the widget (loads)', top(t, 'embedhost:embed_load:', 25)), tbl('Websites where it is opened', top(t, 'embedhost:embed_open:', 25)), tbl('Websites where people chat', top(t, 'embedhost:embed_chat:', 25)), tbl('Widget loads by country', top(t, 'country:embed_load:')));
+      body.append(wg);
+
+      body.append(el('h2', {}, 'Downloads (last 30 days)'));
+      var dg = el('div', { 'class': 'grid' });
+      dg.append(tbl('Downloads by device', top(t, 'plat:download:')), tbl('Downloads by country', top(t, 'country:download:')));
+      body.append(dg);
     }).catch(function () { /* signed out */ });
   }
   boot();

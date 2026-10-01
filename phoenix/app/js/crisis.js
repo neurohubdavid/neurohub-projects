@@ -2,6 +2,7 @@
 // Deliberately broad: a false positive shows a supportive panel, a false negative could cost a life.
 // Helpline data lives in app/data/crisis.json. It must be re-verified against each provider's own website.
 import { el, modal } from './util.js';
+import { trackFeature } from './analytics.js';
 import { state, save } from './store.js';
 
 export { CRISIS_RE, EMERGENCY_RE, crisisText, crisisReply } from './safety.js';
@@ -55,6 +56,7 @@ function renderCountry(body, d, code) {
 }
 
 export async function openHelp() {
+  trackFeature('help_open');
   const d = await loadCrisis();
   const body = el('div', { class: 'help-body' });
   const codes = Object.keys(d.countries).sort((a, b) => d.countries[a].name.localeCompare(d.countries[b].name));

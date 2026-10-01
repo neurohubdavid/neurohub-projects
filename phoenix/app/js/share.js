@@ -2,6 +2,7 @@
 // this device, the date, and seven numbers from 1 to 5. Never a name, notes, anything written, or anything else. Stopping is one tap,
 // and "stop and delete" removes everything held under the ID. See the privacy page.
 import { state, save } from './store.js';
+import { trackFeature } from './analytics.js';
 import { netFetch } from './net.js';
 import { perDay } from './sixpf.js';
 import { newShareId, sharePayload } from './share-core.js';
@@ -21,6 +22,7 @@ async function send(entries) {
 
 /** Turn sharing on after the person has read and agreed. `includePast` also sends check-ins they have already made. */
 export async function startSharing({ includePast = false } = {}) {
+  trackFeature('share_on');
   const s = ensure();
   s.pid ||= newShareId(); s.on = true; s.since = new Date().toISOString(); s.asked = true; save();
   if (includePast) { const all = perDay(state.wellness); for (let i = 0; i < all.length; i += 300) await send(all.slice(i, i + 300)); }
@@ -41,6 +43,7 @@ export async function flushShared() {
 }
 /** Stop sharing. With `erase`, everything held under the ID is deleted from NeuroHub's server as well. */
 export async function stopSharing({ erase = false } = {}) {
+  trackFeature('share_off');
   const s = ensure();
   let deleted = !erase;
   if (erase && s.pid) { try { const r = await post('forget', { pid: s.pid }); deleted = r.ok; } catch { deleted = false; } }

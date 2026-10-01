@@ -12,7 +12,7 @@ import { initInstall, wireInstallButton, wireInstallInvite, isStandalone, openIn
 import { mountCheckin, leaveCheckin } from './checkin.js';
 import { initReminders } from './reminders.js';
 import { openDonate, checkDonateNudge } from './donate.js';
-import { trackStart } from './analytics.js';
+import { trackStart, trackFeature, isEmbedded } from './analytics.js';
 import { flushShared } from './share.js';
 import { checkedInToday } from './sixpf.js';
 
@@ -86,8 +86,8 @@ function welcome() {
         el('li', {}, el('strong', {}, 'Safety first. '), 'The red Help button is always there and shows helplines for your country.')),
       el('p', { class: 'muted small' }, 'Next, Phoenix will ask what you would like to be called.')),
     actions: [
-      { label: 'Start with the built-in helper', onclick: () => { state.onboarded = true; state.provider.kind = 'offline'; save(); render(); } },
-      { label: 'Chat with Phoenix AI (recommended)', class: 'btn-primary', onclick: () => { state.onboarded = true; state.provider.kind = 'shared'; save(); render(); } },
+      { label: 'Start with the built-in helper', onclick: () => { state.onboarded = true; state.provider.kind = 'offline'; trackFeature('ai_off'); save(); render(); } },
+      { label: 'Chat with Phoenix AI (recommended)', class: 'btn-primary', onclick: () => { state.onboarded = true; state.provider.kind = 'shared'; trackFeature('ai_on'); save(); render(); } },
     ],
     onClose: () => { if (!state.onboarded) { state.onboarded = true; save(); } },
   });
@@ -127,9 +127,17 @@ navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.type =
 // A deep link like #/checkin/new opened from a notification or shortcut is honoured by the router above.
 
 // Installable and offline-capable web version (skipped inside the desktop app, which already ships every file).
+// Inside the floating widget on another website there is nothing to install, so none of this runs.
+if (isEmbedded()) {
+  document.documentElement.classList.add('embedded'); $('#install-btn')?.setAttribute('hidden', '');
+  // Escape closes the widget's panel (the website around us cannot see keys pressed in here), unless a window of ours is open and wants it first.
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.querySelector('.modal')) parent.postMessage({ phoenix: 'close' }, '*'); });
+}
+else {
 initInstall();
 wireInstallButton($('#install-btn'));
 wireInstallInvite($('#install-invite-host'));
+}
 // Coming from the "Install" button on the website (?install=1): take them straight to the install steps for their device.
 if (/[?&]install=1\b/.test(location.search) && !isStandalone() && !globalThis.phoenixNative) setTimeout(() => openInstallSheet(), 700);
-registerServiceWorker();
+if (!isEmbedded()) registerServiceWorker();

@@ -8,6 +8,7 @@
 // Limits (change in Netlify environment variables): PHOENIX_PER_PERSON_DAILY=20, PHOENIX_GLOBAL_DAILY=400, PHOENIX_GLOBAL_MONTHLY=6000,
 // PHOENIX_MODEL=claude-sonnet-5-5, PHOENIX_MAX_TOKENS=700.
 import { createHash } from 'node:crypto';
+import { openStore, bump, dayKeyFor } from './_lib/kv.mjs';
 
 export const config = { path: '/api/ai' };
 
@@ -62,6 +63,8 @@ export async function handle(req, ctx = {}, deps = {}) {
   const who = createHash('sha256').update(`${s.salt}|${ip}`).digest('hex').slice(0, 24);
   const kPerson = `p:${who}:${day}`, kDay = `d:${day}`, kMonth = `m:${month}`;
   const read = async (k) => Number((await store.get(k)) || 0);
+  // Anonymous daily counts of what the shared AI did (replies, limits reached, failures), for the private backend. Never any content.
+  const note = async (name) => { try { await bump(deps.stats || (await openStore('phoenix-stats')), dayKeyFor(day, 'ai_event'), [`e:ai_event:${name}`, 'e:ai_event']); } catch { /* counting must never break a reply */ } };
 
   if (req.method === 'GET') {
     const [p, d, m] = await Promise.all([read(kPerson), read(kDay), read(kMonth)]);
@@ -69,15 +72,15 @@ export async function handle(req, ctx = {}, deps = {}) {
     return json({ ai: s.on, perDay: s.perPerson, left: s.on ? left : 0 }, 200, c);
   }
   if (req.method !== 'POST') return json({ error: 'method' }, 405, c);
-  if (!s.on) return json({ error: 'unavailable' }, 503, c);
+  if (!s.on) { await note('off'); return json({ error: 'unavailable' }, 503, c); }
 
   let body; try { body = await req.json(); } catch { return json({ error: 'bad_request' }, 400, c); }
   const cb = cleanBody(body);
   if (cb.error) return json({ error: cb.error }, 400, c);
 
   const [p, d, m] = await Promise.all([read(kPerson), read(kDay), read(kMonth)]);
-  if (p >= s.perPerson) return json({ error: 'limit', scope: 'person', perDay: s.perPerson }, 429, c);
-  if (d >= s.globalDaily || m >= s.globalMonthly) return json({ error: 'limit', scope: 'everyone' }, 429, c);
+  if (p >= s.perPerson) { await note('limit_person'); return json({ error: 'limit', scope: 'person', perDay: s.perPerson }, 429, c); }
+  if (d >= s.globalDaily || m >= s.globalMonthly) { await note('limit_everyone'); return json({ error: 'limit', scope: 'everyone' }, 429, c); }
   // Count first, so a burst of parallel requests cannot slip past the cap by much.
   await Promise.all([store.set(kPerson, p + 1), store.set(kDay, d + 1), store.set(kMonth, m + 1)]);
 
@@ -89,13 +92,15 @@ export async function handle(req, ctx = {}, deps = {}) {
       headers: { 'content-type': 'application/json', 'x-api-key': s.key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model: s.model, max_tokens: maxTokens, stream: true, system: cb.system, messages: cb.messages }),
     });
-  } catch { return json({ error: 'unavailable' }, 503, c); }
+  } catch { await note('upstream_error'); return json({ error: 'unavailable' }, 503, c); }
   if (!up.ok || !up.body) {
     await Promise.all([store.set(kPerson, p), store.set(kDay, d), store.set(kMonth, m)]).catch(() => {}); // a failed call does not use up the person's allowance
     const st = up.status;
     console.error('phoenix shared ai upstream status', st); // status only, never content
+    await note('upstream_error');
     return json({ error: st === 429 ? 'busy' : 'unavailable' }, 503, c);
   }
+  await note('reply');
   return new Response(up.body, { status: 200, headers: { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store, no-transform', 'x-accel-buffering': 'no', 'x-phoenix-left': String(Math.max(0, s.perPerson - p - 1)), ...c } });
 }
 

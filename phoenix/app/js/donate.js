@@ -2,7 +2,7 @@
 // a plain link that opens a payment page hosted by Stripe (or NeuroHub's Ko-fi page) in the person's own browser. People can give once or
 // every month, choose one of four suggested amounts, or type an amount of their own on the payment page.
 import { el, modal } from './util.js';
-import { track } from './analytics.js';
+import { track, trackFeature } from './analytics.js';
 import { AMOUNTS, FREQUENCIES, KOFI, linkFor, usingStripe, clickKey } from './donate-links.js';
 export { AMOUNTS, KOFI };
 export const donateUrl = (amount, frequency = 'once') => linkFor(frequency, amount);
@@ -11,6 +11,7 @@ export const donateUrl = (amount, frequency = 'once') => linkFor(frequency, amou
 async function noteDonateClick() { try { const { state, save } = await import('./store.js'); state.donate ||= { firstSeen: 0, lastShown: 0, lastClick: 0 }; state.donate.lastClick = Date.now(); save(); } catch { /* ignore */ } }
 
 export function openDonate() {
+  trackFeature('donate_open');
   let frequency = 'once';
   const amounts = el('div', { class: 'donate-amounts', role: 'group', 'aria-label': 'Suggested donation amounts' });
   const note = el('p', { class: 'small muted', 'aria-live': 'polite' });
@@ -69,13 +70,13 @@ export async function checkDonateNudge(host, { force = false } = {}) {
     otherBannerShowing: !!document.querySelector('.install-invite'),
   };
   if (!force && !donateNudgeDue(ctx)) return;
-  state.donate.lastShown = now; save();
+  state.donate.lastShown = now; save(); trackFeature('nudge_shown');
   host.textContent = '';
   const close = () => { host.textContent = ''; };
   host.append(el('div', { class: 'donate-nudge', role: 'region', 'aria-label': 'Support NeuroHub Community' },
     el('span', {}, 'Every Phoenix AI reply costs NeuroHub Community, a small Autistic-led social enterprise, real money, and donations are what keep the AI live for everyone. If Phoenix has helped and you can spare something, even a little or monthly, thank you. No pressure at all.'),
     el('span', { class: 'row-wrap' },
       el('button', { class: 'btn btn-sm', onclick: () => { close(); openDonate(); } }, '♥ Donate'),
-      el('button', { class: 'btn btn-sm btn-ghost', onclick: close }, 'Not this week'),
-      el('button', { class: 'btn btn-sm btn-ghost', onclick: () => { state.prefs.donateReminders = false; save(); close(); } }, 'Don’t remind me'))));
+      el('button', { class: 'btn btn-sm btn-ghost', onclick: () => { trackFeature('nudge_dismissed'); close(); } }, 'Not this week'),
+      el('button', { class: 'btn btn-sm btn-ghost', onclick: () => { state.prefs.donateReminders = false; save(); trackFeature('nudge_off'); close(); } }, 'Don’t remind me'))));
 }

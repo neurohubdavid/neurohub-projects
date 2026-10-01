@@ -72,12 +72,15 @@ for (const [route, html] of Object.entries(pageMap)) {
   fs.writeFileSync(path.join(dir, 'index.html'), html);
 }
 fs.writeFileSync(path.join(site, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pageMap).filter((r) => r !== '/thanks/').map((r) =>`  <url><loc>${ORIGIN}${r}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`);
-fs.writeFileSync(path.join(site, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /go\nDisallow: /admin/\nDisallow: /stats/\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
+fs.writeFileSync(path.join(site, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /go\nDisallow: /download\nDisallow: /embed/\nDisallow: /admin/\nDisallow: /stats/\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 const ogSrc = path.join(root, 'brand', 'og-image.png');
 if (fs.existsSync(ogSrc)) fs.copyFileSync(ogSrc, path.join(site, 'assets', 'og-image.png')); else console.warn('missing brand/og-image.png (run node scripts/make-og.mjs)');
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'hit.js'), path.join(site, 'assets', 'hit.js'));
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'install.js'), path.join(site, 'assets', 'install.js'));
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'donate.js'), path.join(site, 'assets', 'donate.js'));
+// The floating widget other websites add with one script tag, and the version the /download link serves.
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'embed.js'), path.join(site, 'embed.js'));
+fs.writeFileSync(path.join(root, 'netlify', 'functions', '_lib', 'release.mjs'), `export const version = '${version}';\n`);
 // The private backend: a sign-in page and its script. The server (netlify/functions/admin.mjs) refuses everything that is not a
 // signed-in person with the Admin role; the old /stats/ address is sent here.
 fs.mkdirSync(path.join(site, 'admin'), { recursive: true });
@@ -85,7 +88,8 @@ fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin.html'), path.jo
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin.js'), path.join(site, 'admin', 'admin.js'));
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin-pdf.js'), path.join(site, 'admin', 'admin-pdf.js')); // the PDF report is drawn in the admin's own browser
 fs.copyFileSync(path.join(root, 'app', 'vendor', 'pdf-lib.esm.min.js'), path.join(site, 'admin', 'pdf-lib.esm.min.js'));
-fs.writeFileSync(path.join(site, '_redirects'), '/stats /admin/ 301\n/stats/* /admin/ 301\n');
+// /embed/ is the app itself (so every relative file it loads still works), served on its own address so it alone may be shown inside other websites.
+fs.writeFileSync(path.join(site, '_redirects'), '/stats /admin/ 301\n/stats/* /admin/ 301\n/embed/ /app/index.html 200\n/embed/* /app/:splat 200\n');
 
 fs.writeFileSync(path.join(site, '_headers'), `/downloads/*
   Content-Type: application/octet-stream
@@ -94,6 +98,18 @@ fs.writeFileSync(path.join(site, '_headers'), `/downloads/*
 /app/*
   Cache-Control: no-cache
   X-Robots-Tag: noindex
+  Content-Security-Policy: frame-ancestors 'self'
+/embed/*
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex
+  Content-Security-Policy: frame-ancestors *
+/embed.js
+  Content-Type: text/javascript; charset=utf-8
+  Cache-Control: public, max-age=3600
+  Access-Control-Allow-Origin: *
+/assets/icon-192.png
+  Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
 /app/sw.js
   Cache-Control: no-cache
   Service-Worker-Allowed: /app/

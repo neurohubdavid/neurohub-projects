@@ -1,6 +1,7 @@
 // The daily 6PF-Wellness check-in: a short guided flow, results with advice, and insights over time.
 // Everything is stored on this device (state.wellness) in the same shape as the NeuroHub client portal.
 import { el, toast, announce, modal, copyText, download, fmtDate, fmtTime, uid } from './util.js';
+import { trackFeature } from './analytics.js';
 import { state, save, aiMaySeeCheckins } from './store.js';
 import { CRISIS_RE, openHelp } from './crisis.js';
 import { prefillChat } from './chat.js';
@@ -28,7 +29,7 @@ export function mountCheckin(container, { navigate, sub = '' }) {
   container.append(el('div', { class: 'view-title' }, el('span', { 'aria-hidden': 'true', style: { fontSize: '2rem' } }, isDoc ? '📄' : '🌅'), el('h1', {}, isDoc ? 'Documents' : 'Daily check-in')), tabs, body);
   if (isDoc) { mountReports(body, { navigate, id: sub.startsWith('doc-') ? sub.slice(4) : '' }); cleanup = leaveReports; return; }
   if (sub === 'new') { tabs.remove(); return flow(body, navigate); }
-  if (sub === 'insights') return insights(body, navigate);
+  if (sub === 'insights') { trackFeature('insights_open'); return insights(body, navigate); }
   if (sub === 'history') return history(body, navigate);
   return home(body, navigate);
 }
@@ -143,6 +144,7 @@ function flow(body, navigate) {
     const now = new Date();
     const entry = { ...draft, id: uid(), createdAt: now.toISOString() };
     state.wellness.push(entry);
+    trackFeature('checkin_done');
     state.wellness = state.wellness.slice(-1500);
     save();
     nudgeAfterCheckin();

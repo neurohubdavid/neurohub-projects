@@ -2,6 +2,7 @@
 // Breathing, grounding, sensory reset, energy check-in, focus timer (body-double style), task breaker, scripts and a
 // personal support plan. The task breaker uses the connected AI when there is one and falls back to a built-in method.
 import { el, fmt, toast, announce, prefersReducedMotion, copyText, download, fmtDate, fmtTime, clamp, uid, dayKey } from './util.js';
+import { trackFeature } from './analytics.js';
 import { phoenixSVG, setPhoenixState } from './mascot.js';
 import { state, save, aiActive } from './store.js';
 import { checkinAdvice, offlineTaskSteps, scripts } from './offline.js';
@@ -39,6 +40,7 @@ export function mountToolkit(container, { navigate, tool = 'home' }) {
   const meta = TOOLS.find((t) => t.id === tool);
   const body = el('div', { class: 'stack' });
   container.append(back(), el('div', { class: 'view-title' }, el('span', { 'aria-hidden': 'true', style: { fontSize: '2rem' } }, meta.icon), el('h1', {}, meta.title)), body);
+  trackFeature('tool_' + tool);
   ({ breathing, grounding, sensory, checkin, focus, tasks, scriptsTool, plan }[tool === 'scripts' ? 'scriptsTool' : tool])(body, { navigate });
 }
 

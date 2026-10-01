@@ -1,5 +1,6 @@
 // Settings: about me, how Phoenix talks, connecting an AI, appearance, your data.
 import { el, toast, modal, download, dayKey, fmtDate } from './util.js';
+import { trackFeature } from './analytics.js';
 import { state, save, flush, resetAll, exportData, importData, storageInfo, revealStorage } from './store.js';
 import { sharedStatus } from './providers.js';
 import { loadCrisis } from './crisis.js';
@@ -108,10 +109,10 @@ export function mountSettings(container, { focus } = {}) {
     toggle('Remind me about donating, at most once a week', () => state.prefs.donateReminders !== false, (v) => (state.prefs.donateReminders = v), 'A small card, never a notification. It waits a week after you start, stays away after hard days, and rests for a month if you open the donate options.'),
     toggle('Share anonymous usage counts with NeuroHub', () => state.prefs.analytics !== false, (v) => (state.prefs.analytics = v), 'Counts app opens, installs and which kind of AI is chosen, as daily totals. No identifier, no cookies, and nothing you write or check in. It helps NeuroHub keep Phoenix free. Off means nothing is sent.'),
     el('div', { class: 'row' },
-      el('button', { class: 'btn', onclick: () => download(`phoenix-backup-${dayKey()}.json`, exportData(), 'application/json') }, 'Download a backup'),
+      el('button', { class: 'btn', onclick: () => { trackFeature('backup_export'); download(`phoenix-backup-${dayKey()}.json`, exportData(), 'application/json'); } }, 'Download a backup'),
       el('button', { class: 'btn', onclick: () => file.click() }, 'Restore a backup'), file,
       el('button', { class: 'btn btn-danger', onclick: () => modal({ title: 'Delete everything?', body: el('p', {}, 'This permanently deletes your chats, check-ins, tasks, plan and settings from this device. It cannot be undone.'),
-        actions: [{ label: 'Cancel' }, { label: 'Delete everything', class: 'btn-danger', onclick: () => { resetAll(); applyLook(); toast('Deleted'); mountSettings(container); } }] }) }, 'Delete everything'))));
+        actions: [{ label: 'Cancel' }, { label: 'Delete everything', class: 'btn-danger', onclick: () => { trackFeature('data_deleted'); resetAll(); applyLook(); toast('Deleted'); mountSettings(container); } }] }) }, 'Delete everything'))));
 
   // ---------------------------------------------------- about
   root.append(el('fieldset', {}, el('legend', {}, 'About Phoenix'), el('div', { class: 'stack small' },
@@ -181,7 +182,7 @@ function drawReminders(box) {
   const timeIn = el('input', { class: 'input', type: 'time', value: r.time, 'aria-label': 'Reminder time', style: { maxWidth: '9rem' } });
   timeIn.addEventListener('change', async () => { const res = await setReminder({ time: timeIn.value }); if (!res.ok) toast(res.message, { icon: '⚠️' }); drawStatus(res.message); });
   const on = el('input', { type: 'checkbox', checked: !!r.enabled });
-  on.addEventListener('change', async () => { const res = await setReminder({ enabled: on.checked }); on.checked = state.reminders.enabled; drawStatus(res.message); });
+  on.addEventListener('change', async () => { const res = await setReminder({ enabled: on.checked }); trackFeature(state.reminders.enabled ? 'reminders_on' : 'reminders_off'); on.checked = state.reminders.enabled; drawStatus(res.message); });
   const launch = el('input', { type: 'checkbox', checked: !!r.launch });
   launch.addEventListener('change', async () => { await setReminder({ launch: launch.checked }); drawStatus(); });
   const seeSel = el('select', { class: 'input', 'aria-label': 'Can the AI see my check-ins?' },
@@ -211,7 +212,7 @@ function drawAI(box) {
   ];
   const panel = el('div', { class: 'stack' });
   box.append(el('div', { class: 'grid' }, kinds.map(([k, ico, title, blurb]) => el('button', { class: 'card tile', 'aria-pressed': String(p.kind === k), style: { borderColor: p.kind === k ? 'var(--accent)' : undefined, borderWidth: p.kind === k ? '4px' : undefined },
-    onclick: () => { p.kind = k; save(); drawAI(box); } }, el('span', { class: 'ico', 'aria-hidden': 'true' }, ico), el('strong', {}, title), el('span', { class: 'muted small' }, blurb), p.kind === k ? el('span', { class: 'chip' }, '✓ Selected') : null))), panel);
+    onclick: () => { if (p.kind !== k) trackFeature(k === 'shared' ? 'ai_on' : 'ai_off'); p.kind = k; save(); drawAI(box); } }, el('span', { class: 'ico', 'aria-hidden': 'true' }, ico), el('strong', {}, title), el('span', { class: 'muted small' }, blurb), p.kind === k ? el('span', { class: 'chip' }, '✓ Selected') : null))), panel);
 
   if (p.kind === 'shared') {
     const left = el('p', { class: 'small', 'aria-live': 'polite' }, 'Checking…');

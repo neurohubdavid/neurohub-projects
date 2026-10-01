@@ -1,9 +1,11 @@
 // Learn: the built-in knowledge, searchable, grouped, with a "talk to Phoenix about this" button.
 import { el, fmt } from './util.js';
+import { trackFeature } from './analytics.js';
 import { KB, GROUPS } from './kb.js';
 import { prefillChat } from './chat.js';
 
 export function mountLearn(container, { navigate, open = '' }) {
+  trackFeature('learn_open');
   container.textContent = '';
   container.classList.remove('chat-view');
   const search = el('input', { class: 'input', type: 'search', placeholder: 'Search, for example “burnout” or “stimming”', 'aria-label': 'Search topics' });

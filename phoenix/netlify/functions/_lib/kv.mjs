@@ -7,7 +7,7 @@ export const bump = async (store, key, names) => { const o = await readJson(stor
 // ---- daily counters
 // Each kind of event has its own counter for the day, so two different events arriving at the same moment (an app open and a first
 // open, say) can never overwrite each other. Older totals kept in the single `day:<date>` key are still read and added in.
-export const EVENT_TYPES = ['view', 'install_click', 'installed', 'app_open', 'first_open', 'ai_kind', 'donate_click', 'download'];
+export const EVENT_TYPES = ['view', 'install_click', 'installed', 'app_open', 'first_open', 'ai_kind', 'donate_click', 'download', 'feature', 'embed_load', 'embed_open', 'embed_chat', 'ai_event'];
 export const dayKeyFor = (day, event) => `day:${day}:${event}`;
 export async function readDayCounts(store, day) {
   const parts = await Promise.all([readJson(store, `day:${day}`), ...EVENT_TYPES.map((e) => readJson(store, dayKeyFor(day, e)))]);

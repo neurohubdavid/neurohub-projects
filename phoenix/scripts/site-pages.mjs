@@ -154,7 +154,7 @@ export function pages({ version, downloads, hasDownloads, esc }) {
   <section id="install" class="card install-hero" aria-labelledby="install-h">
     <h2 id="install-h">Install Phoenix on this device</h2>
     <p>One tap. No app store, no account, no download to hunt for. It gets its own icon, works offline, and keeps your data on your device. Version ${esc(version)}, free.</p>
-    <p><a id="install-now" class="btn btn-primary btn-huge" href="/app/?install=1">Install Phoenix</a> <a class="btn" href="/app/">Open in the browser instead</a></p>
+    <p><a id="install-now" class="btn btn-primary btn-huge" href="/app/?install=1">Install Phoenix</a> <a class="btn" href="/app/">Open in the browser instead</a> <a class="btn" href="/download" rel="nofollow">Download the app now</a></p>
     <div id="install-help" aria-live="polite"></div>
     <details class="steps"><summary>Step-by-step help for each device</summary>
       <details open><summary>Windows, Mac, Linux, Chromebook (Edge or Chrome)</summary><p>Press <strong>Install Phoenix</strong> above, then <strong>Install</strong> in the box your browser shows. Or use the install icon at the right of the address bar, or Edge’s <strong>Settings and more (…) → Apps → Install this site as an app</strong>. Afterwards find Phoenix in your Start menu or Applications.</p></details>
@@ -220,7 +220,7 @@ ${FAQ.map(([q, a]) => `    <details><summary>${esc(q)}</summary><p>${esc(a)}</p>
     <li><strong>Not a safety net:</strong> nobody watches this live and we cannot contact you, so it is not a way to get help. If you are struggling, use the red Help button.</li>
   </ul>
   <h2>Anonymous counts</h2>
-  <p>To learn how many people find and use Phoenix, NeuroHub counts visits to this website, clicks on Install and download, app opens and installs. It stores only daily totals, plus a coarse device type (for example Android or Windows), a country code and the website that referred you. It uses no cookies and stores no IP address, no identifier, no message or health information. If your browser sends Do Not Track or Global Privacy Control, nothing is counted. In the app you can switch counting off in Settings, under Your data.</p>
+  <p>To learn how many people find and use Phoenix, NeuroHub counts visits to this website, clicks on Install and download, app opens and installs, which parts of the app get used (for example “a check-in was completed” or “the breathing tool was opened”, never what was written), how many AI replies are given and when limits are reached, and, for websites that add the Phoenix widget, the website’s address and how often the widget is opened. It stores only daily totals, plus a coarse device type (for example Android or Windows), a country code and the website that referred you. It uses no cookies and stores no IP address, no identifier, no message or health information. If your browser sends Do Not Track or Global Privacy Control, nothing is counted. In the app you can switch counting off in Settings, under Your data.</p>
   <h2>The website and the host</h2>
   <p>This website is hosted by Netlify, which may keep ordinary server logs (such as IP addresses) for a short time for security and operation. NeuroHub does not use them to identify visitors.</p>
   <h2>Other people’s details</h2>
@@ -255,5 +255,45 @@ ${FAQ.map(([q, a]) => `    <details><summary>${esc(q)}</summary><p>${esc(a)}</p>
   <p>A receipt is on its way to your email. If you chose to give monthly, you can cancel at any time from the link in that receipt.</p>
   <p><a class="btn btn-primary" href="/app/">Back to Phoenix</a> <a class="btn" href="/">Home</a></p>`,
   });
-  return { '/': home, '/privacy/': privacy, '/accessibility/': access, '/thanks/': thanks };
+  const embed = layout({
+    path: '/add-to-your-site/', title: 'Add Phoenix to your website: free floating chat widget', description: 'Add Phoenix, the free neuro-affirming AI assistant, to your website with one line of code: a floating chat button that opens Phoenix in a panel. Free, accessible, no cookies.',
+    crumbs: [{ name: 'Add Phoenix to your website', path: '/add-to-your-site/' }], jsonld: [ORG],
+    body: `
+  <h1>Add Phoenix to your website</h1>
+  <p class="lead" style="font-size:1.15rem">Give your visitors a calm, neuro-affirming place to turn. One line of code adds a floating button to your site. Pressing it opens Phoenix in a panel. It is free, there is nothing to sign up for, and it works on any website, including WordPress, Wix, Squarespace and Shopify.</p>
+  <section class="card" aria-labelledby="snip-h">
+    <h2 id="snip-h">1. Copy this line</h2>
+    <p>Paste it just before the closing <code>&lt;/body&gt;</code> tag on every page where you want the button (or into your site’s “custom code” or “footer scripts” setting).</p>
+    <pre style="white-space:pre-wrap;overflow-wrap:anywhere;background:#fff;border:3px solid var(--border,#1b1230);border-radius:12px;padding:.8rem"><code id="snippet">&lt;script src="${ORIGIN}/embed.js" async&gt;&lt;/script&gt;</code></pre>
+    <p><button type="button" class="btn btn-primary" id="copy-snippet">Copy the code</button> <span id="copy-status" role="status" class="muted"></span></p>
+  </section>
+  <h2>2. Make it yours (optional)</h2>
+  <p>Add any of these to the same line:</p>
+  <ul>
+    <li><code>data-position="left"</code>: put the button bottom-left (default is bottom-right)</li>
+    <li><code>data-label="Need a calm moment?"</code>: the words on the button</li>
+    <li><code>data-color="#0f766e"</code>: the button and header colour</li>
+    <li><code>data-offset="30"</code>: pixels from the edge of the screen</li>
+    <li><code>data-open="true"</code>: open Phoenix as soon as the page loads (not recommended: it can interrupt people)</li>
+  </ul>
+  <p>Example: <code>&lt;script src="${ORIGIN}/embed.js" data-position="left" data-label="Need a calm moment?" async&gt;&lt;/script&gt;</code></p>
+  <p>You can also open it from your own button with <code>PhoenixWidget.open()</code>.</p>
+  <h2>What visitors get</h2>
+  <ul>
+    <li>Phoenix chat, the daily check-in, the calming toolkit and the Help button with helplines for their country, the same as the app.</li>
+    <li>On a phone the panel fills the screen. It can be used with a keyboard and a screen reader, and Escape closes it.</li>
+    <li>Their chats stay on their own device, inside the widget. Your website never sees them.</li>
+  </ul>
+  <h2>Privacy and cost</h2>
+  <ul>
+    <li>The widget sets no cookies and stores nothing on your visitors’ devices until they open it.</li>
+    <li>NeuroHub Community counts, anonymously, that the widget loaded on your website’s address and how often it is opened and used, so we can see how it helps. We never see who your visitors are or what they write. Visitors who send Do Not Track are not counted.</li>
+    <li>The AI replies are paid for by NeuroHub Community, and each visitor has a daily limit. If Phoenix is useful to your visitors, please consider <a href="/#donate">a donation</a> to keep it live.</li>
+    <li>Phoenix is a computer program, not a therapist or a crisis service. Please say so on your site if you add it.</li>
+  </ul>
+  <p>Questions: <a href="https://neurohubcommunity.org/contact-us/">neurohubcommunity.org/contact-us</a>. You can try it right now: the button in the corner of this page is the widget.</p>
+  <script>(function(){var b=document.getElementById('copy-snippet'),s=document.getElementById('snippet'),o=document.getElementById('copy-status');if(!b)return;b.addEventListener('click',function(){var t=s.textContent;var done=function(){o.textContent='Copied.';};var fail=function(){var r=document.createRange();r.selectNodeContents(s);var g=getSelection();g.removeAllRanges();g.addRange(r);o.textContent='Selected. Press Ctrl+C (or Cmd+C) to copy.';};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,fail);}else fail();});})();</script>
+  <script src="/embed.js" data-label="Try Phoenix here" async></script>`,
+  });
+  return { '/': home, '/privacy/': privacy, '/accessibility/': access, '/thanks/': thanks, '/add-to-your-site/': embed };
 }

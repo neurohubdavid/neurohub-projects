@@ -20,6 +20,11 @@ const nowDate = new Date();
 // six people who chose to share, over a few weeks
 const day = (n) => new Date(nowDate.getTime() - n * 86400000).toISOString().slice(0, 10);
 for (let i = 0; i < 6; i++) for (const [n, v] of [[40, 2], [28, 2 + (i % 2)], [14, 3], [3, 4 + (i % 2 ? 0 : -1)]]) await share(new Request('http://x/api/share/checkin', { method: 'POST', body: JSON.stringify({ pid: String(i).padStart(32, 'a'), at: day(n), s: [v, v, v - 1 || 1, v, v, v, v] }) }), {}, { store: checkins });
+await usage.set('day:' + day(0) + ':feature', JSON.stringify({ 'e:feature': 9, 'e:feature:checkin_done': 4, 'e:feature:chat_ai': 3, 'e:feature:tool_breathing': 2, 'e:feature:chat_limit': 1, 'e:feature:donate_open': 2 }));
+await usage.set('day:' + day(0) + ':embed_load', JSON.stringify({ 'e:embed_load': 5, 'e:embed_load:ok': 5, 'embedhost:embed_load:example-charity.org.uk': 3, 'embedhost:embed_load:shop.example.com': 2, 'country:embed_load:GB': 5 }));
+await usage.set('day:' + day(0) + ':embed_open', JSON.stringify({ 'e:embed_open': 2, 'embedhost:embed_open:example-charity.org.uk': 2 }));
+await usage.set('day:' + day(0) + ':ai_event', JSON.stringify({ 'e:ai_event': 5, 'e:ai_event:reply': 4, 'e:ai_event:limit_person': 1 }));
+await usage.set('day:' + day(0) + ':view', JSON.stringify({ 'e:view': 3, 'e:view:/thanks/': 1 }));
 await usage.set('day:' + day(0), JSON.stringify({ 'e:view': 12, 'e:app_open': 5, 'ref:google.com': 3, 'e:first_open': 3, 'plat:first_open:android': 2, 'plat:first_open:windows': 1, 'e:first_open:installed': 2, 'e:first_open:browser': 1, 'country:first_open:GB': 3, 'e:installed': 2 }));
 await usage.set('day:' + day(1), JSON.stringify({ 'e:app_open': 6, 'e:first_open': 4, 'plat:first_open:android': 4, 'e:first_open:browser': 4, 'country:first_open:GB': 3, 'country:first_open:US': 1 })); await ai.set('d:' + day(0), '4');
 
@@ -98,6 +103,13 @@ assert.equal(await usersKpi('Devices that have used Phoenix'), '7', 'all-time de
 assert.equal(await usersKpi('New devices, last 7 days'), '7'); assert.equal(await usersKpi('New devices today'), '3'); assert.equal(await usersKpi('Installed as an app'), '2');
 assert.match(await page.textContent('#app'), /Phoenix has no accounts, so users are counted as devices/);
 assert.match(await page.textContent('#app'), /New devices by country[\s\S]*GB[\s\S]*6/);
+const txt = await page.textContent('#app');
+assert.match(txt, /How people use the app/); assert.match(txt, /Phoenix AI \(last 30 days\)/); assert.match(txt, /Donations \(last 30 days\)/); assert.match(txt, /Website widget \(last 30 days\)/);
+assert.equal(await usersKpi('Daily check-ins completed'), '4'); assert.equal(await usersKpi('Messages answered by Phoenix AI'), '3');
+assert.equal(await usersKpi('AI replies given'), '4'); assert.equal(await usersKpi('Daily limit reached (a person)'), '1');
+assert.equal(await usersKpi('Widget loads'), '5'); assert.equal(await usersKpi('Widget opened'), '2'); assert.equal(await usersKpi('Websites using it'), '2'); assert.equal(await usersKpi('Open rate'), '40%');
+assert.equal(await usersKpi('Thank-you page views (completed)'), '1'); assert.equal(await usersKpi('Donate window opened in the app'), '2');
+assert.match(txt, /Websites with the widget[\s\S]*example-charity\.org\.uk[\s\S]*3[\s\S]*shop\.example\.com[\s\S]*2/);
 await page.screenshot({ path: path.join(shots, '51-admin-usage.png'), fullPage: true });
 ok('the users tab counts devices (all time, last 7 and 30 days, by type, how used and country) next to visits, opens and free AI use');
 

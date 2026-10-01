@@ -1,6 +1,7 @@
 // The "Documents" screens: pick a NeuroHub reflection document, fill it in (by hand, one section at a time, or with
 // Phoenix drafting answers from what the person has told it), download it as a PDF, and save the ratings to Insights.
 import { el, toast, announce, modal, download, fmtDate, esc } from './util.js';
+import { trackFeature } from './analytics.js';
 import { state, save, aiActive, aiMaySeeCheckins } from './store.js';
 import { streamChat, providerConfig } from './providers.js';
 import { summaryForAI, perDay } from './sixpf.js';
@@ -25,7 +26,7 @@ function list(body, { navigate }) {
   body.append(el('p', { class: 'muted' }, 'NeuroHub’s reflection documents, made for you to fill in yourself. Phoenix can draft answers from what you have already told it, you check and change them, and you can download the result as a PDF to keep or to show someone you trust. The ratings feed your Insights so you can see how things change.'));
   body.append(el('div', { class: 'grid docs-grid' }, R.getDocs().map((d) => el('section', { class: 'card doc-card', 'aria-labelledby': 'dc-' + d.id },
     el('span', { class: 'ico', 'aria-hidden': 'true' }, d.icon), el('h2', { id: 'dc-' + d.id }, d.title), el('p', { class: 'muted small' }, d.blurb),
-    el('button', { class: 'btn btn-primary', onclick: () => { const r = R.newReport(d, { name: state.profile.name }); state.reports.push(r); save(); navigate('checkin:doc-' + r.id); } }, `Start ${d.short.toLowerCase()}`)))));
+    el('button', { class: 'btn btn-primary', onclick: () => { const r = R.newReport(d, { name: state.profile.name }); state.reports.push(r); trackFeature('doc_started'); save(); navigate('checkin:doc-' + r.id); } }, `Start ${d.short.toLowerCase()}`)))));
   const mine = [...state.reports].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   if (!mine.length) return;
   body.append(el('h2', {}, 'Your documents'));
@@ -111,6 +112,7 @@ function editor(body, { navigate, report }) {
 
   // ---- AI drafting
   async function aiFill(list) {
+    trackFeature('doc_ai_draft');
     if (!aiActive()) return;
     const wellness = aiMaySeeCheckins() ? [summaryForAI(state.wellness), R.assessmentSummaryForAI(state.reports)].filter(Boolean).join('\n') : '';
     const ctx = R.chatContext({ profile: state.profile, wellness, chats: [...state.chats].sort((a, b) => a.updated - b.updated).slice(-8) });
@@ -161,7 +163,7 @@ function editor(body, { navigate, report }) {
     try {
       let logoBytes = null; try { const res = await fetch('icons/nh-logo.jpg'); if (res.ok) logoBytes = new Uint8Array(await res.arrayBuffer()); } catch { /* the PDF works without the logo */ }
       const out = await makePdf(doc, report, { previous: previous(), logoBytes });
-      download(R.pdfFileName(doc, report), out.bytes, 'application/pdf');
+      download(R.pdfFileName(doc, report), out.bytes, 'application/pdf'); trackFeature('doc_pdf');
       statusEl.textContent = `PDF made (${out.pages} page${out.pages === 1 ? '' : 's'}). ${out.lost ? `${out.lost} character${out.lost === 1 ? '' : 's'} could not be shown and appear as “?”. Use “Print or save as PDF” to keep every character.` : 'It is in your downloads.'}`;
     } catch (e) { statusEl.textContent = 'Could not make the PDF: ' + (e.message || e); }
     pdfBtn.disabled = false; announce(statusEl.textContent);

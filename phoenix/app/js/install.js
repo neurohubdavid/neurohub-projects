@@ -3,6 +3,7 @@
 //  - iPhone and iPad (Safari) and Mac Safari: no prompt exists, so we show the exact steps instead.
 //  - Inside the desktop app there is nothing to install, so all of this stays hidden.
 import { el, toast, modal } from './util.js';
+import { trackFeature } from './analytics.js';
 import { track } from './analytics.js';
 
 const desktopApp = !!globalThis.phoenixNative;
@@ -123,6 +124,7 @@ export async function installChecks() {
 }
 /** A simple full-screen sheet: one big button where the browser can install, the exact steps where it cannot. Used when arriving from the website's Install button. */
 export function openInstallSheet() {
+  trackFeature('install_sheet');
   if (desktopApp || isStandalone()) return;
   const body = el('div', { class: 'stack' });
   let m = null, off = null;
