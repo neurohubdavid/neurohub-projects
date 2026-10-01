@@ -10,18 +10,15 @@ import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import { htmlToText, decode } from '../app/js/site-parse.js';
+import { SOURCES, UA } from './sources.mjs';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'app', 'data', 'site.json');
-export const SOURCES = [
-  { key: 'neurohub', base: 'https://neurohubcommunity.org', label: 'NeuroHub Community', ownAuthorOnly: false },
-  { key: 'autisticrealms', base: 'https://autisticrealms.com', label: 'Autistic Realms (Helen Edgar)', ownAuthorOnly: true },
-  { key: 'morerealms', base: 'https://morerealms.com', label: 'More Realms (Helen Edgar)', ownAuthorOnly: true },
-];
+// the list of websites lives in sources.mjs
 const MAX_TEXT = 7000;
-const UA = { 'user-agent': 'PhoenixAssistantBuild/1.0 (+https://phoenix.neurohubcommunity.org)' };
+const UAH = { 'user-agent': UA };
 
 async function getJSON(url) {
-  const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(30000) });
+  const res = await fetch(url, { headers: UAH, signal: AbortSignal.timeout(30000) });
   if (!res.ok) throw new Error(`${res.status} ${url}`);
   return { data: await res.json(), pages: Number(res.headers.get('x-wp-totalpages') || 1) };
 }

@@ -49,7 +49,7 @@ function privacyNote() {
 function home(body, navigate) {
   const list = state.wellness, done = S.checkedInToday(list), pd = S.perDay(list), last = pd[pd.length - 1];
   const n = S.streak(list);
-  body.append(el('p', { class: 'muted' }, 'Two minutes to notice how you are, across six areas. There are no wrong answers, and skipping a day is fine. Small check-ins add up to a picture of what drains you and what helps.'));
+  body.append(el('p', { class: 'muted view-intro' }, 'Two minutes to notice how you are, across six areas. There are no wrong answers, and skipping a day is fine. Small check-ins add up to a picture of what drains you and what helps.'));
   const status = el('section', { class: 'card', 'aria-labelledby': 'ck-h' },
     el('h2', { id: 'ck-h' }, done ? 'You have checked in today' : list.length ? 'How are you today?' : 'Start your first check-in'),
     done && last ? el('p', {}, `${S.MOOD_EMOJI[last.overallMood - 1]} Overall: ${S.RATING_CAPTIONS[last.overallMood - 1].toLowerCase()} (${last.overallMood}/5), at ${fmtTime(last.createdAt)}.`) : el('p', { class: 'muted' }, 'It takes about two minutes and nothing has to be perfect.'),

@@ -176,6 +176,12 @@
       body.append(el('div', { 'class': 'kpis' }, [kpi('Floating window opened', s30(F('float_open'))), kpi('Closed (back to main window)', s30(F('float_close'))), kpi('Messages sent while floating', s30(F('float_chat'))), kpi('Told Phoenix what they are doing', s30(F('float_activity'))), kpi('Turned gentle check-ins on', s30(F('float_nudges_on'))), kpi('Tried it where it is not supported', s30(F('float_unsupported'))), kpi('Installed as an app (30 days)', s30('e:installed')), kpi('Install clicks (30 days)', s30('e:install_click'))]));
       body.append(bars('Floating window opened per day', perDay(F('float_open'))), bars('Installs as an app per day', perDay('e:installed')));
 
+      body.append(el('h2', {}, 'Accounts and voice (last 30 days)'));
+      body.append(el('p', { 'class': 'muted' }, 'Everyone who signs up is a User. Only an Admin can open this backend. Phoenix never stores email addresses, so these are counts only.'));
+      var acc = function (n) { return s30('e:account:' + n); };
+      body.append(el('div', { 'class': 'kpis' }, [kpi('Accounts now (all Users)', d.accountsNow || 0), kpi('New accounts', acc('created')), kpi('Sign-ins', acc('signin')), kpi('Sign-in codes sent', acc('code_sent')), kpi('Accounts deleted', acc('deleted')), kpi('Signed out', acc('signout')), kpi('Spoken conversations started', s30(F('voice_chat'))), kpi('Wake word turned on', s30(F('wake_on'))), kpi('Times “Phoenix” woke her', s30(F('wake_word'))), kpi('Tried voice without an account', s30(F('voice_needs_account'))), kpi('Phoenix made a note', s30(F('memory_added'))), kpi('Sync turned off', s30(F('sync_off')))]));
+      body.append(bars('New accounts per day', perDay('e:account:created')), bars('Sign-ins per day', perDay('e:account:signin')));
+
       body.append(el('h2', {}, 'Phoenix AI (last 30 days)'));
       var ai = function (n) { return s30('e:ai_event:' + n); };
       body.append(el('div', { 'class': 'kpis' }, [kpi('AI replies given', ai('reply')), kpi('Daily limit reached (a person)', ai('limit_person')), kpi('Daily limit reached (everyone)', ai('limit_everyone')), kpi('Claude errors', ai('upstream_error')), kpi('Asked while switched off', ai('off')), kpi('Replies this month', d.sharedAiMonth || 0), kpi('Average replies per day', Math.round(ai('reply') / Math.max(days.length, 1)))]));

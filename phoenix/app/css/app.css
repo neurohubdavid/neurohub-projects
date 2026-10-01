@@ -311,3 +311,41 @@ button.linklike { background: none; border: 0; padding: 0; font: inherit; color:
 .comp-chat[hidden], .comp-typebox[hidden] { display: none !important; }
 .comp-chat .chat-head { display: none; } .float-app .comp-chat.chat-view { height: auto; }
 @media (prefers-reduced-motion: reduce) { .comp-stage, .comp-talk.on { animation: none; } }
+
+/* ---- Phones: a calmer, denser layout, so nothing feels crowded */
+fieldset.collapsible > legend { cursor: pointer; display: flex; align-items: center; gap: .4rem; }
+fieldset.collapsible > legend::after { content: '▾'; font-size: .9em; transition: transform .15s; }
+fieldset.collapsible.collapsed > legend::after { transform: rotate(-90deg); }
+fieldset.collapsible.collapsed > :not(legend) { display: none !important; }
+fieldset.collapsible.collapsed { padding-top: .2rem; padding-bottom: .2rem; }
+@media (max-width: 700px) {
+  :root { --bw: 2px; --sh: 2px 2px 0 var(--shadow); --sh-sm: 1px 1px 0 var(--shadow); --radius: 14px; }
+  body { font-size: .97rem; }
+  h1 { font-size: 1.55rem; } h2 { font-size: 1.25rem; } h3 { font-size: 1.08rem; }
+  .view { padding: .7rem; } .view-title { margin-bottom: .5rem; gap: .5rem; } .view-title h1 { margin: 0; }
+  .card { padding: .8rem; } fieldset { padding: .7rem; margin-bottom: .6rem; } legend { font-size: 1.05rem; }
+  .view-intro { display: none; }
+  .btn { padding: .45em .9em; min-height: 42px; }
+  .seg { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; border-radius: 999px; scrollbar-width: none; }
+  .seg button { white-space: nowrap; padding: .4em .85em; min-height: 40px; flex: none; }
+  /* the Toolkit becomes a tidy two-column board of tiles */
+  .grid { gap: .55rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile { padding: .7rem; gap: .15rem; } .tile .ico { font-size: 1.5rem; } .tile strong { font-size: 1.02rem; } .tile .muted.small { display: none; }
+  /* the chat: one slim header row, the check-in nudge as a single line, the notes under the box tucked away */
+  .top .brand .ph { --ph-size: 30px !important; }
+  .chat-head .ph { --ph-size: 36px !important; } .chat-head .ph-status { display: none; } .chat-head { padding: .2rem .6rem; }
+  .checkin-nudge > span:first-child { display: none; } .checkin-nudge { justify-content: flex-end; padding: .25rem .5rem; margin: .25rem .6rem 0; border-style: solid; }
+  .ai-note { display: none; } .composer-foot { font-size: .7rem; }
+  .welcome > p { display: none; } .welcome h1 { font-size: 1.4rem; margin-bottom: .3rem; }
+  .msg .bubble { padding: .6rem .8rem; }
+}
+
+fieldset.collapsible { padding: 0 .75rem; border-radius: 12px; }
+fieldset.collapsible > legend { float: left; width: 100%; padding: .65rem 0; font-size: 1.05rem; }
+fieldset.collapsible > legend ~ * { clear: both; }
+fieldset.collapsible:not(.collapsed) { padding-bottom: .75rem; }
+fieldset.collapsible > legend::after { margin-left: auto; }
+@media (max-width: 700px) {
+  .top .brand { display: none; } .menu-btn { margin-right: auto; }
+  .checkin-nudge::before { content: 'Daily check-in'; font-weight: 700; margin-right: auto; }
+}

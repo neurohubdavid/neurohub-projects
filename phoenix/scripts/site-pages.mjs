@@ -20,6 +20,7 @@ function donateStrip() {
 const ORG = { '@type': 'Organization', '@id': `${ORIGIN}/#org`, name: 'NeuroHub Community Ltd', url: 'https://neurohubcommunity.org', logo: `${ORIGIN}/assets/icon-512.png` };
 
 export const FAQ = [
+  ['Does Phoenix recommend products or courses?', 'Sometimes, gently, and only from websites Phoenix has permission to use: NeuroHub Community and Helen Edgar’s Autistic Realms and More Realms. Phoenix reads their public sitemaps to know what guides, courses, books and products exist. When something really fits what you are dealing with, and you are not in a hard moment, Phoenix may mention one thing, say who made it and what it costs, and link it. These are made by the people behind Phoenix, so it is not independent advice. You can switch suggestions off in Settings, or ask “any resources that could help?” whenever you like.'],
   ['Can I just say “Phoenix” to start talking?', 'Yes, if you have a free Phoenix account, have installed Phoenix as an app, and switch it on in Settings. Then saying “Phoenix” (or “Hey Phoenix, I feel overwhelmed”) starts a spoken conversation: she listens, answers out loud and listens again. It is off by default. While it is on the microphone stays open whenever the app is, and in Chrome and Edge your browser sends what it hears to Google or Microsoft to turn into text. Phoenix keeps no audio and ignores anything that does not start with her name.'],
   ['Can Phoenix float on my screen while I work?', 'Yes, on a computer with Microsoft Edge or Google Chrome. Install Phoenix, press Float, then minimise it: Phoenix stays in a small window on top of your other programs, animated and ready to help with what you are doing, chat, or talk with you out loud (press Talk). Tell her what you are working on, because she cannot see your screen. When you come back to Phoenix, she comes home too. Phones, Firefox and Safari cannot float windows over other programs.'],
   ['Is there a Windows or Mac program to download?', 'No. Phoenix is an app you install straight from your browser in one tap, with no store and no installer file. It gets its own icon and window, works offline, and updates itself. Press Install Phoenix on this page.'],
@@ -215,6 +216,8 @@ ${FAQ.map(([q, a]) => `    <details><summary>${esc(q)}</summary><p>${esc(a)}</p>
     <li><strong>You can download everything held, or delete your account</strong> and all its data at any time, in Settings. Deleting is permanent. The account is for people aged 18 and over.</li>
     <li>Anonymous counts (for example “an account was made”) are kept for running Phoenix. They contain nothing about you.</li>
   </ul>
+  <h2>Suggestions of guides, courses and products</h2>
+  <p>Phoenix can suggest things that might help, from the websites it has permission to use only (NeuroHub Community, and Helen Edgar’s Autistic Realms and More Realms). A list of what those sites offer, made from their public sitemap.xml files, is built into the app, and matching it to what you are asking about happens on your device. If you use Phoenix AI, a suggestion is sent along with your message like any other background material. Suggestions are occasional, never during a hard moment, labelled with the price, and can be switched off in Settings. NeuroHub and Helen Edgar make these things, so they are not independent recommendations.</p>
   <h2>Where Phoenix’s knowledge comes from</h2>
   <p>Phoenix’s reference material is the writing of NeuroHub Community and of Helen Edgar (the websites <a href="https://autisticrealms.com">Autistic Realms</a> and <a href="https://morerealms.com">More Realms</a>), used with Helen’s permission and credited by name where Phoenix uses it. That writing stays the property of its authors.</p>
   <h2>What the AI sees</h2>
@@ -282,7 +285,7 @@ ${FAQ.map(([q, a]) => `    <details><summary>${esc(q)}</summary><p>${esc(a)}</p>
   </section>
   <h2>How she behaves</h2>
   <ul>
-    <li><strong>Always there.</strong> Phoenix floats in the bottom-right corner, animated, on every page. On a computer the chat is open beside her. On a phone she waits with a friendly greeting, and a tap opens the chat full-screen.</li>
+    <li><strong>Always there, and never in the way.</strong> Phoenix floats in the bottom-right corner, animated, on every page, and starts minimised with a friendly greeting. A click on him opens a rounded chat box beside him (full-screen on a phone).</li>
     <li><strong>Visitors stay in control.</strong> Clicking her (or pressing Enter or Space when she is focused) minimises or reopens the chat, Escape minimises it, and she can be dragged anywhere. If a visitor minimises her, she stays minimised for the rest of their visit.</li>
     <li><strong>She is alive.</strong> She leans in while someone types, nods, takes on the feeling of what they say (calm for worry, soft for sadness, sparkles for good news), moves her beak as she replies, and now and then stretches, preens or looks around. With reduced motion switched on she holds still poses instead.</li>
   </ul>
@@ -291,7 +294,7 @@ ${FAQ.map(([q, a]) => `    <details><summary>${esc(q)}</summary><p>${esc(a)}</p>
   <ul>
     <li><code>data-position="left"</code>: put her bottom-left (default is bottom-right)</li>
     <li><code>data-size="160"</code>: how big she is, in pixels (90 to 220, default 130)</li>
-    <li><code>data-open="auto"</code> (default: chat open on computers, closed on phones), <code>"true"</code> (always start with the chat open) or <code>"false"</code> (start minimised)</li>
+    <li><code>data-open="false"</code> (the default: Phoenix starts minimised and a click opens the chat) or <code>"true"</code> (start with the chat open)</li>
     <li><code>data-greeting="Need a calm moment?"</code>: the bubble she shows while minimised (<code>""</code> for none)</li>
     <li><code>data-label="Chat with us"</code>, <code>data-color="#0f766e"</code>, <code>data-offset="30"</code>: the label read by screen readers, the chat’s header colour, and the distance from the edge</li>
     <li><code>data-style="button"</code>: use a round button instead of the floating character</li>

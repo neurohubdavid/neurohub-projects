@@ -35,6 +35,7 @@ export const DEFAULTS = () => ({
     showMascot: true,
     focusChime: true,
     useSite: true,          // let the assistant draw on neurohubcommunity.org articles
+    recommend: true,        // gently suggest products, guides and courses from the permitted websites when they fit (catalog.js); the person can turn it off
     wakeWord: false,        // installed app only: listen for the word "Phoenix" to start a spoken conversation, see wake.js (off unless the person turns it on)
     donateReminders: true,  // a gentle reminder to donate, at most once a week, see donate.js
     analytics: true,       // share anonymous usage counts (app opens, installs) with NeuroHub, see analytics.js
@@ -45,7 +46,7 @@ export const DEFAULTS = () => ({
   wellness: [],            // 6PF-Wellness daily check-ins, see sixpf.js
   reports: [],              // reflection documents (6PF assessment, burnout plan, identity workbook), see reports.js
   float: { activity: '', nudgeMins: 0, invited: false }, // the floating Phoenix window, see float.js
-  account: { token: '', email: '', signedInAt: 0, sync: true, memory: 'auto', base: '', lastSync: 0, scalarsAt: 0, scalarsHash: '', learnCount: 0 }, // the optional account, see account.js (the token stays on this device)
+  account: { token: '', email: '', role: 'user', signedInAt: 0, sync: true, memory: 'auto', base: '', lastSync: 0, scalarsAt: 0, scalarsHash: '', learnCount: 0 }, // the optional account, see account.js (the token stays on this device)
   memories: [],            // short notes Phoenix keeps for a signed-in person, see memory.js
   deleted: {},             // ids of things deleted, so a deletion reaches other devices when syncing
   reminders: { enabled: false, time: '10:00', lastShown: '', snoozedUntil: 0, launch: false },

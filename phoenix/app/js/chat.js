@@ -15,6 +15,7 @@ import { offlineReply, findTopic, topicReply } from './offline.js';
 import { loadSite, siteHits, siteBlock } from './site.js';
 import { reactToDraft, reactToSpeech, reactToSent, reactToReply, relay } from './mascot-live.js';
 import { voiceAllowed, requireAccountForVoice } from './voice-gate.js';
+import { loadCatalog, recommendBlock, recommendIntent, recommendReply } from './catalog.js';
 import { voiceSupport, createRecognizer, createSpeaker, listVoices } from './voice.js';
 import { memoryIntent, memoryReply, memoryBlock, memoryMode, shouldLearn, notesRequest, parseNotes, addMemory, deleteMemory } from './memory.js';
 
@@ -95,6 +96,7 @@ export function mountChat(container, { navigate }) {
   const voiceRow = buildVoiceRow();
   if (voiceSupport.tts || voiceSupport.stt) {
     const vb = el('button', { class: 'btn voice-toggle', type: 'button', 'aria-label': 'Voice options', 'aria-expanded': 'false', title: 'Voice options', onclick: () => { const o = voiceRow.classList.toggle('open'); vb.setAttribute('aria-expanded', String(o)); } }, '🔊');
+    vb.hidden = !voiceAllowed(); bus.on('account', () => { vb.hidden = !voiceAllowed(); }); // voice options matter only to people who can use voice
     row.append(vb);
   }
   if (voiceSupport.stt) {
@@ -267,6 +269,13 @@ export async function send(text, { viaVoice = false } = {}) {
       const r = reportReply(state.profile.name);
       const { m, node } = addMessage('assistant', r.text, { actions: r.actions }); node.replaceWith(renderMessage(m)); announce('Phoenix replied'); return;
     }
+    // "Are there any books or resources that could help?" is answered from the websites Phoenix may use, with real links
+    if (!crisis && !emergency && recommendIntent(text)) {
+      if (state.prefs.recommend === false) { const { m, node } = addMessage('assistant', 'You have turned off suggestions of products and resources, so I will not list any. You can turn them back on in Settings, under Knowledge.', { actions: [{ label: 'Open Settings', go: 'settings' }] }); node.replaceWith(renderMessage(m)); announce('Phoenix replied'); return; }
+      await loadCatalog(); trackFeature('recommend_asked');
+      const r = recommendReply(text, state.profile.name);
+      const { m, node } = addMessage('assistant', r.text, { actions: r.actions }); node.replaceWith(renderMessage(m)); announce('Phoenix replied'); return;
+    }
     const mem = !crisis && !emergency ? memoryIntent(text) : null;
     if (mem) {
       const r = memoryReply(mem, state.profile.name);
@@ -322,7 +331,11 @@ export async function send(text, { viaVoice = false } = {}) {
     await loadSite();
     const prevUser = currentChat().messages.filter((m) => m.role === 'user').slice(-2, -1)[0]?.content || '';
     const sb = state.prefs.useSite ? siteBlock(`${text} ${prevUser}`) : '';
-    const system = buildSystem({ profile: state.profile, prefs: state.prefs, crisisBlock: block, crisisFlag: crisis, activity: compact ? state.float?.activity : '', memoryBlock: memoryBlock(), siteBlock: [topicNotes, sb].filter(Boolean).join('\n\n'), small, wellnessBlock: aiMaySeeCheckins() ? [summaryForAI(state.wellness), assessmentSummaryForAI(state.reports)].filter(Boolean).join('\n') : '' });
+    // Now and then (not every message), when something truly fits and the person is not in distress, Phoenix may mention one thing that could help
+    const chatNow = currentChat(), userCount = chatNow.messages.filter((x) => x.role === 'user').length;
+    let recBlock = '';
+    if (state.prefs.recommend !== false && !crisis && userCount - (chatNow.recAt || -99) >= 5) { await loadCatalog(); recBlock = recommendBlock(`${text} ${prevUser}`); if (recBlock) { chatNow.recAt = userCount; trackFeature('recommend_given'); } }
+    const system = buildSystem({ profile: state.profile, prefs: state.prefs, crisisBlock: block, crisisFlag: crisis, activity: compact ? state.float?.activity : '', memoryBlock: memoryBlock(), recommendBlock: recBlock, siteBlock: [topicNotes, sb].filter(Boolean).join('\n\n'), small, wellnessBlock: aiMaySeeCheckins() ? [summaryForAI(state.wellness), assessmentSummaryForAI(state.reports)].filter(Boolean).join('\n') : '' });
     const history = currentChat().messages.filter((m) => !m.crisis && m.content && (m.role === 'user' || m.role === 'assistant')).slice(-20).map(({ role, content }) => ({ role, content }));
     while (history.length && history[0].role !== 'user') history.shift();
 

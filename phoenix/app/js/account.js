@@ -36,7 +36,7 @@ export async function verifyCode(email, code) {
     const r = await fetch(`${base()}/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, code }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return { error: j.error || 'network', triesLeft: j.triesLeft, expired: j.expired };
-    Object.assign(state.account, { token: j.token, email: String(email).trim().toLowerCase(), signedInAt: Date.now(), sync: true, base: '', lastSync: 0, memory: state.account.memory || 'auto' });
+    Object.assign(state.account, { token: j.token, email: String(email).trim().toLowerCase(), role: j.role === 'admin' ? 'admin' : 'user', signedInAt: Date.now(), sync: true, base: '', lastSync: 0, memory: state.account.memory || 'auto' });
     setAuthToken(j.token); quietFlush();
     trackFeature(j.isNew ? 'account_created' : 'account_signin');
     await syncNow();
@@ -49,7 +49,7 @@ export async function signOut({ everywhere = false } = {}) {
   if (signedIn()) { try { await fetch(`${base()}/logout`, authed({ method: 'POST', body: JSON.stringify({ all: everywhere }) })); } catch { /* signed out here either way */ } }
   clearLocal(); trackFeature('account_signout');
 }
-function clearLocal() { Object.assign(state.account, { token: '', email: '', signedInAt: 0, base: '', lastSync: 0 }); setAuthToken(''); quietFlush(); bus.emit('account'); }
+function clearLocal() { Object.assign(state.account, { token: '', email: '', role: 'user', signedInAt: 0, base: '', lastSync: 0 }); setAuthToken(''); quietFlush(); bus.emit('account'); }
 
 /** Erases the account and everything held for it on the server. The data on this device stays. */
 export async function deleteAccount() {

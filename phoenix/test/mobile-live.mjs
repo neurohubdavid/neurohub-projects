@@ -71,6 +71,8 @@ await step('phone: suggestions are one swipeable row, voice options sit behind a
   const chips = await M.p.evaluate(() => { const c = document.querySelector('.chips'); return c ? { h: c.getBoundingClientRect().height, wrap: getComputedStyle(c).flexWrap } : null; });
   assert.ok(!chips || (chips.wrap === 'nowrap' && chips.h < 70), JSON.stringify(chips));
   assert.equal(await M.p.locator('.voice-row').isVisible(), false);
+  assert.equal(await M.p.locator('.voice-toggle').isVisible(), false, 'voice options are not shown to people who cannot use voice (no account)');
+  await M.p.evaluate(async () => { const { state, save } = await import('./js/store.js'); state.account.token = 'test-session-token-1234567890abcdef'; save(); (await import('./js/util.js')).bus.emit('account'); });
   await M.p.click('.voice-toggle'); assert.ok(await M.p.locator('.voice-row').isVisible()); assert.equal(await M.p.getAttribute('.voice-toggle', 'aria-expanded'), 'true');
   await M.p.click('.voice-toggle'); assert.equal(await M.p.locator('.voice-row').isVisible(), false);
   if (await M.p.locator('.checkin-nudge').count()) { await M.p.click('.checkin-nudge button[aria-label="Hide this for now"]'); assert.equal(await M.p.locator('.checkin-nudge').count(), 0); }

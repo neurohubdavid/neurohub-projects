@@ -5,7 +5,7 @@
  * click her to minimise or reopen the chat, and press Escape to minimise.
  * Optional settings on the script tag:
  *   data-position="left" | "right" (default right)     data-size="130"  (her size in pixels, 90 to 220)
- *   data-open="auto" (default: open on computers, closed on phones) | "true" (always start open) | "false" (start minimised)
+ *   data-open="false" (default: Phoenix starts minimised, and a click opens the chat) | "true" (start with the chat open)
  *   data-greeting="Hi! Want to talk?" (the bubble shown while she is minimised, or "" for none)
  *   data-label="Chat with Phoenix"   data-color="#7C3AED"   data-offset="20"
  *   data-style="button"  (use a round button instead of the floating character)
@@ -29,7 +29,7 @@
   var size = Math.max(90, Math.min(220, parseInt(attr('size', '130'), 10) || 130));
   var asButton = attr('style', 'character') === 'button';
   var greeting = attr('greeting', 'Hi, I’m Phoenix. Want to talk?').slice(0, 80);
-  var openMode = attr('open', 'auto');
+  var openMode = attr('open', 'false'); // Phoenix starts minimised; a click on him opens the chat
   var host = location.hostname;
   var KEY = 'phoenix-widget';
   var phone = function () { return Math.min(window.innerWidth, window.innerHeight) < 600 || window.innerWidth < 700; };
@@ -63,17 +63,19 @@
       '.bubble{position:absolute;bottom:' + (charH - 6) + 'px;' + (left ? 'left' : 'right') + ':' + Math.round(size * 0.1) + 'px;max-width:230px;width:max-content;background:#fff;color:#1b1230;border:3px solid #1b1230;border-radius:16px;padding:.5rem .75rem;font:600 14px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:3px 3px 0 #1b1230;cursor:pointer;opacity:0;transform:translateY(6px) scale(.96);transition:opacity .25s,transform .25s;pointer-events:none}' +
       '.bubble.show{opacity:1;transform:none;pointer-events:auto}' +
       '.bubble:after{content:"";position:absolute;bottom:-11px;' + (left ? 'left' : 'right') + ':22px;width:16px;height:16px;background:#fff;border-right:3px solid #1b1230;border-bottom:3px solid #1b1230;transform:rotate(45deg)}' +
-      '.panel{display:none;flex-direction:column;width:min(390px,calc(100vw - ' + (size + offset * 2 + 20) + 'px));height:min(600px,calc(100vh - ' + (offset * 2) + 'px));background:#fff;border:3px solid #1b1230;border-radius:18px;box-shadow:5px 5px 0 #1b1230;overflow:hidden}' +
+      '.panel{display:none;position:relative;flex-direction:column;width:min(390px,calc(100vw - ' + (size + offset * 2 + 24) + 'px));height:min(600px,calc(100vh - ' + (offset * 2) + 'px));margin-bottom:' + Math.round(size * 0.12) + 'px}' +
+      '.pbody{flex:1;min-height:0;display:flex;flex-direction:column;background:#fff;border:3px solid #1b1230;border-radius:28px;box-shadow:5px 5px 0 #1b1230;overflow:hidden}' +
+      '.panel:after{content:"";position:absolute;bottom:' + Math.round(size * 0.3) + 'px;' + (left ? 'left' : 'right') + ':-13px;width:20px;height:20px;background:#fff;border-' + (left ? 'left' : 'right') + ':3px solid #1b1230;border-' + (left ? 'bottom' : 'top') + ':3px solid #1b1230;transform:rotate(' + (left ? '45' : '45') + 'deg)}' +
       '.open .panel{display:flex}' +
-      '.bar{display:flex;justify-content:space-between;align-items:center;gap:.5rem;background:' + color + ';color:#fff;padding:.4rem .6rem;font:600 14px system-ui,sans-serif}' +
+      '.bar{display:flex;justify-content:space-between;align-items:center;gap:.5rem;background:' + color + ';color:#fff;padding:.3rem .5rem;font:700 15px system-ui,sans-serif}' +
       '.x,.full{background:#fff;color:#1b1230;border:2px solid #1b1230;border-radius:8px;padding:.25rem .6rem;font:600 13px system-ui,sans-serif;cursor:pointer;text-decoration:none}' +
       '.x:focus-visible,.full:focus-visible,.fab:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 6px #1b1230}' +
-      '.panel iframe{flex:1;border:0;width:100%;background:#fff}' +
+      '.pbody iframe{flex:1;border:0;width:100%;background:#fff}' +
       '.fab{display:flex;align-items:center;gap:.5rem;border:3px solid #1b1230;background:' + color + ';color:#fff;border-radius:999px;padding:.35rem .9rem .35rem .35rem;font:600 15px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:3px 3px 0 #1b1230}' +
       '.fab img{width:42px;height:42px;border-radius:50%;background:#fff;border:2px solid #1b1230}' +
       '.btnstyle .char{display:none}.btnstyle .fab{display:flex}.charstyle .fab{display:none}' +
       '.btnstyle.open .fab{display:none}' +
-      '@media (max-width:699px),(max-height:599px){.panel{position:fixed;inset:0;width:100vw;height:100dvh;border-radius:0;border:0;box-shadow:none;z-index:2}.open .char{visibility:hidden}.open .bubble{display:none}}';
+      '@media (max-width:699px),(max-height:599px){.panel{position:fixed;inset:0;width:100vw;height:100dvh;margin:0;z-index:2}.panel:after{display:none}.pbody{border:0;border-radius:0;box-shadow:none}.open .char{visibility:hidden}.open .bubble{display:none}}';
     var box = document.createElement('div'); box.className = 'dock ' + (asButton ? 'btnstyle' : 'charstyle');
 
     // the free-floating character
@@ -92,11 +94,12 @@
     // the chat
     var panel = document.createElement('div'); panel.className = 'panel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Phoenix, a neuro-affirming AI assistant');
     var bar = document.createElement('div'); bar.className = 'bar';
-    var title = document.createElement('span'); title.textContent = 'Phoenix by NeuroHub Community';
+    var title = document.createElement('span'); title.textContent = 'Phoenix';
     var right = document.createElement('span'); right.style.cssText = 'display:flex;gap:.4rem';
-    var full = document.createElement('a'); full.className = 'full'; full.href = origin + '/app/'; full.target = '_blank'; full.rel = 'noopener'; full.textContent = 'Open full app';
+    var full = document.createElement('a'); full.className = 'full'; full.href = origin + '/app/'; full.target = '_blank'; full.rel = 'noopener'; full.textContent = 'Full app';
     var close = document.createElement('button'); close.type = 'button'; close.className = 'x'; close.textContent = 'Minimise'; close.setAttribute('aria-label', 'Minimise Phoenix');
-    right.append(full, close); bar.append(title, right); panel.append(bar);
+    right.append(full, close); bar.append(title, right);
+    var pbody = document.createElement('div'); pbody.className = 'pbody'; pbody.append(bar); panel.append(pbody);
     box.append(panel, charEl, fab);
     root.append(css, box);
     document.body.appendChild(wrap);
@@ -108,7 +111,7 @@
       hit.setAttribute('aria-expanded', String(o)); fab.setAttribute('aria-expanded', String(o));
       if (o) {
         bubble.classList.remove('show');
-        if (!chat) { chat = document.createElement('iframe'); chat.title = 'Phoenix chat'; chat.setAttribute('allow', 'clipboard-write; microphone'); chat.src = origin + '/embed/?h=' + encodeURIComponent(host) + (how === 'auto' ? '&a=1' : ''); panel.append(chat); }
+        if (!chat) { chat = document.createElement('iframe'); chat.title = 'Phoenix chat'; chat.setAttribute('allow', 'clipboard-write; microphone'); chat.src = origin + '/embed/?h=' + encodeURIComponent(host) + (how === 'auto' ? '&a=1' : ''); pbody.append(chat); }
         if (how === 'user') { say('act', 'wave'); remember('open'); }
         setTimeout(function () { try { if (how === 'user') chat.focus(); } catch (e) { close.focus(); } }, 50);
       } else if (how === 'user') { remember('min'); say('act', 'stretch'); hit.focus(); }
@@ -160,8 +163,8 @@
     function greet() { if (asButton || !greeting || isOpen) return; bubble.classList.add('show'); clearTimeout(bubbleTimer); bubbleTimer = setTimeout(function () { bubble.classList.remove('show'); }, 9000); }
     window.PhoenixWidget = { open: function () { open('user'); }, close: function () { shut('user'); }, toggle: toggle };
 
-    var wantOpen = openMode === 'true' ? true : openMode === 'false' ? false : (remembered() !== 'min' && !phone());
-    if (openMode === 'true' && phone()) wantOpen = true;
+    // He starts minimised unless the website asked for the chat to start open (or the visitor already opened it earlier in this visit)
+    var wantOpen = openMode === 'true' ? remembered() !== 'min' : remembered() === 'open';
     if (wantOpen) setOpen(true, 'auto'); else setTimeout(greet, 1600);
     count('embed_load');
   }

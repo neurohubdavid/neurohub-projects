@@ -53,12 +53,27 @@ const step = async (name, fn) => { try { await fn(); ok(name); } catch (e) { fai
 const ctx = await browser.newContext({ viewport: { width: 1100, height: 800 } });
 const page = await ctx.newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
-await page.goto(otherUrl + '/');
+const OPEN = '/?a=' + encodeURIComponent('data-open="true"'); // most checks below want the chat showing; the first one checks the default
+await page.goto(otherUrl + OPEN);
 await page.waitForSelector('[data-phoenix-widget]', { state: 'attached' });
 await page.locator('.hit').waitFor();
 const mascot = page.frameLocator('iframe.mascot'), chat = page.frameLocator('iframe[title="Phoenix chat"]');
 
-await step('one script tag floats an animated Phoenix in the corner, with the chat already open beside her on a computer', async () => {
+await step('by default Phoenix starts minimised, floating and animated, with a greeting; a click on him opens a rounded chat box beside him', async () => {
+  const d = await ctx.newPage(); const dh = []; d.on('request', (r) => { if (r.url().includes('/embed/?')) dh.push(r.url()); });
+  await d.goto(otherUrl + '/'); await d.locator('.hit').waitFor();
+  assert.equal(await d.locator('.panel').isVisible(), false, 'the chat is not showing at first'); assert.equal(await d.locator('.hit').getAttribute('aria-expanded'), 'false');
+  await d.frameLocator('iframe.mascot').locator('.ph svg').waitFor({ timeout: 15000 });
+  await d.waitForFunction(() => document.querySelector('[data-phoenix-widget]').shadowRoot.querySelector('.bubble.show'), null, { timeout: 8000 });
+  assert.equal(dh.length, 0, 'the chat is not even loaded until he is clicked');
+  await d.screenshot({ path: path.join(shots, '40-widget-minimised.png') });
+  await d.locator('.hit').click(); await d.locator('.panel').waitFor();
+  const r = await d.locator('.pbody').evaluate((n) => { const s = getComputedStyle(n); return { radius: parseFloat(s.borderTopLeftRadius), w: n.getBoundingClientRect().width }; }); assert.ok(r.radius >= 24, 'rounded: ' + r.radius);
+  assert.match(await d.locator('.panel').evaluate((n) => getComputedStyle(n, '::after').content), /""|\u0022\u0022|^"?"?$/, 'a little tail points to him');
+  await d.screenshot({ path: path.join(shots, '40b-widget-clicked.png') }); await d.close();
+});
+
+await step('one script tag floats an animated Phoenix in the corner, and the chat can start open beside him (data-open="true")', async () => {
   const hit = page.locator('.hit'); const box = await hit.boundingBox(), vp = page.viewportSize();
   assert.ok(box.x > vp.width * 0.7 && box.y > vp.height * 0.4, 'bottom-right');
   assert.match(await hit.getAttribute('aria-label'), /Chat with Phoenix/); assert.equal(await hit.getAttribute('aria-expanded'), 'true');
@@ -131,7 +146,7 @@ await step('she can be dragged anywhere on the page, and a drag does not toggle 
 });
 
 await step('while minimised she says hello with a bubble, and the bubble opens the chat', async () => {
-  const p2 = await ctx.newPage(); await p2.goto(otherUrl + '/?a=' + encodeURIComponent('data-open="false"'));
+  const p2 = await ctx.newPage(); await p2.goto(otherUrl + '/');
   await p2.locator('.hit').waitFor(); await p2.waitForFunction(() => document.querySelector('[data-phoenix-widget]').shadowRoot.querySelector('.bubble.show'), null, { timeout: 8000 });
   assert.match(await p2.locator('.bubble').textContent(), /Want to talk/); assert.equal(await p2.locator('.panel').isVisible(), false);
   await p2.locator('.bubble').click(); assert.ok(await p2.locator('.panel').isVisible()); await p2.close();
@@ -176,18 +191,20 @@ await step('on a real website name it reports one load, a chat showing at the st
   const b2 = await chromium.launch({ channel: 'msedge', args: ['--disable-features=BlockInsecurePrivateNetworkRequests,LocalNetworkAccessChecks,PrivateNetworkAccessSendPreflights', `--host-resolver-rules=MAP shop.example.com 127.0.0.1:${other.address().port}, MAP phoenix.example.net 127.0.0.1:${phoenix.address().port}`] });
   const c2 = await b2.newContext({ viewport: { width: 1100, height: 800 } });
   await c2.addInitScript(() => Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false })); // automated browsers say they are automated, and the widget (rightly) counts nothing then
-  const p4 = await c2.newPage(); p4.on('console', (m) => { if (process.env.DBG) console.log('   console', m.type(), m.text().slice(0, 200)); }); p4.on('requestfailed', (r) => { if (process.env.DBG) console.log('   failed', r.url().slice(0, 120), r.failure()?.errorText); }); await p4.goto('http://shop.example.com/');
+  const p4 = await c2.newPage(); p4.on('console', (m) => { if (process.env.DBG) console.log('   console', m.type(), m.text().slice(0, 200)); }); p4.on('requestfailed', (r) => { if (process.env.DBG) console.log('   failed', r.url().slice(0, 120), r.failure()?.errorText); }); await p4.goto('http://shop.example.com/?a=' + encodeURIComponent('data-open="true"'));
   await p4.locator('.hit').waitFor(); await p4.frameLocator('iframe[title="Phoenix chat"]').locator('#menu-btn').waitFor({ timeout: 20000 }); for (let i = 0; i < 80 && !hits.some((h) => h.includes('embed_open')); i++) await new Promise((r) => setTimeout(r, 100));
   if (process.env.DBG) { const fr = p4.frames().find((x) => x.url().includes('/embed/?')); console.log('   DBG frame', fr && fr.url(), fr && JSON.stringify(await fr.evaluate(async () => { const a = await import('./js/analytics.js'); const { state } = await import('./js/store.js'); return { allowed: a.analyticsAllowed(state), wd: navigator.webdriver, an: state.prefs.analytics, ls: Object.keys(localStorage) }; }))); }
   const parsed = hits.map((h) => JSON.parse(h));
   const loads = parsed.filter((h) => h.e === 'embed_load'); assert.equal(loads.length, 1); assert.deepEqual([loads[0].v, loads[0].h], ['ok', 'shop.example.com']);
   const opens = parsed.filter((h) => h.e === 'embed_open'); assert.ok(opens.length >= 1 && opens.every((o) => o.v === 'auto'), 'a chat showing by itself is "auto": ' + JSON.stringify(opens) + ' all: ' + JSON.stringify(parsed.map((h) => h.e + ':' + h.v)));
+  hits.length = 0; const p7 = await c2.newPage(); await p7.goto('http://shop.example.com/'); await p7.locator('.hit').waitFor(); await p7.waitForTimeout(2000);
+  assert.deepEqual(hits.map((h) => JSON.parse(h).e), ['embed_load'], 'minimised, only the load is counted, nothing is opened or loaded');
   hits.length = 0; const p6 = await c2.newPage(); await p6.goto('http://shop.example.com/?a=' + encodeURIComponent('data-open="false"')); await p6.locator('.hit').waitFor(); await p6.locator('.hit').click(); await p6.frameLocator('iframe[title="Phoenix chat"]').locator('#menu-btn').waitFor({ timeout: 20000 }); for (let i = 0; i < 80 && !hits.some((h) => h.includes('embed_open')); i++) await new Promise((r) => setTimeout(r, 100));
   assert.ok(hits.map((h) => JSON.parse(h)).some((h) => h.e === 'embed_open' && h.v === 'ok'), 'a visitor opening it is counted');
   await c2.close(); hits.length = 0;
   const dnt = await b2.newContext({ extraHTTPHeaders: { dnt: '1' }, viewport: { width: 1000, height: 700 } });
   await dnt.addInitScript(() => { Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }); Object.defineProperty(Navigator.prototype, 'doNotTrack', { get: () => '1' }); });
-  const p5 = await dnt.newPage(); await p5.goto('http://shop.example.com/'); await p5.locator('.hit').waitFor(); await p5.waitForTimeout(1500);
+  const p5 = await dnt.newPage(); await p5.goto('http://shop.example.com/?a=' + encodeURIComponent('data-open="true"')); await p5.locator('.hit').waitFor(); await p5.waitForTimeout(1500);
   assert.equal(hits.length, 0); await dnt.close(); await b2.close();
 });
 

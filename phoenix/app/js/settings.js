@@ -13,6 +13,7 @@ import { floatSupported, openFloat, setNudges } from './float.js';
 import { accountSection } from './account-ui.js';
 import { wakeSupported, wakeEnabled, wakeListening, enableWake, disableWake, isInstalled } from './wake.js';
 import { voiceAllowed } from './voice-gate.js';
+import { catalogSize, loadCatalog } from './catalog.js';
 import { voiceSupport } from './voice.js';
 import { notifSupport, setReminder, testReminder, downloadIcs } from './reminders.js';
 
@@ -79,6 +80,7 @@ export function mountSettings(container, { focus } = {}) {
 
   // ---------------------------------------------------- neurohubcommunity.org knowledge
   const siteStatus = el('p', { class: 'muted small', 'aria-live': 'polite' });
+  const recStatus = el('p', { class: 'muted small' }); loadCatalog().then(() => { recStatus.textContent = catalogSize() ? `${catalogSize()} guides, courses and products from the permitted websites are built into the app.` : ''; });
   const drawSite = () => { const i = siteInfo(); siteStatus.textContent = i.count ? `${i.articles} articles and pages from neurohubcommunity.org, and Helen Edgar’s Autistic Realms and More Realms websites, used with her permission (${i.source === 'refreshed' ? 'refreshed' : 'built into the app'}${i.syncedAt ? ' on ' + fmtDate(i.syncedAt) : ''}), plus ${i.presentations} sections from NeuroHub’s training presentations and recorded conversations.` : 'Nothing loaded yet.'; };
   loadSite().then(drawSite);
   const refreshBtn = el('button', { class: 'btn btn-sm', onclick: async () => {
@@ -90,6 +92,8 @@ export function mountSettings(container, { focus } = {}) {
   root.append(el('fieldset', {}, el('legend', {}, 'Knowledge from NeuroHub Community and Helen Edgar'), el('div', { class: 'stack' },
     el('p', { class: 'muted small' }, 'Phoenix can draw on NeuroHub Community’s own articles, pages and training presentations when it answers, and link the articles so you can read more. This uses a copy stored in the app, so nothing is sent anywhere when you chat. If you use an online AI, the few relevant passages are sent to it along with your message, like anything else.'),
     toggle('Use NeuroHub articles and presentations', () => state.prefs.useSite, (v) => (state.prefs.useSite = v)),
+    toggle('Suggest helpful guides, courses and products', () => state.prefs.recommend !== false, (v) => (state.prefs.recommend = v), 'Now and then, when something on NeuroHub Community’s or Helen Edgar’s websites really fits what you are dealing with, Phoenix may mention it, with its price if it costs money. These are made by the people behind Phoenix, so it is not an independent recommendation. Never during a hard moment, and at most a couple of things. You can also ask “any resources that could help?”.'),
+    recStatus,
     siteStatus, el('div', { class: 'row' }, refreshBtn))));
 
   // ---------------------------------------------------- accessibility (font, size, spacing, theme, voice)
@@ -131,6 +135,17 @@ export function mountSettings(container, { focus } = {}) {
     el('p', { class: 'muted' }, 'Phoenix is not a therapist, doctor or crisis service, and it cannot diagnose. Nothing it says is medical advice. If you are in danger or thinking of harming yourself, use the red Help button, or call your local emergency number.'),
     el('p', { class: 'muted' }, 'Version 1.2.0'))));
 
+  // On a phone every section folds up under its heading (the one asked for opens), so Settings is a short list, not one long scroll.
+  if (matchMedia('(max-width: 700px)').matches) {
+    const open = { ai: 'ai-section', reminders: 'reminders-section', share: 'share-section', install: 'install-section', account: 'account-section' }[focus];
+    for (const fs of root.querySelectorAll(':scope > fieldset')) {
+      const lg = fs.querySelector(':scope > legend'); if (!lg || fs.classList.contains('toggles')) continue;
+      const expanded = fs.id === open; fs.classList.add('collapsible'); fs.classList.toggle('collapsed', !expanded);
+      lg.setAttribute('role', 'button'); lg.tabIndex = 0; lg.setAttribute('aria-expanded', String(expanded));
+      const flip = () => { const c = fs.classList.toggle('collapsed'); lg.setAttribute('aria-expanded', String(!c)); };
+      lg.addEventListener('click', flip); lg.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
+    }
+  }
   if (focus === 'account') setTimeout(() => acctBox.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
   if (focus === 'ai') requestAnimationFrame(() => aiBox.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   if (focus === 'install') requestAnimationFrame(() => document.getElementById('install-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));

@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { handle } from '../netlify/functions/account.mjs';
 import { handle as aiHandle } from '../netlify/functions/ai.mjs';
+import { handle as adminHandle } from '../netlify/functions/admin.mjs';
 import { buildSystem } from '../app/js/persona.js';
 import { memoryStore } from '../netlify/functions/_lib/kv.mjs';
-import { accountSettings, normaliseEmail, accountId, cleanCode, seal, unseal } from '../netlify/functions/_lib/accounts.mjs';
+import { accountSettings, normaliseEmail, accountId, cleanCode, seal, unseal, roleFor } from '../netlify/functions/_lib/accounts.mjs';
 
 const ORIGIN = 'https://phoenix.neurohubcommunity.org';
 const env = { PHOENIX_DATA_KEY: randomBytes(32).toString('base64') };
@@ -171,4 +172,26 @@ test('Phoenix AI: voice chat needs a signed-in account (the server checks it too
   assert.equal((await ask({ voice: true }, 'x'.repeat(43))).status, 401, 'a made-up token does not count');
   assert.equal((await ask({ voice: true }, j.token)).status, 200, 'signed in, voice chat works');
   assert.equal((await ask({ voice: false })).status, 200);
+});
+
+test('roles: every new sign-up is a User, nobody can make themselves an Admin, and an account can never open the backend', async () => {
+  const t = rig(); const { j } = await t.signIn('newperson@example.com');
+  assert.equal(j.isNew, true); assert.equal(j.role, 'user', 'a new sign-up is a User');
+  const me = await (await t.call('me', { token: j.token })).json(); assert.equal(me.role, 'user');
+  const stored = JSON.parse([...(await dump(t.store))].find(([k]) => k.startsWith('acct:'))[1]); assert.equal(stored.role, 'user');
+  // the sign-in request cannot carry a role, and nothing the page sends changes it
+  const r2 = await t.call('verify', { method: 'POST', body: { email: 'newperson@example.com', code: 'AAAA-AAAA', role: 'admin' } }); assert.equal(r2.status, 400);
+  await t.call('data', { method: 'PUT', token: j.token, body: { data: { role: 'admin', account: { role: 'admin' } }, base: null } });
+  assert.equal((await (await t.call('me', { token: j.token })).json()).role, 'user', 'saved data cannot promote an account');
+  // only the owner can name Admins, by fingerprint, in the server setting
+  const id = accountId(accountSettings(env).idKey, normaliseEmail('newperson@example.com'));
+  assert.equal(roleFor(id, {}), 'user'); assert.equal(roleFor(id, { PHOENIX_ADMIN_ACCOUNTS: 'someoneelse, ' + id }), 'admin'); assert.equal(roleFor(id, { PHOENIX_ADMIN_ACCOUNTS: id.slice(0, 20) }), 'user', 'a part of a fingerprint is not enough');
+  const t2 = rig({ env: { ...env, PHOENIX_ADMIN_ACCOUNTS: id } }); const a = await t2.signIn('newperson@example.com'); assert.equal(a.j.role, 'admin');
+  // the private backend is closed to every account session, User or Admin: it needs the owner's separate backend sign-in
+  for (const tok of [j.token, a.j.token, 'x'.repeat(43)]) {
+    for (const route of ['usage', 'checkins', 'report', 'me']) {
+      const res = await adminHandle(new Request('https://x/api/admin/' + route, { headers: { authorization: 'Bearer ' + tok, cookie: 'phx_admin=' + tok } }), { ip: '7.7.7.7' }, { env: { ADMIN_SESSION_SECRET: 's'.repeat(40), ADMIN_USERS: '{}' }, store: memoryStore() });
+      assert.equal(res.status, 401, route);
+    }
+  }
 });

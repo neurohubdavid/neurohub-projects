@@ -8,10 +8,11 @@
     "private": true,
     "scripts": {
         "web": "node scripts/serve.mjs",
-        "test": "node --test test/core.test.mjs test/site.test.mjs test/admin.test.mjs test/report.test.mjs test/account.test.mjs test/sync.test.mjs test/mood.test.mjs test/wake.test.mjs",
+        "test": "node --test test/core.test.mjs test/site.test.mjs test/admin.test.mjs test/report.test.mjs test/account.test.mjs test/sync.test.mjs test/mood.test.mjs test/wake.test.mjs test/catalog.test.mjs",
         "e2e": "node test/e2e.mjs",
         "sync-site": "node scripts/sync-site.mjs",
-        "build-site": "node scripts/build-site.mjs"
+        "build-site": "node scripts/build-site.mjs",
+    "crawl": "node scripts/crawl-sitemaps.mjs"
     },
     "devDependencies": {
         "@fontsource/lexend": "^5.3.0",

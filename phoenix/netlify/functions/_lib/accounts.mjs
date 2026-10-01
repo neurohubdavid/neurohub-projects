@@ -54,6 +54,14 @@ export function unseal(text, key) {
   return JSON.parse(Buffer.concat([d.update(Buffer.from(o.ct, 'base64')), d.final()]).toString('utf8'));
 }
 
+/** Roles: every new sign-up is a "user". "admin" cannot be chosen by anyone signing up: it is given only to the account fingerprints the owner lists
+ *  in the server setting PHOENIX_ADMIN_ACCOUNTS (see scripts/account-role.mjs). Only an admin can use the private backend. */
+export const ROLES = ['user', 'admin'];
+export function roleFor(id, env = process.env) {
+  const admins = String(env.PHOENIX_ADMIN_ACCOUNTS || '').split(/[\s,]+/).filter(Boolean);
+  return admins.includes(id) ? 'admin' : 'user';
+}
+
 export const bearer = (req) => (/^Bearer\s+([A-Za-z0-9_-]{20,80})$/.exec(req.headers.get('authorization') || '') || [])[1] || '';
 
 /** The account a session token belongs to, or null. Also keeps a used session alive (sliding expiry). */

@@ -9,7 +9,7 @@
 //   POST /api/account/delete     {confirm:"DELETE"}  erases the account and all its data
 // What is stored, and how: see _lib/accounts.mjs (no email address is stored; data is sealed with a server-only key).
 import { openStore, dayOf, bump, dayKeyFor } from './_lib/kv.mjs';
-import { accountSettings, normaliseEmail, accountId, newCode, prettyCode, cleanCode, sha, sameHash, newToken, seal, unseal, bearer, sessionAccount, CODE_MINUTES, CODE_TRIES, SESSION_DAYS, MAX_SESSIONS, MAX_DATA_BYTES } from './_lib/accounts.mjs';
+import { roleFor, accountSettings, normaliseEmail, accountId, newCode, prettyCode, cleanCode, sha, sameHash, newToken, seal, unseal, bearer, sessionAccount, CODE_MINUTES, CODE_TRIES, SESSION_DAYS, MAX_SESSIONS, MAX_DATA_BYTES } from './_lib/accounts.mjs';
 import { signInEmail, sendViaBrevo } from './_lib/mail.mjs';
 
 export const config = { path: '/api/account/*' };
@@ -67,7 +67,7 @@ export async function handle(req, ctx = {}, deps = {}) {
     await store.delete('code:' + id); // a code works once
     let acct = await read('acct:' + id), isNew = false;
     if (!acct) {
-      isNew = true; acct = { created: now.toISOString(), sessions: [] };
+      isNew = true; acct = { created: now.toISOString(), role: 'user', sessions: [] }; // every new sign-up is a user
       try { const n = Number((await stats.get('accounts:total')) || 0); await stats.set('accounts:total', String(n + 1)); } catch { /* counting only */ }
       await note('created');
     }
@@ -77,13 +77,14 @@ export async function handle(req, ctx = {}, deps = {}) {
     while (acct.sessions.length > MAX_SESSIONS) await store.delete('sess:' + acct.sessions.shift()); // the oldest sign-ins end first
     await store.set('acct:' + id, JSON.stringify(acct));
     await note('signin');
-    return json({ ok: true, token, isNew, expires: t + SESSION_DAYS * DAY }, 200, cors);
+    return json({ ok: true, token, isNew, role: roleFor(id, env), expires: t + SESSION_DAYS * DAY }, 200, cors);
   }
 
   // ---------------------------------------------------------------- signed-in requests
   const id = await sessionAccount(store, bearer(req), t);
   if (!id) return json({ error: 'signed_out' }, 401, cors);
   const dkey = 'data:' + id;
+  if (route === 'me' && req.method === 'GET') return json({ ok: true, role: roleFor(id, env) }, 200, cors); // what this account may do: "user", or "admin" (set only by the owner)
 
   if (route === 'data' && req.method === 'GET') {
     const raw = await store.get(dkey); if (!raw) return json({ data: null, updated: null }, 200, cors);

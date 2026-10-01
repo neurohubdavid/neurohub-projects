@@ -32,7 +32,7 @@ export function mountToolkit(container, { navigate, tool = 'home' }) {
   const back = () => el('button', { class: 'btn btn-ghost btn-sm back', onclick: () => navigate('tool:home') }, '← Toolkit');
   if (tool === 'home' || !TOOLS.some((t) => t.id === tool)) {
     container.append(el('div', { class: 'view-title' }, el('h1', {}, 'Toolkit')),
-      el('p', { class: 'muted' }, 'Everything here works without an AI and without internet. Take what helps.'),
+      el('p', { class: 'muted view-intro' }, 'Everything here works without an AI and without internet. Take what helps.'),
       el('div', { class: 'grid' }, TOOLS.map((t) => el('button', { class: 'card tile', onclick: () => navigate('tool:' + t.id) },
         el('span', { class: 'ico', 'aria-hidden': 'true' }, t.icon), el('strong', {}, t.title), el('span', { class: 'muted small' }, t.blurb)))));
     return;

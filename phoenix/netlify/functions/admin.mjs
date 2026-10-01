@@ -71,7 +71,8 @@ export async function handle(req, ctx = {}, deps = {}) {
     for (let i = n - 1; i >= 0; i--) { const day = dayOf(new Date(now.getTime() - i * 86400000)); days.push({ day, counts: await readDayCounts(stats, day), sharedAi: Number((await usage.get(`d:${day}`)) || 0) }); }
     const totals = {}; for (const d of days) for (const [k, v] of Object.entries(d.counts)) totals[k] = (totals[k] || 0) + v;
     const users = usersSummary(await sinceLaunch(stats, now));
-    return json({ generated: now.toISOString(), users, days, totals, sharedAiMonth: Number((await usage.get(`m:${dayOf(now).slice(0, 7)}`)) || 0) });
+    const accountsNow = Number((await stats.get('accounts:total')) || 0);
+    return json({ generated: now.toISOString(), users, days, totals, accountsNow, sharedAiMonth: Number((await usage.get(`m:${dayOf(now).slice(0, 7)}`)) || 0) });
   }
 
   if (route === 'checkins' || route === 'report') {

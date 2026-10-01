@@ -122,7 +122,7 @@ function signedInView(draw) {
   const wrap = el('div', { class: 'stack' });
   const status = el('p', { class: 'small', role: 'status', 'aria-live': 'polite' });
   const synced = () => (a.lastSync ? `Last synced ${fmtDate(a.lastSync, { day: 'numeric', month: 'short' })} at ${fmtTime(a.lastSync)}.` : 'Not synced yet.');
-  status.textContent = `Signed in as ${a.email || 'your account'} on this device. ${a.sync ? synced() : 'Syncing is off.'}`;
+  status.textContent = `Signed in as ${a.email || 'your account'} on this device. Account type: ${a.role === 'admin' ? 'Admin' : 'User'}. ${a.sync ? synced() : 'Syncing is off.'}`;
 
   const syncBtn = el('button', { class: 'btn btn-sm', type: 'button', onclick: async () => { status.textContent = 'Syncing…'; const r = await syncNow(); status.textContent = r.ok ? `Synced. ${synced()}` : r.skipped ? 'Syncing is off.' : 'Could not sync just now. It will try again.'; announce(status.textContent); } }, 'Sync now');
   const syncOn = el('input', { type: 'checkbox', checked: !!a.sync });

@@ -17,7 +17,7 @@ export const FEATURES = [
   'donate_open', 'nudge_shown', 'nudge_dismissed', 'nudge_off', 'ai_on', 'ai_off', 'install_sheet', 'name_given', 'backup_export', 'data_deleted',
   'float_open', 'float_close', 'float_chat', 'float_activity', 'float_nudges_on', 'float_unsupported',
   'account_created', 'account_signin', 'account_signout', 'account_deleted', 'memory_added', 'memory_edited', 'memory_deleted', 'sync_off', 'sync_on',
-  'voice_chat', 'companion_chat_view', 'wake_on', 'wake_off', 'wake_word', 'voice_needs_account',
+  'voice_chat', 'companion_chat_view', 'wake_on', 'wake_off', 'wake_word', 'voice_needs_account', 'recommend_given', 'recommend_asked',
 ];
 // Every event and every allowed value is listed here, so nothing free-form is ever stored.
 export const ALLOWED = {
