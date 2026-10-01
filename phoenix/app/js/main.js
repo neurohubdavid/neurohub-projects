@@ -15,6 +15,7 @@ import { openDonate, checkDonateNudge } from './donate.js';
 import { trackStart, trackFeature, isEmbedded } from './analytics.js';
 import { flushShared } from './share.js';
 import { checkedInToday } from './sixpf.js';
+import { floatSupported, openFloat, closeFloat, floatIsOpen, initFloat, floatPlaceholder, offerFloat } from './float.js';
 
 const NAV = [['chat', 'Chat'], ['checkin', 'Check-in'], ['tools', 'Toolkit'], ['learn', 'Learn'], ['settings', 'Settings']];
 const view = $('#view');
@@ -64,7 +65,7 @@ function render() {
   view.scrollTop = 0;
   drawNav(area);
   document.title = { chat: 'Phoenix', checkin: 'Check-in · Phoenix', tools: 'Toolkit · Phoenix', learn: 'Learn · Phoenix', settings: 'Settings · Phoenix' }[area];
-  if (area === 'chat') mountChat(view, { navigate });
+  if (area === 'chat') { if (floatIsOpen()) floatPlaceholder(view); else mountChat(view, { navigate }); }
   else if (area === 'checkin') mountCheckin(view, { navigate, sub });
   else if (area === 'tools') mountToolkit(view, { navigate, tool: sub || 'home' });
   else if (area === 'learn') mountLearn(view, { navigate, open: sub });
@@ -103,11 +104,6 @@ $('#a11y-btn').addEventListener('click', () => openAccessibility());
 // Alt + A opens accessibility from anywhere.
 document.addEventListener('keydown', (e) => { if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'a') { e.preventDefault(); openAccessibility(); } });
 window.addEventListener('hashchange', () => { if (location.hash !== renderedHash) render(); });
-document.addEventListener('click', (e) => {
-  // External links open outside the app (the desktop app blocks in-app navigation).
-  const a = e.target.closest?.('a[href^="http"]');
-  if (a && globalThis.phoenixNative?.openExternal) { e.preventDefault(); globalThis.phoenixNative.openExternal(a.href); }
-});
 window.addEventListener('beforeunload', flush);
 // Always start on the chat screen, even after a refresh or when a browser restores an old address (for example #/settings).
 // Only a home-screen shortcut or a tapped reminder notification (?source=shortcut / ?source=notify) opens somewhere else.
@@ -118,6 +114,18 @@ window.addEventListener('beforeunload', flush);
 render();
 if (!state.onboarded) welcome();
 
+// Floating Phoenix: a small always-on-top window that keeps her beside the person's work while this window is minimised.
+if (floatSupported() && !isEmbedded()) {
+  const fb = $('#float-btn');
+  fb.hidden = false;
+  const drawFloatBtn = () => { fb.textContent = floatIsOpen() ? 'Bring Phoenix back' : 'Float'; fb.setAttribute('aria-pressed', String(floatIsOpen())); };
+  fb.addEventListener('click', () => (floatIsOpen() ? closeFloat() : openFloat({ navigate })));
+  bus.on('float', () => { drawFloatBtn(); if (parse().area === 'chat') render(); });
+  drawFloatBtn();
+  initFloat({ navigate });
+  setTimeout(() => offerFloat($('#float-invite-host'), { navigate }), 2500);
+}
+
 initReminders();
 trackStart();
 flushShared(); // if sharing is on and an earlier check-in could not be sent, try again now
@@ -126,7 +134,7 @@ setTimeout(() => checkDonateNudge($('#donate-nudge-host')), 4000);
 navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.type === 'navigate' && /^#\//.test(e.data.hash || '')) location.hash = e.data.hash; });
 // A deep link like #/checkin/new opened from a notification or shortcut is honoured by the router above.
 
-// Installable and offline-capable web version (skipped inside the desktop app, which already ships every file).
+// Installable and offline-capable web version.
 // Inside the floating widget on another website there is nothing to install, so none of this runs.
 if (isEmbedded()) {
   document.documentElement.classList.add('embedded'); $('#install-btn')?.setAttribute('hidden', '');
@@ -139,5 +147,5 @@ wireInstallButton($('#install-btn'));
 wireInstallInvite($('#install-invite-host'));
 }
 // Coming from the "Install" button on the website (?install=1): take them straight to the install steps for their device.
-if (/[?&]install=1\b/.test(location.search) && !isStandalone() && !globalThis.phoenixNative) setTimeout(() => openInstallSheet(), 700);
+if (/[?&]install=1\b/.test(location.search) && !isStandalone()) setTimeout(() => openInstallSheet(), 700);
 if (!isEmbedded()) registerServiceWorker();

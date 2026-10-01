@@ -74,9 +74,9 @@ function config(state) {
 }
 export { config as providerConfig };
 
-/** Where the shared AI lives: this site when Phoenix runs in a browser, NeuroHub's address when it runs as the desktop app. */
+/** Where the shared AI lives: this site when Phoenix runs in a browser, and NeuroHub's address otherwise. */
 export const SHARED_HOME = 'https://phoenix.neurohubcommunity.org';
-export const sharedBase = () => globalThis.phoenixNative?.apiBase || (typeof location !== 'undefined' && /^https?:/.test(location.protocol) ? location.origin : SHARED_HOME); // apiBase is only set by the test harness
+export const sharedBase = () => (typeof location !== 'undefined' && /^https?:/.test(location.protocol) ? location.origin : SHARED_HOME);
 /** Is the shared AI switched on, and how many messages does this person have left today? Returns null if it cannot be reached. */
 export async function sharedStatus() {
   try { const res = await fetcher(`${sharedBase()}/api/ai`, { method: 'GET' }); if (!res.ok) return null; const j = await res.json(); return typeof j.ai === 'boolean' ? j : null; } catch { return null; }

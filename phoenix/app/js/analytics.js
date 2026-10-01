@@ -4,23 +4,19 @@
 // Global Privacy Control, when developing locally, or when the app is being driven by a test. Explained on the website's privacy page.
 // (store.js is loaded on demand, so this file can be imported anywhere, including tests.)
 
-const HOME = 'https://phoenix.neurohubcommunity.org';
 const isWeb = typeof location !== 'undefined' && /^https?:/.test(location.protocol);
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore */ } };
 
-export const analyticsAllowed = (state) => state.prefs.analytics !== false && navigator.doNotTrack !== '1' && !navigator.globalPrivacyControl && !navigator.webdriver && !globalThis.phoenixNative?.noAnalytics && !(isWeb && /^(localhost|127\.|\[::1\])/.test(location.hostname));
+export const analyticsAllowed = (state) => state.prefs.analytics !== false && navigator.doNotTrack !== '1' && !navigator.globalPrivacyControl && !navigator.webdriver && !(isWeb && /^(localhost|127\.|\[::1\])/.test(location.hostname));
 
 export async function track(e, v) {
   try {
     const { state } = await import('./store.js');
     if (!analyticsAllowed(state)) return;
-    const url = `${isWeb ? location.origin : HOME}/api/hit`, body = JSON.stringify({ e, v: String(v) });
-    if (isWeb && navigator.sendBeacon) navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
-    else { // the desktop app: go through its main process, since the app's own address is not allowed to call NeuroHub's server directly
-      const { netFetch } = await import('./net.js');
-      netFetch(url, { method: 'POST', body, headers: { 'content-type': 'application/json' } }).catch(() => {});
-    }
+    const url = `${location.origin}/api/hit`, body = JSON.stringify({ e, v: String(v) });
+    if (navigator.sendBeacon) navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+    else fetch(url, { method: 'POST', body, headers: { 'content-type': 'application/json' }, keepalive: true }).catch(() => {});
   } catch { /* counting must never break the app */ }
 }
 
@@ -42,7 +38,7 @@ export function trackFeature(name) { track('feature', name); }
 /** Counts a message sent from the floating widget on a website. */
 export function trackEmbedChat() { if (isEmbedded()) trackHost('embed_chat', 'ok'); }
 
-const displayMode = () => (globalThis.phoenixNative ? 'desktop' : isEmbedded() ? 'embed' : matchMedia('(display-mode: standalone)').matches || navigator.standalone === true ? 'installed' : 'browser');
+const displayMode = () => (isEmbedded() ? 'embed' : matchMedia('(display-mode: standalone)').matches || navigator.standalone === true ? 'installed' : 'browser');
 
 /** Once per session: an app open; once ever per device: a first open; once a day: which kind of AI is in use. */
 export async function trackStart() {

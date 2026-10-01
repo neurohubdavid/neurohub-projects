@@ -4,8 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { handle as hit, namesFor } from '../netlify/functions/hit.mjs';
-import { handle as goFn } from '../netlify/functions/go.mjs';
-import { handle as dlFn, pick } from '../netlify/functions/download.mjs';
+import { handle as dlFn } from '../netlify/functions/download.mjs';
 import { memoryStore as kvMem, readDayCounts, isBot } from '../netlify/functions/_lib/kv.mjs';
 
 const hitReq = (body, headers = {}) => new Request('https://phoenix.neurohubcommunity.org/api/hit', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'Mozilla/5.0 (Linux; Android 14) Chrome/150 Mobile', ...headers }, body: JSON.stringify(body) });
@@ -37,18 +36,18 @@ test('analytics: Do Not Track, Global Privacy Control, foreign sites and junk se
   assert.equal((await hit(new Request('https://x/api/hit'), {}, { store })).status, 405);
 });
 
-test('downloads: /go counts and redirects only to real Phoenix installers', async () => {
+test('get Phoenix: /download (and the old installer links) go to the one-tap install page and are counted', async () => {
   const store = kvMem(), now = () => new Date('2026-10-01T10:00:00Z');
-  const ok = await goFn(new Request('https://x/go?f=Phoenix-Setup-1.2.0-x64.exe&v=1.2.0', { headers: { 'user-agent': 'Windows NT 10.0' } }), { geo: { country: { code: 'GB' } } }, { store, now });
-  assert.equal(ok.status, 302);
-  assert.equal(ok.headers.get('location'), 'https://github.com/neurohubdavid/neurohub-projects/releases/download/phoenix-v1.2.0/Phoenix-Setup-1.2.0-x64.exe');
-  const day = await readDayCounts(store, '2026-10-01');
-  assert.equal(day['e:download'], 1); assert.equal(day['plat:download:windows'], 1);
-  for (const bad of ['f=evil.exe&v=1.2.0', 'f=Phoenix-Setup-1.2.0-x64.exe&v=../../x', 'f=../Phoenix-Setup-1.2.0-x64.exe&v=1.2.0', 'f=https://evil.example/x&v=1.2.0', 'f=Phoenix-Setup-1.2.0-x64.exe.html&v=1.2.0', '']) {
-    assert.equal((await goFn(new Request('https://x/go?' + bad), {}, { store })).status, 404, bad);
+  const win = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/150', droid = 'Mozilla/5.0 (Linux; Android 14) Chrome/150 Mobile';
+  for (const [p, ua] of [['/download', win], ['/download', droid], ['/download/windows', win], ['/go?f=Phoenix-Setup-1.2.0-x64.exe&v=1.2.0', win]]) {
+    const r = await dlFn(new Request('https://phoenix.neurohubcommunity.org' + p, { headers: { 'user-agent': ua } }), {}, { store, now });
+    assert.equal(r.status, 302, p); assert.equal(r.headers.get('location'), '/app/?install=1', p);
   }
-  const dnt = await goFn(new Request('https://x/go?f=Phoenix-Setup-1.2.0-x64.exe&v=1.2.0', { headers: { dnt: '1' } }), {}, { store: kvMem() });
-  assert.equal(dnt.status, 302, 'Do Not Track still gets the download, just uncounted');
+  assert.equal((await readDayCounts(store, '2026-10-01'))['e:install_click:landing'], 4);
+  const dnt = await dlFn(new Request('https://x/download', { headers: { dnt: '1', 'user-agent': win } }), {}, { store: kvMem(), now });
+  assert.equal(dnt.status, 302, 'Do Not Track still gets there, just uncounted');
+  const bot = kvMem(); await dlFn(new Request('https://x/download', { headers: { 'user-agent': 'Mozilla/5.0 (compatible; bingbot/2.0)' } }), {}, { store: bot, now });
+  assert.deepEqual(await readDayCounts(bot, '2026-10-01'), {}, 'bots leave no trace');
 });
 
 test('website: sitemap, robots, canonical, structured data and one h1 per page', () => {
@@ -112,10 +111,7 @@ test('counting: events that arrive together are all kept, and crawlers and link 
   assert.equal(isBot('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0 Safari/537.36 Edg/150.0'), false);
   const s2 = kvMem();
   await hit(hitReq({ e: 'first_open', v: 'browser' }, { 'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' }), ctx, { store: s2, now });
-  await goFn(new Request('https://x/go?f=Phoenix-Setup-1.2.0-x64.exe&v=1.2.0', { headers: { 'user-agent': 'Mozilla/5.0 (compatible; bingbot/2.0)' } }), ctx, { store: s2, now });
   assert.deepEqual(await readDayCounts(s2, '2026-10-01'), {}, 'bots leave no trace');
-  const bot = await goFn(new Request('https://x/go?f=Phoenix-Setup-1.2.0-x64.exe&v=1.2.0', { headers: { 'user-agent': 'python-requests/2.31' } }), ctx, { store: s2, now });
-  assert.equal(bot.status, 302, 'a scanner still gets redirected, just not counted');
 });
 test('analytics: feature use is counted by name only, from a fixed list', async () => {
   const store = kvMem(), now = () => new Date('2026-10-01T10:00:00Z');
@@ -153,23 +149,6 @@ test('widget analytics: the list of websites cannot grow without limit', async (
   assert.equal(Object.keys(day).filter((k) => k.startsWith('embedhost:')).length, 300);
 });
 
-test('download link: picks the right file for the device, counts it, and sends everyone else to the installable app', async () => {
-  const win = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/150', droid = 'Mozilla/5.0 (Linux; Android 14) Chrome/150 Mobile', linux = 'Mozilla/5.0 (X11; Linux x86_64) Firefox/150', mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) Safari/17';
-  assert.deepEqual([win, droid, linux, mac, ''].map(pick), ['windows', 'app', 'linux', 'app', 'app']);
-  const store = kvMem(), now = () => new Date('2026-10-01T10:00:00Z'), deps = { store, now, version: '1.2.0' };
-  const get = (path, ua) => dlFn(new Request('https://phoenix.neurohubcommunity.org' + path, { headers: { 'user-agent': ua } }), { geo: { country: { code: 'GB' } } }, deps);
-  const w = await get('/download', win);
-  assert.equal(w.status, 302); assert.equal(w.headers.get('location'), 'https://github.com/neurohubdavid/neurohub-projects/releases/download/phoenix-v1.2.0/Phoenix-Setup-1.2.0-x64.exe');
-  assert.equal((await get('/download/linux', win)).headers.get('location').endsWith('Phoenix-Linux-1.2.0-x64.tar.gz'), true);
-  assert.equal((await get('/download/windows-arm', win)).headers.get('location').endsWith('Phoenix-Setup-1.2.0-arm64.exe'), true);
-  assert.equal((await get('/download/portable', win)).headers.get('location').endsWith('Phoenix-Portable-1.2.0-x64.exe'), true);
-  const phone = await get('/download', droid);
-  assert.equal(phone.headers.get('location'), '/app/?install=1');
-  assert.equal((await get('/download/nothing-here', win)).status, 404);
-  const day = await readDayCounts(store, '2026-10-01');
-  assert.equal(day['e:download'], 4); assert.equal(day['plat:download:windows'], 4); assert.equal(day['e:install_click:landing'], 1);
-});
-
 test('widget: one script tag, a real button, an iframe that only loads when asked for, and its own framing rules', () => {
   execFileSync(process.execPath, ['scripts/build-site.mjs'], { cwd: new URL('..', import.meta.url), stdio: 'pipe' });
   const rd = (p) => readFileSync(new URL('../site/' + p, import.meta.url), 'utf8');
@@ -183,5 +162,5 @@ test('widget: one script tag, a real button, an iframe that only loads when aske
   assert.match(h, /\/app\/\*\n(?:.*\n)*?\s+Content-Security-Policy: frame-ancestors 'self'/);
   assert.ok(rd('_redirects').includes('/embed/* /app/:splat 200'));
   assert.match(rd('add-to-your-site/index.html'), /embed\.js/);
-  assert.ok(rd('index.html').includes('href="/download"'));
+  assert.ok(!rd('index.html').includes('/go?f='), 'no installer download links remain on the front page'); assert.ok(!/Phoenix-Setup|Windows installer|\.exe/.test(rd('index.html')), 'the front page does not offer the old desktop installers');
 });

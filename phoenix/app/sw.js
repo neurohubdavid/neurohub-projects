@@ -9,7 +9,7 @@ const FILES = [
   'js/main.js', 'js/util.js', 'js/store.js', 'js/crisis.js', 'js/safety.js', 'js/persona.js', 'js/net.js', 'js/providers.js', 'js/offline.js',
   'js/kb.js', 'js/kb-books.js', 'js/voice.js', 'js/chat.js', 'js/tools.js', 'js/learn.js', 'js/settings.js', 'js/mascot.js', 'js/theme-boot.js',
   'js/site.js', 'js/guard.js', 'js/accessibility.js', 'js/search.js', 'js/site-parse.js', 'js/install.js',
-  'js/kb-training.js', 'js/sixpf.js', 'js/charts.js', 'js/checkin.js', 'js/reminders.js', 'js/reports.js', 'js/donate.js', 'js/donate-links.js', 'js/provider-policy.js','js/analytics.js', 'js/share.js', 'js/share-core.js', 'js/reports-ui.js', 'js/pdf.js', 'vendor/pdf-lib.esm.min.js', 'data/assessments.json', 'icons/nh-logo.jpg',
+  'js/kb-training.js', 'js/sixpf.js', 'js/charts.js', 'js/checkin.js', 'js/reminders.js', 'js/reports.js', 'js/donate.js', 'js/float.js', 'js/donate-links.js', 'js/provider-policy.js','js/analytics.js', 'js/share.js', 'js/share-core.js', 'js/reports-ui.js', 'js/pdf.js', 'vendor/pdf-lib.esm.min.js', 'data/assessments.json', 'icons/nh-logo.jpg',
   'data/crisis.json', 'data/site.json', 'data/presentations.json',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
   'fonts/atkinson-hyperlegible-latin-400-normal.woff2', 'fonts/atkinson-hyperlegible-latin-400-italic.woff2',

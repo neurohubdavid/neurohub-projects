@@ -1,7 +1,7 @@
 // Settings: about me, how Phoenix talks, connecting an AI, appearance, your data.
 import { el, toast, modal, download, dayKey, fmtDate } from './util.js';
 import { trackFeature } from './analytics.js';
-import { state, save, flush, resetAll, exportData, importData, storageInfo, revealStorage } from './store.js';
+import { state, save, flush, resetAll, exportData, importData } from './store.js';
 import { sharedStatus } from './providers.js';
 import { loadCrisis } from './crisis.js';
 import { loadSite, siteInfo, refreshSite } from './site.js';
@@ -9,7 +9,8 @@ import { applyLook, buildAccessibilityPanel } from './accessibility.js';
 import { installPanel } from './install.js';
 import { openDonate } from './donate.js';
 import { startSharing, stopSharing } from './share.js';
-import { isDesktop, notifSupport, setReminder, testReminder, downloadIcs } from './reminders.js';
+import { floatSupported, openFloat, setNudges } from './float.js';
+import { notifSupport, setReminder, testReminder, downloadIcs } from './reminders.js';
 
 const NEUROTYPES = ['Autistic', 'ADHD', 'AuDHD', 'Dyslexic', 'Dyspraxic', 'Dyscalculic', 'Tourettic', 'OCD', 'Voice-hearer', 'Exploring / not sure', 'Multiply neurodivergent'];
 
@@ -95,7 +96,8 @@ export function mountSettings(container, { focus } = {}) {
   root.append(el('fieldset', {}, el('legend', {}, 'Where are you?'), el('p', { class: 'muted small' }, 'Used only to show the right helplines and emergency number. It never leaves this device.'), sel));
 
   // ---------------------------------------------------- install as an app (web version only)
-  if (!globalThis.phoenixNative) root.append(el('fieldset', { id: 'install-section' }, el('legend', {}, 'Install as an app'), installPanel()));
+  root.append(floatSection());
+  root.append(el('fieldset', { id: 'install-section' }, el('legend', {}, 'Install as an app'), installPanel()));
 
   // ---------------------------------------------------- data
   const file = el('input', { type: 'file', accept: 'application/json,.json', hidden: true });
@@ -105,7 +107,7 @@ export function mountSettings(container, { focus } = {}) {
   });
   root.append(el('fieldset', {}, el('legend', {}, 'Your data'),
     el('p', { class: 'muted small' }, 'Everything Phoenix remembers (chats, check-ins, tasks and settings) lives only on this device. There is no account and no server, so nobody else can read it, and nobody can recover it for you. Back it up if it matters.'),
-    storageInfo() ? el('p', { class: 'small' }, 'Saved as a file on this computer, with a daily backup kept for a week: ', el('code', {}, storageInfo().file), ' ', el('button', { class: 'btn btn-sm', onclick: () => revealStorage() }, 'Show in folder')) : el('p', { class: 'muted small' }, 'Saved in this browser. Your browser has been asked to keep it, but clearing site data would erase it, so download a backup now and then.'),
+    el('p', { class: 'muted small' }, 'Saved in this browser, on this device. Your browser has been asked to keep it, but clearing site data would erase it, so download a backup now and then.'),
     toggle('Remind me about donating, at most once a week', () => state.prefs.donateReminders !== false, (v) => (state.prefs.donateReminders = v), 'A small card, never a notification. It waits a week after you start, stays away after hard days, and rests for a month if you open the donate options.'),
     toggle('Share anonymous usage counts with NeuroHub', () => state.prefs.analytics !== false, (v) => (state.prefs.analytics = v), 'Counts app opens, installs and which kind of AI is chosen, as daily totals. No identifier, no cookies, and nothing you write or check in. It helps NeuroHub keep Phoenix free. Off means nothing is sent.'),
     el('div', { class: 'row' },
@@ -170,21 +172,17 @@ function drawShare(box) {
 function drawReminders(box) {
   const r = state.reminders;
   const status = el('p', { class: 'small', 'aria-live': 'polite' });
-  const desktop = isDesktop();
   const drawStatus = (extra = '') => {
     const perm = notifSupport();
     status.textContent = extra || (!r.enabled ? 'The reminder is off.'
-      : desktop ? `Phoenix will remind you each day at ${r.time} if you have not checked in${r.launch ? ', even after you restart your computer' : ''}. It stays in the system tray when you close the window, and Quit in the tray menu stops it.`
       : perm === 'granted' ? `Phoenix will send a notification each day at ${r.time} if you have not checked in. Web browsers only allow this while the app is open or installed, so for a reminder you can rely on, also add the daily event to your calendar.`
-      : perm === 'denied' ? 'Notifications are blocked for Phoenix in this browser. Allow them in the site settings, or use the calendar event below.'
-      : 'Notifications are not available here. Use the calendar event below for a reminder on any device.');
+      : perm === 'denied' ? `Your reminder is set for ${r.time}, but notifications are blocked for Phoenix in this browser. Allow them in the site settings, or use the calendar event below.`
+      : `Your reminder is set for ${r.time}, but notifications are not available here. Use the calendar event below for a reminder on any device.`);
   };
   const timeIn = el('input', { class: 'input', type: 'time', value: r.time, 'aria-label': 'Reminder time', style: { maxWidth: '9rem' } });
   timeIn.addEventListener('change', async () => { const res = await setReminder({ time: timeIn.value }); if (!res.ok) toast(res.message, { icon: '⚠️' }); drawStatus(res.message); });
   const on = el('input', { type: 'checkbox', checked: !!r.enabled });
   on.addEventListener('change', async () => { const res = await setReminder({ enabled: on.checked }); trackFeature(state.reminders.enabled ? 'reminders_on' : 'reminders_off'); on.checked = state.reminders.enabled; drawStatus(res.message); });
-  const launch = el('input', { type: 'checkbox', checked: !!r.launch });
-  launch.addEventListener('change', async () => { await setReminder({ launch: launch.checked }); drawStatus(); });
   const seeSel = el('select', { class: 'input', 'aria-label': 'Can the AI see my check-ins?' },
     el('option', { value: 'no' }, 'No, never (recommended)'), el('option', { value: 'yes' }, 'Yes, Phoenix AI may read a short summary'));
   seeSel.value = state.prefs.aiSeesCheckins === 'yes' ? 'yes' : 'no'; seeSel.addEventListener('change', () => { state.prefs.aiSeesCheckins = seeSel.value; save(); });
@@ -193,7 +191,6 @@ function drawReminders(box) {
     el('p', { class: 'muted small' }, 'A short daily check-in across six areas of your life shows how you are doing over time, and what might help. A reminder can nudge you once a day. It never repeats, never scolds and is easy to switch off.'),
     el('div', {}, el('label', { class: 'switch' }, on, el('span', {}, 'Remind me every day to check in'))),
     el('label', { class: 'field' }, 'Reminder time', timeIn),
-    desktop ? el('div', {}, el('label', { class: 'switch' }, launch, el('span', {}, 'Start Phoenix quietly when I sign in, so the reminder still works')), el('div', { class: 'muted small' }, 'Only takes effect in the installed app.')) : null,
     status,
     el('div', { class: 'row' },
       el('button', { class: 'btn btn-sm', onclick: async () => { const ok = await testReminder(); toast(ok ? 'Test notification sent.' : 'Could not show a notification here. The calendar event still works.', { icon: ok ? '🔔' : '⚠️' }); } }, 'Send a test notification'),
@@ -203,6 +200,23 @@ function drawReminders(box) {
 }
 
 // ---------------------------------------------------------------- the AI: Phoenix's own, or none
+/** Floating Phoenix: how it works, a button to start it, and gentle check-ins (off unless chosen). */
+function floatSection() {
+  const supported = floatSupported();
+  const nudge = el('select', { class: 'input', 'aria-label': 'Check on me while Phoenix is floating' },
+    [['0', 'Never (recommended)'], ['20', 'Every 20 minutes'], ['30', 'Every 30 minutes'], ['45', 'Every 45 minutes'], ['60', 'Every hour']].map(([v, l]) => el('option', { value: v }, l)));
+  nudge.value = String(state.float?.nudgeMins || 0);
+  nudge.addEventListener('change', () => setNudges(nudge.value));
+  return el('fieldset', { id: 'float-section' }, el('legend', {}, 'Floating Phoenix'),
+    el('div', { class: 'stack' },
+      el('p', {}, 'Phoenix can float in a small window on top of everything else while you work, to help with what you are doing or just keep you company. Press Float, then minimise Phoenix. She stays beside your work, and comes home when you come back.'),
+      el('p', { class: 'muted small' }, 'Phoenix cannot see your screen. Tell her what you are doing in the floating window and she will help with that. It is the same chat, saved on this device.'),
+      supported
+        ? el('div', { class: 'row-wrap' }, el('button', { class: 'btn btn-primary', type: 'button', onclick: () => openFloat() }, 'Float Phoenix now'), el('span', { class: 'muted small' }, 'Your browser only lets this start when you press the button.'))
+        : el('div', { class: 'notice' }, 'Floating Phoenix needs Microsoft Edge or Google Chrome on a computer. Firefox, Safari and phones cannot float windows on top of other programs. On those, install Phoenix as an app and keep it open beside your work.'),
+      supported ? el('label', { class: 'stack' }, el('span', {}, 'Gentle check-ins while she is floating'), nudge, el('span', { class: 'muted small' }, 'A small message in the floating window now and then. You can answer, ignore it, or stop it any time.')) : null));
+}
+
 function drawAI(box) {
   box.querySelectorAll(':scope > :not(legend)').forEach((n) => n.remove());
   const p = state.provider;

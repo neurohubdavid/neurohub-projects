@@ -1,6 +1,6 @@
-// End-to-end test: launches the real desktop app and drives it like a person would.
+// End-to-end test: opens Phoenix in a real browser (Microsoft Edge) and drives it like a person would, against a pretend Phoenix AI.
 //   node test/e2e.mjs        (screenshots land in test/shots)
-import { _electron as electron } from 'playwright-core';
+import { chromium } from 'playwright-core';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,15 +10,22 @@ import { fileURLToPath } from 'node:url';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shots = path.join(root, 'test', 'shots');
 fs.mkdirSync(shots, { recursive: true });
-process.env.PHOENIX_NO_ANALYTICS = '1'; // tests never send usage counts to the live site
 const userData = fs.mkdtempSync(path.join(root, 'test', '.userdata-'));
 
-// A fake Phoenix AI service (what netlify/functions/ai.mjs does): GET reports availability, POST streams Anthropic-style events.
+// A pretend Phoenix server: it serves the app, and does what netlify/functions/ai.mjs does: GET reports availability, POST streams Anthropic-style events.
+const appDir = path.join(root, 'app');
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.json': 'application/json', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml' };
 const seen = [];
 const sse = (o) => 'data: ' + JSON.stringify(o) + '\n\n';
 const mock = http.createServer((req, res) => {
   let b = ''; req.on('data', (c) => (b += c));
   req.on('end', () => {
+    const u = new URL(req.url, 'http://x');
+    if (u.pathname === '/api/hit') { res.statusCode = 204; return res.end(); }
+    if (!u.pathname.startsWith('/api/')) { // the app itself
+      let rel = decodeURIComponent(u.pathname).replace(/^\/app/, ''); if (rel === '' || rel.endsWith('/')) rel += 'index.html';
+      return fs.readFile(path.join(appDir, rel), (e, d) => e ? (res.statusCode = 404, res.end()) : (res.writeHead(200, { 'content-type': types[path.extname(rel)] || 'application/octet-stream' }), res.end(d)));
+    }
     if (req.url === '/api/ai' && req.method === 'GET') return res.end(JSON.stringify({ ai: true, left: 18, perDay: 20 }));
     if (req.url === '/api/ai' && req.method === 'POST') {
       const j = JSON.parse(b); seen.push(j);
@@ -42,14 +49,13 @@ const mock = http.createServer((req, res) => {
   });
 }).listen(0, '127.0.0.1');
 await new Promise((r) => mock.on('listening', r));
-const mockUrl = `http://127.0.0.1:${mock.address().port}`;
+const base = `http://127.0.0.1:${mock.address().port}/app/`;
+const launch = async () => { const ctx = await chromium.launchPersistentContext(userData, { channel: 'msedge', viewport: { width: 1000, height: 800 } }); const p = ctx.pages()[0] || await ctx.newPage(); await p.goto(base); return { ctx, p }; };
 
-const app = await electron.launch({ args: [root, `--user-data-dir=${userData}`], env: { ...process.env, ELECTRON_ENABLE_LOGGING: '0', PHOENIX_API_BASE: mockUrl } });
-const page = await app.firstWindow();
+const { ctx: app, p: page } = await launch();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-await page.setViewportSize({ width: 1000, height: 800 });
 await page.waitForSelector('.modal');
 
 const step = async (name, fn) => { try { await fn(); console.log('  ok  ', name); } catch (e) { console.log('  FAIL', name, '\n      ', e.message.split('\n').slice(0, 7).join('\n       ')); await page.screenshot({ path: path.join(shots, 'FAIL-' + name.replace(/\W+/g, '-') + '.png') }); failed++; } };
@@ -57,8 +63,8 @@ let failed = 0;
 const send = async (text) => { await page.fill('textarea[aria-label="Message Phoenix"]', text); await page.click('button:has-text("Send")'); };
 const lastMsg = () => page.locator('.msg.assistant').last();
 
-await step('tests never send usage counts to the live site', async () => {
-  assert.equal(await page.evaluate(() => window.phoenixNative.noAnalytics), true);
+await step('a browser driven by a test is never counted in the usage numbers', async () => {
+  assert.equal(await page.evaluate(async () => (await import('./js/analytics.js')).analyticsAllowed({ prefs: {} })), false);
 });
 
 await step('welcome screen and first start', async () => {
@@ -291,7 +297,7 @@ await step('documents: ratings saved to Insights, then again later, show the cha
 await step('donate: the weekly reminder appears only when due, is kind, and can be switched off', async () => {
   const out = await page.evaluate(async () => {
     const { state } = await import('./js/store.js'); const { checkDonateNudge } = await import('./js/donate.js');
-    const host = document.getElementById('donate-nudge-host'); host.textContent = '';
+    const host = document.getElementById('donate-nudge-host'); host.textContent = ''; document.querySelectorAll('.install-invite').forEach((n) => n.remove());
     const day = 86400000; state.donate = { firstSeen: Date.now() - 20 * day, lastShown: 0, lastClick: 0 };
     state.chats.forEach((c) => c.messages.forEach((m) => { delete m.crisis; })); state.wellness = []; state.prefs.donateReminders = true;
     await checkDonateNudge(host); const shown = !!host.querySelector('.donate-nudge');
@@ -406,9 +412,9 @@ await step('daily check-in: the chat answers about check-ins from your own numbe
   await page.waitForSelector('#reminders-section');
   await page.selectOption('select[aria-label="Can the AI see my check-ins?"]', 'no'); // then the built-in reply answers, not the AI
   await page.check('#reminders-section .switch input');
-  await page.waitForFunction(() => /remind you each day at/.test(document.querySelector('#reminders-section [aria-live]')?.textContent || ''));
+  await page.waitForFunction(() => /(remind you each day at|send a notification each day at|reminder is set for|Notifications are)/.test(document.querySelector('#reminders-section [aria-live]')?.textContent || ''));
   await page.fill('#reminders-section input[type=time]', '08:30'); await page.locator('#reminders-section input[type=time]').dispatchEvent('change');
-  await page.waitForFunction(() => /08:30/.test(document.querySelector('#reminders-section [aria-live]')?.textContent || ''));
+  await page.waitForFunction(async () => (await import('./js/store.js')).state.reminders.time === '08:30');
   await page.screenshot({ path: path.join(shots, '24-settings-reminders.png') });
   await page.click('#nav button:has-text("Chat")');
   await page.click('button:has-text("New chat")');
@@ -419,38 +425,13 @@ await step('daily check-in: the chat answers about check-ins from your own numbe
 
 await step('data persists across restart', async () => {
   await app.close();
-  const app2 = await electron.launch({ args: [root, `--user-data-dir=${userData}`] });
-  const p2 = await app2.firstWindow();
+  const { ctx: app2, p: p2 } = await launch();
   await p2.waitForSelector('.chat-list');
   assert.equal(await p2.locator('.modal').count(), 0, 'welcome should not show again');
   assert.ok((await p2.locator('.msg').count()) > 0, 'chat history restored');
   await p2.click('#nav button:has-text("Toolkit")'); await p2.click('.tile:has-text("Energy check-in")');
   assert.ok((await p2.locator('.bars .bar').count()) >= 1, 'check-in history restored');
   await app2.close();
-});
-
-await step('persistence: data lives in a real file and survives wiped browser storage', async () => {
-  const file = path.join(userData, 'phoenix-data.json');
-  assert.ok(fs.existsSync(file), 'data file exists');
-  const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
-  assert.ok(saved.chats.length > 0 && saved.checkins.length > 0 && saved.profile.name === 'Sam');
-  assert.ok(fs.existsSync(path.join(userData, 'backups')), 'daily backup exists');
-  fs.rmSync(path.join(userData, 'Local Storage'), { recursive: true, force: true }); // simulate cleared browser data
-  const app3 = await electron.launch({ args: [root, `--user-data-dir=${userData}`] });
-  const p3 = await app3.firstWindow();
-  await p3.waitForSelector('.chat-list');
-  assert.equal(await p3.locator('.modal').count(), 0, 'not treated as a first run');
-  assert.ok((await p3.locator('.msg').count()) > 0, 'chat history restored from the file');
-  await p3.click('#nav button:has-text("Settings")');
-  await p3.waitForSelector('code:has-text("phoenix-data.json")');
-  // corrupt the file: the app must fall back to the .bak copy rather than lose everything
-  await app3.close();
-  fs.writeFileSync(file, '{ not json');
-  const app4 = await electron.launch({ args: [root, `--user-data-dir=${userData}`] });
-  const p4 = await app4.firstWindow();
-  await p4.waitForSelector('.chat-list');
-  assert.ok((await p4.locator('.msg').count()) > 0, 'recovered from backup after corruption');
-  await app4.close();
 });
 
 const real = errors.filter((e) => !/GPU|Autofill|net::ERR|Failed to load resource/i.test(e));

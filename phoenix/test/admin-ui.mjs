@@ -20,7 +20,7 @@ const nowDate = new Date();
 // six people who chose to share, over a few weeks
 const day = (n) => new Date(nowDate.getTime() - n * 86400000).toISOString().slice(0, 10);
 for (let i = 0; i < 6; i++) for (const [n, v] of [[40, 2], [28, 2 + (i % 2)], [14, 3], [3, 4 + (i % 2 ? 0 : -1)]]) await share(new Request('http://x/api/share/checkin', { method: 'POST', body: JSON.stringify({ pid: String(i).padStart(32, 'a'), at: day(n), s: [v, v, v - 1 || 1, v, v, v, v] }) }), {}, { store: checkins });
-await usage.set('day:' + day(0) + ':feature', JSON.stringify({ 'e:feature': 9, 'e:feature:checkin_done': 4, 'e:feature:chat_ai': 3, 'e:feature:tool_breathing': 2, 'e:feature:chat_limit': 1, 'e:feature:donate_open': 2 }));
+await usage.set('day:' + day(0) + ':feature', JSON.stringify({ 'e:feature': 9, 'e:feature:checkin_done': 4, 'e:feature:chat_ai': 3, 'e:feature:tool_breathing': 2, 'e:feature:chat_limit': 1, 'e:feature:donate_open': 2, 'e:feature:float_open': 3, 'e:feature:float_chat': 6, 'e:feature:float_activity': 2 }));
 await usage.set('day:' + day(0) + ':embed_load', JSON.stringify({ 'e:embed_load': 5, 'e:embed_load:ok': 5, 'embedhost:embed_load:example-charity.org.uk': 3, 'embedhost:embed_load:shop.example.com': 2, 'country:embed_load:GB': 5 }));
 await usage.set('day:' + day(0) + ':embed_open', JSON.stringify({ 'e:embed_open': 2, 'embedhost:embed_open:example-charity.org.uk': 2 }));
 await usage.set('day:' + day(0) + ':ai_event', JSON.stringify({ 'e:ai_event': 5, 'e:ai_event:reply': 4, 'e:ai_event:limit_person': 1 }));
@@ -107,6 +107,7 @@ const txt = await page.textContent('#app');
 assert.match(txt, /How people use the app/); assert.match(txt, /Phoenix AI \(last 30 days\)/); assert.match(txt, /Donations \(last 30 days\)/); assert.match(txt, /Website widget \(last 30 days\)/);
 assert.equal(await usersKpi('Daily check-ins completed'), '4'); assert.equal(await usersKpi('Messages answered by Phoenix AI'), '3');
 assert.equal(await usersKpi('AI replies given'), '4'); assert.equal(await usersKpi('Daily limit reached (a person)'), '1');
+assert.match(txt, /Floating Phoenix \(last 30 days\)/); assert.equal(await usersKpi('Floating window opened'), '3'); assert.equal(await usersKpi('Messages sent while floating'), '6'); assert.equal(await usersKpi('Told Phoenix what they are doing'), '2');
 assert.equal(await usersKpi('Widget loads'), '5'); assert.equal(await usersKpi('Widget opened'), '2'); assert.equal(await usersKpi('Websites using it'), '2'); assert.equal(await usersKpi('Open rate'), '40%');
 assert.equal(await usersKpi('Thank-you page views (completed)'), '1'); assert.equal(await usersKpi('Donate window opened in the app'), '2');
 assert.match(txt, /Websites with the widget[\s\S]*example-charity\.org\.uk[\s\S]*3[\s\S]*shop\.example\.com[\s\S]*2/);

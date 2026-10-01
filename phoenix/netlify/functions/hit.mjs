@@ -15,6 +15,7 @@ export const FEATURES = [
   'tool_breathing', 'tool_grounding', 'tool_sensory', 'tool_checkin', 'tool_focus', 'tool_tasks', 'tool_scripts', 'tool_plan',
   'learn_open', 'share_on', 'share_off', 'reminders_on', 'reminders_off', 'a11y_open', 'help_open',
   'donate_open', 'nudge_shown', 'nudge_dismissed', 'nudge_off', 'ai_on', 'ai_off', 'install_sheet', 'name_given', 'backup_export', 'data_deleted',
+  'float_open', 'float_close', 'float_chat', 'float_activity', 'float_nudges_on', 'float_unsupported',
 ];
 // Every event and every allowed value is listed here, so nothing free-form is ever stored.
 export const ALLOWED = {

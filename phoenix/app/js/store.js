@@ -43,6 +43,7 @@ export const DEFAULTS = () => ({
   donate: { firstSeen: 0, lastShown: 0, lastClick: 0 }, // timestamps for the weekly donate reminder
   wellness: [],            // 6PF-Wellness daily check-ins, see sixpf.js
   reports: [],              // reflection documents (6PF assessment, burnout plan, identity workbook), see reports.js
+  float: { activity: '', nudgeMins: 0, invited: false }, // the floating Phoenix window, see float.js
   reminders: { enabled: false, time: '10:00', lastShown: '', snoozedUntil: 0, launch: false },
   provider: {
     kind: 'shared',         // shared (Phoenix AI, run on NeuroHub's own Claude account, limited per day) | offline (the built-in helper, no AI). Nothing else exists.
@@ -64,16 +65,11 @@ function merge(base, extra) {
   return out;
 }
 
-// Where the data lives. In the desktop app the source of truth is a file in the person's app-data folder (see
-// electron/main.cjs), which survives updates, reinstalls and cleared browser data; localStorage is only a mirror (the
-// theme is applied from it before first paint). In a browser, localStorage is used, and the browser is asked to keep it.
-const disk = globalThis.phoenixNative?.storage;
+// Where the data lives: in this browser (localStorage), on this device only. The browser is asked to keep it.
 
 function load() {
   try {
-    const fromDisk = disk?.loadSync?.();
-    if (fromDisk) return cleaned(merge(DEFAULTS(), JSON.parse(fromDisk)));
-    const raw = localStorage.getItem(KEY); // first run of the desktop app, or the web version
+    const raw = localStorage.getItem(KEY);
     if (raw) return cleaned(merge(DEFAULTS(), JSON.parse(raw)));
   } catch { /* corrupt or blocked storage: start fresh */ }
   return DEFAULTS();
@@ -91,21 +87,17 @@ export function save() {
 export function flush() {
   clearTimeout(saveTimer);
   const text = JSON.stringify(state);
-  try { disk?.save(text); } catch (e) { console.warn('Could not save to disk', e); }
-  try { localStorage.setItem(KEY, text); } catch (e) { if (!disk) console.warn('Could not save', e); }
+  try { localStorage.setItem(KEY, text); } catch (e) { console.warn('Could not save', e); }
   bus.emit('change');
 }
-window.addEventListener('pagehide', () => { clearTimeout(saveTimer); try { disk?.saveSync?.(JSON.stringify(state)); } catch { /* ignore */ } flush(); });
-// Ask the browser not to evict our data when disk space is low (web version; the desktop app writes a real file).
+window.addEventListener('pagehide', () => { clearTimeout(saveTimer); flush(); });
+// Ask the browser not to evict our data when disk space is low.
 try { navigator.storage?.persist?.(); } catch { /* not supported */ }
 
-export const storageInfo = () => { try { return disk?.info?.() || null; } catch { return null; } };
-export const revealStorage = () => disk?.reveal?.();
 
 export function resetAll() {
   try { localStorage.removeItem(KEY); localStorage.removeItem('phoenix.tool.plan'); localStorage.removeItem('phoenix.site'); } catch { /* ignore */ }
   Object.assign(state, DEFAULTS());
-  try { disk?.wipe?.(); } catch { /* ignore */ }
   flush();
 }
 

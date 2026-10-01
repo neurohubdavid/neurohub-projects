@@ -1,14 +1,12 @@
 // Voice for Phoenix, using the browser's built-in speech recognition and speech synthesis.
 // - Opt-in only. Nothing listens or speaks until the person turns it on.
-// - Speaking replies out loud works almost everywhere, including the desktop app, and stays on the device.
+// - Speaking replies out loud works almost everywhere and stays on the device.
 // - Listening (speech to text) works in Chrome, Edge and Safari. In Chrome and Edge the audio is sent to Google or
-//   Microsoft to be transcribed. It does NOT work inside the desktop app (Electron has no speech service), so there
-//   the app hides the microphone and suggests Windows dictation (Win + H) or macOS dictation instead.
+//   Microsoft to be transcribed. Browsers without it do not get a microphone button.
 import { plain } from './util.js';
 
 const SR = globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
-const inDesktopApp = !!globalThis.phoenixNative;
-export const voiceSupport = { stt: !!SR && !inDesktopApp, tts: 'speechSynthesis' in globalThis, desktop: inDesktopApp };
+export const voiceSupport = { stt: !!SR, tts: 'speechSynthesis' in globalThis, desktop: false };
 
 // ---------------------------------------------------------------- speech to text
 export function createRecognizer({ lang = 'en-GB', onStart, onInterim, onEnd, onError }) {

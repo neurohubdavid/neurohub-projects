@@ -20,12 +20,14 @@ function donateStrip() {
 const ORG = { '@type': 'Organization', '@id': `${ORIGIN}/#org`, name: 'NeuroHub Community Ltd', url: 'https://neurohubcommunity.org', logo: `${ORIGIN}/assets/icon-512.png` };
 
 export const FAQ = [
+  ['Can Phoenix float on my screen while I work?', 'Yes, on a computer with Microsoft Edge or Google Chrome. Install Phoenix, press Float, then minimise it: Phoenix stays in a small window on top of your other programs, animated and ready to help with what you are doing or just chat. Tell her what you are working on, because she cannot see your screen. When you come back to Phoenix, she comes home too. Phones, Firefox and Safari cannot float windows over other programs.'],
+  ['Is there a Windows or Mac program to download?', 'No. Phoenix is an app you install straight from your browser in one tap, with no store and no installer file. It gets its own icon and window, works offline, and updates itself. Press Install Phoenix on this page.'],
   ['Is Phoenix really free?', 'Yes. Phoenix is free to use, with no account, no ads and no subscription, and you do not need an AI account or key. It is made by NeuroHub Community, an Autistic-led social enterprise. Every AI reply is paid for by NeuroHub from our own Claude account, so the AI has a daily limit for each person, and donations (once or monthly, any amount) are what keep it live.'],
   ['Is Phoenix private?', 'Your chats, daily check-ins and settings are stored on your own device, not on a NeuroHub server, and there is no account. Phoenix starts with its free AI, so your messages go to NeuroHub’s server and on to Claude to write a reply, without being stored or read; you can switch to the built-in helper in Settings, and then nothing leaves your device. NeuroHub counts anonymous visits, installs and downloads, with no cookies and nothing that identifies you.'],
   ['Is Phoenix therapy, or a crisis service?', 'No. Phoenix is a computer program, not a therapist, doctor or crisis service, and it cannot diagnose you. It offers information, calming tools and a place to think things through. A red Help button is always visible and shows helplines and emergency numbers for your country. If you are in danger, call your local emergency number.'],
   ['What does neuro-affirming mean here?', 'Phoenix treats Autistic, ADHD, AuDHD and other neurodivergent minds as different, not broken. It never tells you to mask more, comply, or try harder. It looks first at the environment, the demands and the people around you, and it draws on the Six-Point Framework and other ideas developed by NeuroHub Community and by Autistic writers.'],
   ['What can Phoenix help with?', 'Autistic burnout and overwhelm, sensory overload, meltdowns and shutdowns, getting started on tasks (executive function), masking, energy and daily routines, and understanding your own patterns. There is a daily wellbeing check-in with charts over time, a calming toolkit (breathing, grounding, sensory reset, focus timer, task breaker, scripts for hard messages), and guided documents such as a burnout recovery plan that you can download as a PDF.'],
-  ['Does Phoenix work offline?', 'Yes. Once installed, the built-in helper, the toolkit, your check-ins and the learning topics all work without internet. An AI that runs on your own computer also works offline. Online AI options need a connection.'],
+  ['Does Phoenix work offline?', 'Yes. Once installed, the built-in helper, the toolkit, your check-ins and the learning topics all work without internet. Phoenix AI needs internet, because the replies are written online. Without internet the built-in helper still answers. need a connection.'],
   ['Which AI does Phoenix use?', 'Nothing to set up: Phoenix’s free AI, run by NeuroHub Community with a daily limit, writes replies using Claude, on NeuroHub’s own account, so there is nothing to set up and nothing to pay. If you would rather keep everything on your device, use the built-in helper (no AI). Phoenix answers medicine and crisis questions itself instead of leaving them to the model.'],
   ['How do I install Phoenix on my phone or computer?', 'Open Phoenix in your browser and press Install. On Android use Chrome and choose Install app. On iPhone or iPad use Safari, tap Share, then Add to Home Screen. On Windows, Mac and Linux use Edge or Chrome and press the Install button or the install icon in the address bar. Nothing to download and no app store.'],
   ['Is Phoenix only for Autistic people?', 'No. It was designed for Autistic people first and works for ADHD, AuDHD, dyslexic, dyspraxic and other neurodivergent people, and for anyone exploring whether these describe them. You can tell Phoenix how you like to be spoken to in Settings.'],
@@ -131,7 +133,7 @@ ${body}
 `;
 }
 
-export function pages({ version, downloads, hasDownloads, esc }) {
+export function pages({ version, esc }) {
   const app = { '@type': 'SoftwareApplication', '@id': `${ORIGIN}/#app`, name: 'Phoenix', alternateName: 'Phoenix neuro-affirming AI assistant', url: ORIGIN + '/', applicationCategory: 'HealthApplication', applicationSubCategory: 'Neurodivergent wellbeing support', operatingSystem: 'Web, Android, iOS, Windows, macOS, Linux, ChromeOS', softwareVersion: version, inLanguage: 'en-GB', isAccessibleForFree: true, offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP' }, publisher: { '@id': `${ORIGIN}/#org` }, image: `${ORIGIN}/assets/og-image.png`, screenshot: [`${ORIGIN}/assets/og-image.png`], description: 'A free, private, neuro-affirming AI assistant for Autistic, ADHD and AuDHD people, with daily check-ins, burnout and overwhelm support, and calming tools. Installs as an app on any device.', featureList: ['Neuro-affirming AI assistant', 'Daily wellbeing check-in with charts over time', 'Burnout recovery plan and self-reflection documents as PDF', 'Breathing, grounding and sensory reset tools', 'Works offline', 'Accessibility settings: fonts, spacing, colours, voice', 'Free Claude-powered AI, kept live by donations', 'No account, data stored on your device'] };
   const site = { '@type': 'WebSite', '@id': `${ORIGIN}/#site`, url: ORIGIN + '/', name: 'Phoenix by NeuroHub Community', inLanguage: 'en-GB', publisher: { '@id': `${ORIGIN}/#org` } };
   const faq = { '@type': 'FAQPage', mainEntity: FAQ.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
@@ -152,9 +154,9 @@ export function pages({ version, downloads, hasDownloads, esc }) {
   </div>
 
   <section id="install" class="card install-hero" aria-labelledby="install-h">
-    <h2 id="install-h">Install Phoenix on this device</h2>
-    <p>One tap. No app store, no account, no download to hunt for. It gets its own icon, works offline, and keeps your data on your device. Version ${esc(version)}, free.</p>
-    <p><a id="install-now" class="btn btn-primary btn-huge" href="/app/?install=1">Install Phoenix</a> <a class="btn" href="/app/">Open in the browser instead</a> <a class="btn" href="/download" rel="nofollow">Download the app now</a></p>
+    <h2 id="install-h">Install Phoenix as an app</h2>
+    <p>One tap. No app store, no account, no installer to download. Phoenix gets its own icon and window, works offline, updates itself, and keeps your data on your device. On a computer it can also <strong>float on your screen beside your work</strong> when you minimise it. Free.</p>
+    <p><a id="install-now" class="btn btn-primary btn-huge" href="/app/?install=1">Install Phoenix</a> <a class="btn" href="/app/">Open in the browser instead</a> </p>
     <div id="install-help" aria-live="polite"></div>
     <details class="steps"><summary>Step-by-step help for each device</summary>
       <details open><summary>Windows, Mac, Linux, Chromebook (Edge or Chrome)</summary><p>Press <strong>Install Phoenix</strong> above, then <strong>Install</strong> in the box your browser shows. Or use the install icon at the right of the address bar, or Edge’s <strong>Settings and more (…) → Apps → Install this site as an app</strong>. Afterwards find Phoenix in your Start menu or Applications.</p></details>
@@ -165,16 +167,13 @@ export function pages({ version, downloads, hasDownloads, esc }) {
     </details>
   </section>
 ${donateStrip()}
-${hasDownloads ? `  <details class="card dl-more"><summary><strong>Prefer a classic Windows or Linux program? (optional downloads)</strong></summary>
-${downloads}
-  <div class="notice"><strong>Windows shows a warning?</strong> These early builds are not yet code-signed, so Windows SmartScreen may say “Windows protected your PC”. Choose <strong>More info</strong>, then <strong>Run anyway</strong>. You can check the file is genuine by comparing its SHA-256 checksum (above) with the one you get from PowerShell: <code>Get-FileHash .\\Phoenix-Setup-${esc(version)}-x64.exe</code></div>
-  </details>` : ''}
 
   <h2>What Phoenix helps with</h2>
   <p>Phoenix is an AI assistant built around how many Autistic, ADHD and AuDHD people actually experience the world. It can help you make sense of <strong>autistic burnout</strong>, <strong>sensory overload</strong>, <strong>meltdowns and shutdowns</strong>, <strong>masking</strong>, low energy and the difficulty of getting started, and it offers practical, low-demand steps instead of advice to push harder.</p>
   <div class="grid">
     <div class="card"><h3>Neuro-affirming</h3><p>Built on the Six-Point Framework and other ideas from NeuroHub Community. It treats neurodivergence as difference, not deficit, and never tells you to mask more, comply, or “try harder”.</p></div>
     <div class="card"><h3>Daily check-in</h3><p>A two-minute wellbeing check-in across six areas of life, with charts that show how you are doing over time, gentle advice, and an optional daily reminder.</p></div>
+    <div class="card"><h3>Floats beside your work</h3><p>Install Phoenix on a computer, press <strong>Float</strong>, then minimise it. A small animated Phoenix stays on top of your other windows to help with what you are doing, or just keep you company. She only floats while Phoenix is minimised, and she cannot see your screen unless you tell her.</p></div>
     <div class="card"><h3>Calming toolkit</h3><p>Breathing, grounding, sensory reset, a focus timer with company, a task breaker, scripts for hard messages and a personal support plan. All work with no AI and no internet.</p></div>
     <div class="card"><h3>Your own documents</h3><p>Fill in a burnout recovery plan, a six-area self-assessment or an identity workbook with Phoenix’s help, then download it as a PDF to keep or share.</p></div>
     <div class="card"><h3>Free AI, no setup</h3><p>Chat with Phoenix’s free Claude-powered AI straight away, or keep everything on your device with the built-in helper. <strong>Every reply costs NeuroHub money</strong>, so donations of any size, once or monthly, keep the AI live.</p></div>
@@ -182,7 +181,7 @@ ${downloads}
   </div>
 
   <h2>Your data stays yours</h2>
-  <p>Phoenix has no account and stores your chats, check-ins and settings on your own device. You can download a backup, restore one, or delete everything from Settings. An AI on your own computer never sends anything anywhere. <a href="/privacy/">Read the plain-language privacy page</a>.</p>
+  <p>Phoenix has no account and stores your chats, check-ins and settings on your own device. You can download a backup, restore one, or delete everything from Settings. The built-in helper never sends anything anywhere. <a href="/privacy/">Read the plain-language privacy page</a>.</p>
 
   <h2>Safety</h2>
   <p>Phoenix is a computer program. It is not a therapist, doctor or crisis service, and it cannot diagnose. The red <strong>Help</strong> button is always visible and shows helplines and emergency numbers for your country. If you are in danger, call your local emergency number.</p>

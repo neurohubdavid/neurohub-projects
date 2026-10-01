@@ -1,5 +1,4 @@
 // The daily check-in reminder. Phoenix has no server, so reminders come from three places, best available first:
-//  - desktop app: the app itself, even when its window is closed (see electron/main.cjs)
 //  - installed web app: a notification when the browser allows background checks, and whenever Phoenix is open
 //  - any device: a repeating daily event you can add to your own calendar (an .ics file), which always works
 // The person chooses the time, can turn it off, and gets at most one reminder a day. None of this leaves the device.
@@ -7,17 +6,14 @@ import { state, save } from './store.js';
 import { dayKey, download } from './util.js';
 import { checkedInToday, reminderMessage, dailyIcs } from './sixpf.js';
 
-const native = globalThis.phoenixNative?.reminders || null;
 const CFG_CACHE = 'phoenix-config';
 let timer = null;
 
-export const isDesktop = () => !!native;
-export const notifSupport = () => (native ? 'desktop' : typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
+export const notifSupport = () => (typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
 export const validTime = (t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 
 async function pushConfig() {
   const r = state.reminders;
-  if (native) { native.set({ enabled: r.enabled, time: r.time, launch: r.launch, doneDay: checkedInToday(state.wellness) ? dayKey(new Date()) : '' }); return; }
   try { // the service worker reads this when the browser wakes it up in the background
     const c = await caches.open(CFG_CACHE);
     await c.put('config.json', new Response(JSON.stringify({ enabled: r.enabled, time: r.time, shownDay: r.lastShown, doneDay: checkedInToday(state.wellness) ? dayKey(new Date()) : '' }), { headers: { 'content-type': 'application/json' } }));
@@ -38,7 +34,7 @@ export async function setReminder({ enabled, time, launch }) {
   if (launch != null) r.launch = !!launch;
   let message = '';
   if (enabled != null) {
-    if (enabled && !native) {
+    if (enabled) {
       if (typeof Notification === 'undefined') message = 'This browser cannot show notifications, so Phoenix will remind you inside the app. To get a reminder anywhere, add the daily event to your calendar.';
       else if (Notification.permission === 'default') { try { await Notification.requestPermission(); } catch { /* ignore */ } }
       if (typeof Notification !== 'undefined' && Notification.permission === 'denied') message = 'Notifications are blocked for Phoenix in this browser. You can allow them in the site settings, or add the daily event to your calendar instead.';
@@ -58,7 +54,6 @@ async function show(title, body) {
 }
 
 export async function testReminder() {
-  if (native) { native.test(); return true; }
   if (typeof Notification === 'undefined') return false;
   if (Notification.permission === 'default') { try { await Notification.requestPermission(); } catch { /* ignore */ } }
   if (Notification.permission !== 'granted') return false;
@@ -68,7 +63,7 @@ export async function testReminder() {
 /** Called while the web app is open: one gentle notification a day, after the chosen time, only if not checked in yet. */
 async function tick() {
   const r = state.reminders;
-  if (native || !r.enabled || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  if (!r.enabled || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   const now = new Date(), [h, m] = r.time.split(':').map(Number), today = dayKey(now);
   if (r.lastShown === today || checkedInToday(state.wellness, now) || now.getHours() * 60 + now.getMinutes() < h * 60 + m) return;
   if (document.visibilityState === 'visible' && document.hasFocus()) { r.lastShown = today; save(); pushConfig(); return; } // they are here already, the chat banner covers it
@@ -77,14 +72,13 @@ async function tick() {
 }
 function startTicker() {
   clearInterval(timer); timer = null;
-  if (native || !state.reminders.enabled) return;
+  if (!state.reminders.enabled) return;
   timer = setInterval(tick, 60000); tick();
 }
 
-/** Boot: sync settings to the desktop scheduler or service worker, and start the in-app ticker. */
+/** Boot: sync settings to the service worker, and start the in-app ticker. */
 export function initReminders() {
   pushConfig(); startTicker();
-  globalThis.phoenixNative?.onNavigate?.((hash) => { location.hash = hash; });
   globalThis.__reminders = { tick, state: () => ({ ...state.reminders }), pushConfig }; // test hook
 }
 /** After a check-in: tell the scheduler so today's reminder is skipped. */

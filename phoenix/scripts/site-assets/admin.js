@@ -171,6 +171,11 @@
       fg.append(tbl('Toolkit use', tools.sort(function (a, b) { return b[1] - a[1]; })), tbl('Settings choices', [['Switched Phoenix AI on', s30(F('ai_on'))], ['Switched to the built-in helper', s30(F('ai_off'))], ['Daily reminders on', s30(F('reminders_on'))], ['Daily reminders off', s30(F('reminders_off'))], ['Check-in sharing on', s30(F('share_on'))], ['Check-in sharing off', s30(F('share_off'))], ['Accessibility panel opened', s30(F('a11y_open'))], ['Install help opened', s30(F('install_sheet'))], ['Backups downloaded', s30(F('backup_export'))], ['Everything deleted', s30(F('data_deleted'))]]));
       body.append(fg);
 
+      body.append(el('h2', {}, 'Floating Phoenix (last 30 days)'));
+      body.append(el('p', { 'class': 'muted' }, 'The small always-on-top window that keeps Phoenix beside people while the main window is minimised (Edge and Chrome on computers). Opens are people who pressed Float.'));
+      body.append(el('div', { 'class': 'kpis' }, [kpi('Floating window opened', s30(F('float_open'))), kpi('Closed (back to main window)', s30(F('float_close'))), kpi('Messages sent while floating', s30(F('float_chat'))), kpi('Told Phoenix what they are doing', s30(F('float_activity'))), kpi('Turned gentle check-ins on', s30(F('float_nudges_on'))), kpi('Tried it where it is not supported', s30(F('float_unsupported'))), kpi('Installed as an app (30 days)', s30('e:installed')), kpi('Install clicks (30 days)', s30('e:install_click'))]));
+      body.append(bars('Floating window opened per day', perDay(F('float_open'))), bars('Installs as an app per day', perDay('e:installed')));
+
       body.append(el('h2', {}, 'Phoenix AI (last 30 days)'));
       var ai = function (n) { return s30('e:ai_event:' + n); };
       body.append(el('div', { 'class': 'kpis' }, [kpi('AI replies given', ai('reply')), kpi('Daily limit reached (a person)', ai('limit_person')), kpi('Daily limit reached (everyone)', ai('limit_everyone')), kpi('Claude errors', ai('upstream_error')), kpi('Asked while switched off', ai('off')), kpi('Replies this month', d.sharedAiMonth || 0), kpi('Average replies per day', Math.round(ai('reply') / Math.max(days.length, 1)))]));

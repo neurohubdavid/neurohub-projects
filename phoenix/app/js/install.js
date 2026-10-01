@@ -1,17 +1,15 @@
 // Installing the web version as an app (PWA), and telling people when a new version is ready.
 //  - Chrome, Edge, Android, Samsung Internet: the browser offers an install prompt, which we save and show as an Install button.
 //  - iPhone and iPad (Safari) and Mac Safari: no prompt exists, so we show the exact steps instead.
-//  - Inside the desktop app there is nothing to install, so all of this stays hidden.
 import { el, toast, modal } from './util.js';
 import { trackFeature } from './analytics.js';
 import { track } from './analytics.js';
 
-const desktopApp = !!globalThis.phoenixNative;
 let deferred = null;
 const listeners = new Set();
 const notify = () => listeners.forEach((f) => f());
 
-export const isStandalone = () => desktopApp || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: minimal-ui)').matches || navigator.standalone === true;
+export const isStandalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: minimal-ui)').matches || navigator.standalone === true;
 export const canPrompt = () => !!deferred;
 export const onInstallStateChange = (f) => { listeners.add(f); return () => listeners.delete(f); };
 
@@ -20,7 +18,6 @@ const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' 
 const isSafari = /^((?!chrome|android|crios|fxios|edg).)*safari/i.test(ua);
 
 export function initInstall() {
-  if (desktopApp) return;
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; notify(); });
   window.addEventListener('appinstalled', () => { deferred = null; track('installed', 'pwa'); notify(); toast('Phoenix is installed. Find it in your apps.', { icon: '✅', ms: 4000 }); });
   matchMedia('(display-mode: standalone)').addEventListener?.('change', notify);
@@ -47,8 +44,7 @@ export function installPanel() {
   const box = el('div', { class: 'stack' });
   const draw = () => {
     box.textContent = '';
-    if (desktopApp) { box.append(el('p', {}, 'You are already using the Phoenix desktop app. Nothing to install.')); return; }
-    if (isStandalone()) { box.append(el('p', {}, '✅ Phoenix is installed and running as an app on this device. It works offline.')); return; }
+      if (isStandalone()) { box.append(el('p', {}, '✅ Phoenix is installed and running as an app on this device. It works offline.')); return; }
     if (canPrompt()) box.append(el('p', {}, 'Install Phoenix so it opens in its own window, works offline, and sits with your other apps.'), el('button', { class: 'btn btn-primary', onclick: () => promptInstall() }, 'Install Phoenix'));
     else if (isIOS) box.append(el('p', {}, el('strong', {}, 'On iPhone or iPad: '), 'open this page in Safari, tap the Share button (a square with an arrow), then choose ', el('strong', {}, 'Add to Home Screen'), '.'));
     else if (isSafari) box.append(el('p', {}, el('strong', {}, 'On Mac Safari: '), 'choose File, then ', el('strong', {}, 'Add to Dock'), '.'));
@@ -70,7 +66,7 @@ export function installPanel() {
 
 /** Registers the service worker and tells the person when a new version is waiting. */
 export function registerServiceWorker() {
-  if (desktopApp || !('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return;
+  if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) return;
   navigator.serviceWorker.register('sw.js').then((reg) => {
     const offer = (worker) => {
       const t = el('div', { class: 'toast' }, el('span', {}, 'A new version of Phoenix is ready. '), el('button', { class: 'btn btn-sm btn-primary', onclick: () => worker.postMessage('skipWaiting') }, 'Update now'));
@@ -98,7 +94,7 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* ignore 
 
 /** A calm, dismissible card offering to install, shown when the browser is ready and the app is not installed. */
 export function wireInstallInvite(host) {
-  if (desktopApp || !host) return;
+  if (!host) return;
   const sync = () => {
     host.textContent = '';
     if (isStandalone() || !canPrompt() || lsGet(INVITE_KEY) === 'no') return;
@@ -125,7 +121,7 @@ export async function installChecks() {
 /** A simple full-screen sheet: one big button where the browser can install, the exact steps where it cannot. Used when arriving from the website's Install button. */
 export function openInstallSheet() {
   trackFeature('install_sheet');
-  if (desktopApp || isStandalone()) return;
+  if (isStandalone()) return;
   const body = el('div', { class: 'stack' });
   let m = null, off = null;
   const draw = () => {

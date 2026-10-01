@@ -19,6 +19,9 @@ let go = () => {};            // navigation callback supplied by main.js
 let aiNoteEl, footEl, mascot, statusEl, listEl, inputEl, sendBtn, micBtn, chipsEl, pillEl, root;
 let busy = false, listening = false, speaking = false, tempState = null, abortCtl = null, rec = null, handsFreeActive = false, lastViaVoice = false, emptyTurns = 0;
 let beatTimer = null;
+let compact = false; // true while Phoenix is in the small floating window (float.js)
+/** Called by float.js: the chat shows shorter suggestions and tells the AI what the person is doing. */
+export function setChatCompact(on) { compact = !!on; }
 
 const speaker = createSpeaker({
   getSettings: () => state.prefs,
@@ -137,6 +140,7 @@ function turnOnSharedAI() {
 }
 
 function chipsFor() {
+  if (compact) return aiActive() ? ['Help me get started', 'I am stuck', 'Stay with me while I work', 'I need a break', 'I just want to talk'] : ['I am overwhelmed', 'I can’t start my task', 'What can you do?'];
   return aiActive()
     ? ['I am overwhelmed', 'How have I been doing this week?', 'Help me get started on something', 'Explain masking to me', 'I just want to talk']
     : ['I am overwhelmed', 'How have I been doing this week?', 'What is monotropism?', 'I can’t start my task', 'What can you do?'];
@@ -253,7 +257,7 @@ export async function send(text, { viaVoice = false } = {}) {
       if (crisis || emergency) return; // the vetted reply above is the whole answer; nothing clever to add
       const prev = currentChat().messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.content || '';
       await loadSite();
-      trackFeature('chat_helper'); trackEmbedChat();
+      trackFeature('chat_helper'); trackEmbedChat(); if (compact) trackFeature('float_chat');
       const r = offlineReply(text, { name: state.profile.name, aiConfigured: false, lastAssistant: prev, siteHits: state.prefs.useSite ? (q) => siteHits(q, 2) : null });
       await sleep(prefersReducedMotion() ? 0 : 350);
       const { m, node } = addMessage('assistant', '', { actions: r.actions });
@@ -294,7 +298,7 @@ export async function send(text, { viaVoice = false } = {}) {
     await loadSite();
     const prevUser = currentChat().messages.filter((m) => m.role === 'user').slice(-2, -1)[0]?.content || '';
     const sb = state.prefs.useSite ? siteBlock(`${text} ${prevUser}`) : '';
-    const system = buildSystem({ profile: state.profile, prefs: state.prefs, crisisBlock: block, crisisFlag: crisis, siteBlock: [topicNotes, sb].filter(Boolean).join('\n\n'), small, wellnessBlock: aiMaySeeCheckins() ? [summaryForAI(state.wellness), assessmentSummaryForAI(state.reports)].filter(Boolean).join('\n') : '' });
+    const system = buildSystem({ profile: state.profile, prefs: state.prefs, crisisBlock: block, crisisFlag: crisis, activity: compact ? state.float?.activity : '', siteBlock: [topicNotes, sb].filter(Boolean).join('\n\n'), small, wellnessBlock: aiMaySeeCheckins() ? [summaryForAI(state.wellness), assessmentSummaryForAI(state.reports)].filter(Boolean).join('\n') : '' });
     const history = currentChat().messages.filter((m) => !m.crisis && m.content && (m.role === 'user' || m.role === 'assistant')).slice(-20).map(({ role, content }) => ({ role, content }));
     while (history.length && history[0].role !== 'user') history.shift();
 
@@ -303,7 +307,7 @@ export async function send(text, { viaVoice = false } = {}) {
     let acc = '';
     abortCtl = new AbortController();
     try {
-      trackFeature('chat_ai'); trackEmbedChat();
+      trackFeature('chat_ai'); trackEmbedChat(); if (compact) trackFeature('float_chat');
       await streamChat(providerConfig(state), {
         system, messages: history, signal: abortCtl.signal, maxTokens: small ? 220 : 1200,
         onText: (delta) => {

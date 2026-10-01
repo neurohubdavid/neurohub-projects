@@ -65,6 +65,10 @@ export function emitter() {
 }
 export const bus = emitter();
 
+/** The window Phoenix's pop-ups (windows, toasts, announcements) appear in. The floating window swaps this while it is open. */
+export const ui = { doc: typeof document !== 'undefined' ? document : null };
+export const setUiDocument = (d) => { ui.doc = d || (typeof document !== 'undefined' ? document : null); };
+
 export function prefersReducedMotion() {
   return document.documentElement.dataset.motion === 'reduced' ||
     (document.documentElement.dataset.motion !== 'full' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -72,15 +76,17 @@ export function prefersReducedMotion() {
 
 /** Announce to screen readers */
 export function announce(msg) {
-  let r = document.getElementById('live-region');
-  if (!r) { r = el('div', { id: 'live-region', class: 'sr-only', 'aria-live': 'polite', role: 'status' }); document.body.append(r); }
+  const d = ui.doc;
+  let r = d.getElementById('live-region');
+  if (!r) { r = el('div', { id: 'live-region', class: 'sr-only', 'aria-live': 'polite', role: 'status' }); d.body.append(r); }
   r.textContent = '';
   setTimeout(() => { r.textContent = msg; }, 30);
 }
 
 export function toast(msg, opts = {}) {
-  let host = document.getElementById('toasts');
-  if (!host) { host = el('div', { id: 'toasts', 'aria-live': 'polite' }); document.body.append(host); }
+  const d = ui.doc;
+  let host = d.getElementById('toasts');
+  if (!host) { host = el('div', { id: 'toasts', 'aria-live': 'polite' }); d.body.append(host); }
   const t = el('div', { class: 'toast ' + (opts.kind || '') }, opts.icon ? el('span', { 'aria-hidden': 'true' }, opts.icon) : null, el('span', { html: fmt(msg) }));
   host.append(t);
   setTimeout(() => t.classList.add('out'), opts.ms || 2800);
@@ -88,14 +94,15 @@ export function toast(msg, opts = {}) {
 }
 
 export function modal({ title, body, actions = [], wide = false, onClose }) {
-  const prevFocus = document.activeElement;
+  const d = ui.doc;
+  const prevFocus = d.activeElement;
   const overlay = el('div', { class: 'modal-overlay', role: 'presentation' });
   const titleId = 'modal-title-' + uid();
   const box = el('div', { class: 'modal card' + (wide ? ' wide' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId });
   let closed = false;
   const close = () => {
     if (closed) return; closed = true;
-    overlay.remove(); document.removeEventListener('keydown', onKey); prevFocus?.focus?.(); onClose?.();
+    overlay.remove(); d.removeEventListener('keydown', onKey); prevFocus?.focus?.(); onClose?.();
   };
   const onKey = (e) => { if (e.key === 'Escape') close(); };
   const head = el('div', { class: 'modal-head' }, el('h2', { id: titleId }, title || ''), el('button', { class: 'btn btn-ghost btn-sm', 'aria-label': 'Close', onclick: close }, '✕'));
@@ -103,8 +110,8 @@ export function modal({ title, body, actions = [], wide = false, onClose }) {
   box.append(head, el('div', { class: 'modal-body' }, body), foot);
   overlay.append(box);
   overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(); });
-  document.body.append(overlay);
-  document.addEventListener('keydown', onKey);
+  d.body.append(overlay);
+  d.addEventListener('keydown', onKey);
   (box.querySelector('[autofocus]') || box.querySelector('button, input, select, textarea, a') || box).focus();
   return { close, box, overlay };
 }
