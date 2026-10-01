@@ -22,8 +22,8 @@ const ORG = { '@type': 'Organization', '@id': `${ORIGIN}/#org`, name: 'NeuroHub 
 export const FAQ = [
   ['Can Phoenix float on my screen while I work?', 'Yes, on a computer with Microsoft Edge or Google Chrome. Install Phoenix, press Float, then minimise it: Phoenix stays in a small window on top of your other programs, animated and ready to help with what you are doing or just chat. Tell her what you are working on, because she cannot see your screen. When you come back to Phoenix, she comes home too. Phones, Firefox and Safari cannot float windows over other programs.'],
   ['Is there a Windows or Mac program to download?', 'No. Phoenix is an app you install straight from your browser in one tap, with no store and no installer file. It gets its own icon and window, works offline, and updates itself. Press Install Phoenix on this page.'],
-  ['Is Phoenix really free?', 'Yes. Phoenix is free to use, with no account, no ads and no subscription, and you do not need an AI account or key. It is made by NeuroHub Community, an Autistic-led social enterprise. Every AI reply is paid for by NeuroHub from our own Claude account, so the AI has a daily limit for each person, and donations (once or monthly, any amount) are what keep it live.'],
-  ['Is Phoenix private?', 'Your chats, daily check-ins and settings are stored on your own device, not on a NeuroHub server, and there is no account. Phoenix starts with its free AI, so your messages go to NeuroHub’s server and on to Claude to write a reply, without being stored or read; you can switch to the built-in helper in Settings, and then nothing leaves your device. NeuroHub counts anonymous visits, installs and downloads, with no cookies and nothing that identifies you.'],
+  ['Is Phoenix really free?', 'Yes. Phoenix is free to use, with no account needed, no ads and no subscription, and you do not need an AI account or key. It is made by NeuroHub Community, an Autistic-led social enterprise. Every AI reply is paid for by NeuroHub from our own Claude account, so the AI has a daily limit for each person, and donations (once or monthly, any amount) are what keep it live.'],
+  ['Is Phoenix private?', 'Your chats, daily check-ins and settings are stored on your own device, not on a NeuroHub server, unless you choose to make an optional account to sync them between your devices (then they are stored scrambled with a key only the server holds, and your email address is never stored). Phoenix starts with its free AI, so your messages go to NeuroHub’s server and on to Claude to write a reply, without being stored or read; you can switch to the built-in helper in Settings, and then nothing leaves your device. NeuroHub counts anonymous visits, installs and downloads, with no cookies and nothing that identifies you.'],
   ['Is Phoenix therapy, or a crisis service?', 'No. Phoenix is a computer program, not a therapist, doctor or crisis service, and it cannot diagnose you. It offers information, calming tools and a place to think things through. A red Help button is always visible and shows helplines and emergency numbers for your country. If you are in danger, call your local emergency number.'],
   ['What does neuro-affirming mean here?', 'Phoenix treats Autistic, ADHD, AuDHD and other neurodivergent minds as different, not broken. It never tells you to mask more, comply, or try harder. It looks first at the environment, the demands and the people around you, and it draws on the Six-Point Framework and other ideas developed by NeuroHub Community and by Autistic writers.'],
   ['What can Phoenix help with?', 'Autistic burnout and overwhelm, sensory overload, meltdowns and shutdowns, getting started on tasks (executive function), masking, energy and daily routines, and understanding your own patterns. There is a daily wellbeing check-in with charts over time, a calming toolkit (breathing, grounding, sensory reset, focus timer, task breaker, scripts for hard messages), and guided documents such as a burnout recovery plan that you can download as a PDF.'],
@@ -155,7 +155,7 @@ export function pages({ version, esc }) {
 
   <section id="install" class="card install-hero" aria-labelledby="install-h">
     <h2 id="install-h">Install Phoenix as an app</h2>
-    <p>One tap. No app store, no account, no installer to download. Phoenix gets its own icon and window, works offline, updates itself, and keeps your data on your device. On a computer it can also <strong>float on your screen beside your work</strong> when you minimise it. Free.</p>
+    <p>One tap. No app store, no account needed, no installer to download. Phoenix gets its own icon and window, works offline, updates itself, and keeps your data on your device. On a computer it can also <strong>float on your screen beside your work</strong> when you minimise it. Free.</p>
     <p><a id="install-now" class="btn btn-primary btn-huge" href="/app/?install=1">Install Phoenix</a> <a class="btn" href="/app/">Open in the browser instead</a> </p>
     <div id="install-help" aria-live="polite"></div>
     <details class="steps"><summary>Step-by-step help for each device</summary>
@@ -181,7 +181,7 @@ ${donateStrip()}
   </div>
 
   <h2>Your data stays yours</h2>
-  <p>Phoenix has no account and stores your chats, check-ins and settings on your own device. You can download a backup, restore one, or delete everything from Settings. The built-in helper never sends anything anywhere. <a href="/privacy/">Read the plain-language privacy page</a>.</p>
+  <p>Phoenix needs no account, and stores your chats, check-ins and settings on your own device. If you want them to follow you between devices, and Phoenix to remember things about you, you can make a free optional account with just an email sign-in code. You can download a backup, restore one, or delete everything (including the account) from Settings. The built-in helper never sends anything anywhere. <a href="/privacy/">Read the plain-language privacy page</a>.</p>
 
   <h2>Safety</h2>
   <p>Phoenix is a computer program. It is not a therapist, doctor or crisis service, and it cannot diagnose. The red <strong>Help</strong> button is always visible and shows helplines and emergency numbers for your country. If you are in danger, call your local emergency number.</p>
@@ -196,13 +196,24 @@ ${FAQ.map(([q, a]) => `    <details><summary>${esc(q)}</summary><p>${esc(a)}</p>
   });
 
   const privacy = layout({
-    path: '/privacy/', title: 'Privacy: how Phoenix treats your data', description: 'Plain-language privacy for Phoenix, the free neuro-affirming AI assistant: chats and check-ins stay on your device, no account, no cookies.',
+    path: '/privacy/', title: 'Privacy: how Phoenix treats your data', description: 'Plain-language privacy for Phoenix, the free neuro-affirming AI assistant: chats and check-ins stay on your device unless you choose an optional account, no cookies.',
     crumbs: [{ name: 'Privacy', path: '/privacy/' }], jsonld: [ORG],
     body: `
   <h1>Privacy</h1>
   <p class="muted">In plain words. Last updated 30 September 2026.</p>
   <h2>What stays on your device</h2>
-  <p>Your chats, daily check-ins, documents, tasks, settings are stored on your own device only, in the app or browser you use. There is no Phoenix account and NeuroHub Community cannot read or recover them. You can download a backup or delete everything at any time in Settings.</p>
+  <p>Your chats, daily check-ins, documents, tasks, settings are stored on your own device only, in the app or browser you use. NeuroHub Community cannot read or recover them. You can download a backup or delete everything at any time in Settings.</p>
+  <h2>Optional account and memories</h2>
+  <p>You never need an account. If you make one (with an emailed sign-in code, no password), your chats, daily check-ins, documents, settings and the short notes Phoenix keeps about you are saved to it so they follow you between devices.</p>
+  <ul>
+    <li><strong>Your email address is never stored.</strong> It is used once to send the code. Only an unreadable fingerprint of it is kept, so nobody can see or recover your address from our records.</li>
+    <li><strong>Your synced data is stored scrambled</strong> with a key only the server holds. NeuroHub staff do not read it, and it is not used for research, sharing or advertising.</li>
+    <li><strong>You are in control of what Phoenix remembers.</strong> Every note can be seen, edited and deleted, notes can be switched off, and Phoenix never writes notes after a crisis conversation or keeps whole conversations as notes. When you chat, the notes go to Anthropic’s Claude with your message so Phoenix can use them, like the rest of the conversation.</li>
+    <li><strong>You can download everything held, or delete your account</strong> and all its data at any time, in Settings. Deleting is permanent. The account is for people aged 18 and over.</li>
+    <li>Anonymous counts (for example “an account was made”) are kept for running Phoenix. They contain nothing about you.</li>
+  </ul>
+  <h2>Where Phoenix’s knowledge comes from</h2>
+  <p>Phoenix’s reference material is the writing of NeuroHub Community and of Helen Edgar (the websites <a href="https://autisticrealms.com">Autistic Realms</a> and <a href="https://morerealms.com">More Realms</a>), used with Helen’s permission and credited by name where Phoenix uses it. That writing stays the property of its authors.</p>
   <h2>What the AI sees</h2>
   <ul>
     <li><strong>Built-in helper:</strong> nothing leaves your device.</li>
@@ -286,7 +297,7 @@ ${FAQ.map(([q, a]) => `    <details><summary>${esc(q)}</summary><p>${esc(a)}</p>
   <h2>Privacy and cost</h2>
   <ul>
     <li>The widget sets no cookies and stores nothing on your visitors’ devices until they open it.</li>
-    <li>NeuroHub Community counts, anonymously, that the widget loaded on your website’s address and how often it is opened and used, so we can see how it helps. We never see who your visitors are or what they write. Visitors who send Do Not Track are not counted.</li>
+    <li>NeuroHub Community counts, anonymously, that the widget loaded on your website’s address, how often it is opened, how many messages are sent, which features get used, and how many people click to donate, all as totals for your website, so we can see how it helps. We never see who your visitors are or what they write. Visitors who send Do Not Track are not counted.</li>
     <li>The AI replies are paid for by NeuroHub Community, and each visitor has a daily limit. If Phoenix is useful to your visitors, please consider <a href="/#donate">a donation</a> to keep it live.</li>
     <li>Phoenix is a computer program, not a therapist or a crisis service. Please say so on your site if you add it.</li>
   </ul>

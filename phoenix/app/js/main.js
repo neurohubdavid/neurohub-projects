@@ -15,6 +15,8 @@ import { openDonate, checkDonateNudge } from './donate.js';
 import { trackStart, trackFeature, isEmbedded } from './analytics.js';
 import { flushShared } from './share.js';
 import { checkedInToday } from './sixpf.js';
+import { initAccount } from './account.js';
+import { takeCodeFromLink } from './account-ui.js';
 import { floatSupported, openFloat, closeFloat, floatIsOpen, initFloat, floatPlaceholder, offerFloat } from './float.js';
 
 const NAV = [['chat', 'Chat'], ['checkin', 'Check-in'], ['tools', 'Toolkit'], ['learn', 'Learn'], ['settings', 'Settings']];
@@ -28,6 +30,7 @@ export function navigate(route) {
   if (route === 'donate') return openDonate();
   const hash = route === 'chat' ? '#/chat' : route === 'learn' ? '#/learn' : route.startsWith('learn:') ? '#/learn/' + route.slice(6) : route === 'settings' ? '#/settings'
     : route === 'settings:ai' ? '#/settings/ai' : route === 'settings:reminders' ? '#/settings/reminders' : route === 'settings:share' ? '#/settings/share'
+    : route === 'settings:account' ? '#/settings/account'
     : route === 'checkin' ? '#/checkin' : route.startsWith('checkin:') ? '#/checkin/' + route.slice(8)
     : route.startsWith('tool:') ? '#/tools/' + route.slice(5) : '#/chat';
   if (location.hash !== hash) location.hash = hash;
@@ -81,7 +84,7 @@ function welcome() {
       el('div', { style: { textAlign: 'center' } }, big),
       el('p', {}, 'Phoenix is a free, neuro-affirming AI assistant for Autistic, ADHD and other neurodivergent people. You do not have to mask here, explain yourself, or be “fine”.'),
       el('ul', {},
-        el('li', {}, el('strong', {}, 'Private. '), 'Your chats, check-ins and settings are stored on this device, and there is no account. NeuroHub counts anonymous app opens (no identifiers, nothing you write). You can switch that off in Settings.'),
+        el('li', {}, el('strong', {}, 'Private. '), 'Your chats, check-ins and settings are stored on this device, and you do not need an account (there is an optional one in Settings, if you want them on more than one device). NeuroHub counts anonymous app opens (no identifiers, nothing you write). You can switch that off in Settings.'),
         el('li', {}, el('strong', {}, 'Honest. '), 'Phoenix is a computer program, not a person or a therapist, and it cannot diagnose you.'),
         el('li', {}, el('strong', {}, 'Free AI, no setup. '), 'Phoenix AI is run by NeuroHub Community on Claude, with a daily limit. Every reply costs us money, so if Phoenix helps you and you can spare it, a donation keeps the AI live for everyone. Your messages go to NeuroHub’s server and on to Claude to write a reply. They are not stored or read, but please avoid names and identifying details. To keep everything on your device, choose the built-in helper below (or any time in Settings). The built-in helper and Toolkit work with no internet.'),
         el('li', {}, el('strong', {}, 'Safety first. '), 'The red Help button is always there and shows helplines for your country.')),
@@ -111,6 +114,8 @@ window.addEventListener('beforeunload', flush);
   const source = new URLSearchParams(location.search).get('source');
   if (!['shortcut', 'notify'].includes(source) && location.hash !== '#/chat') history.replaceState(null, '', location.pathname + location.search + '#/chat');
 }
+// A sign-in link from the email (?code=...) goes straight to the account section, ready to sign in.
+if (takeCodeFromLink()) { state.onboarded = true; history.replaceState(null, '', location.pathname + location.search + '#/settings/account'); }
 render();
 if (!state.onboarded) welcome();
 
@@ -126,6 +131,7 @@ if (floatSupported() && !isEmbedded()) {
   setTimeout(() => offerFloat($('#float-invite-host'), { navigate }), 2500);
 }
 
+initAccount();
 initReminders();
 trackStart();
 flushShared(); // if sharing is on and an earlier check-in could not be sent, try again now

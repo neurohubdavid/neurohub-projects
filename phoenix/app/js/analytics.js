@@ -14,7 +14,7 @@ export async function track(e, v) {
   try {
     const { state } = await import('./store.js');
     if (!analyticsAllowed(state)) return;
-    const url = `${location.origin}/api/hit`, body = JSON.stringify({ e, v: String(v) });
+    const url = `${location.origin}/api/hit`, body = JSON.stringify(isEmbedded() ? { e, v: String(v), h: embedHost() } : { e, v: String(v) }); // inside the widget, also which website it is on
     if (navigator.sendBeacon) navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
     else fetch(url, { method: 'POST', body, headers: { 'content-type': 'application/json' }, keepalive: true }).catch(() => {});
   } catch { /* counting must never break the app */ }

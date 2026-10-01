@@ -40,7 +40,7 @@ export function offlineReply(question, { name = '', aiConfigured = false, lastAs
   const links = () => {
     const h = siteHits ? siteHits(raw) : [];
     const web = h.filter((x) => x.kind !== 'presentation' && x.kind !== 'transcript' && x.url), decks = [...new Set(h.filter((x) => x.kind === 'presentation').map((x) => x.deck))].slice(0, 2);
-    return (web.length ? '\n\n**From neurohubcommunity.org:**\n' + web.map((x) => `- [${x.title}](${x.url})`).join('\n') : '') + (decks.length ? '\n\n**Also covered in NeuroHub presentations:**\n' + decks.map((d) => `- ${d}`).join('\n') : '');
+    return (web.length ? '\n\n**From NeuroHub Community and Helen Edgar’s Autistic Realms:**\n' + web.map((x) => `- [${x.title}](${x.url})${x.src && !/^NeuroHub/.test(x.src) ? ` (${x.src})` : ''}`).join('\n') : '') + (decks.length ? '\n\n**Also covered in NeuroHub presentations:**\n' + decks.map((d) => `- ${d}`).join('\n') : '');
   };
 
   if (!raw) return { text: 'I am here whenever you want to say something.', actions: [] };

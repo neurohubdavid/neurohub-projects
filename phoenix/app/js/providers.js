@@ -15,6 +15,11 @@ export const PRESETS = {
 };
 
 let fetcher = netFetch;
+
+// The signed-in person's session token, set by account.js. It is sent only to Phoenix's own server, so the AI can count their allowance by account.
+let authToken = '', onSignedOut = () => {};
+export const setAuthToken = (t) => { authToken = t || ''; };
+export const setSignedOutHandler = (fn) => { onSignedOut = fn || (() => {}); };
 export const _setFetcher = (f) => { fetcher = f || netFetch; }; // for tests
 
 const trimSlash = (u) => String(u || '').trim().replace(/\/+$/, '');
@@ -69,7 +74,7 @@ async function* lines(body, signal) {
 function config(state) {
   const p = state.provider;
   // Phoenix talks to one AI only: NeuroHub's own Claude account, through Phoenix's server. Any other saved setting means no AI.
-  if (p.kind === 'shared') return { kind: 'shared', url: sharedBase() };
+  if (p.kind === 'shared') return { kind: 'shared', url: sharedBase(), token: authToken };
   return { kind: 'offline' };
 }
 export { config as providerConfig };
@@ -79,14 +84,18 @@ export const SHARED_HOME = 'https://phoenix.neurohubcommunity.org';
 export const sharedBase = () => (typeof location !== 'undefined' && /^https?:/.test(location.protocol) ? location.origin : SHARED_HOME);
 /** Is the shared AI switched on, and how many messages does this person have left today? Returns null if it cannot be reached. */
 export async function sharedStatus() {
-  try { const res = await fetcher(`${sharedBase()}/api/ai`, { method: 'GET' }); if (!res.ok) return null; const j = await res.json(); return typeof j.ai === 'boolean' ? j : null; } catch { return null; }
+  try { const res = await fetcher(`${sharedBase()}/api/ai`, { method: 'GET', headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} }); if (!res.ok) return null; const j = await res.json(); return typeof j.ai === 'boolean' ? j : null; } catch { return null; }
 }
 
 async function request(cfg, url, init, signal) {
   let res;
   try { res = await fetcher(url, { ...init, signal }); }
   catch (e) { if (e?.name === 'AbortError') throw e; throw explain(cfg, 0, '', e); }
-  if (!res.ok) { let t = ''; try { t = await res.text(); } catch { /* ignore */ } throw explain(cfg, res.status, t); }
+  if (!res.ok) {
+    let t = ''; try { t = await res.text(); } catch { /* ignore */ }
+    if (res.status === 401 && cfg.token) { onSignedOut(); throw new AIError('signed_out', 'You have been signed out of your Phoenix account, so I did not get that. Please try again. Sign in again in Settings to keep your memories.', 401); }
+    throw explain(cfg, res.status, t);
+  }
   return res;
 }
 
@@ -94,7 +103,7 @@ async function request(cfg, url, init, signal) {
  * Streams one reply. `messages` is [{role:'user'|'assistant', content}]; `system` is the system prompt.
  * Calls onText(delta) for each piece and resolves with the full reply.
  */
-export async function streamChat(cfg, { system, messages, signal, onText, maxTokens = 1200 }) {
+export async function streamChat(cfg, { system, messages, signal, onText, maxTokens = 1200, purpose = '' }) {
   let full = '';
   const push = (t) => { if (t) { full += t; onText?.(t, full); } };
 
@@ -126,7 +135,7 @@ export async function streamChat(cfg, { system, messages, signal, onText, maxTok
       push(j.choices?.[0]?.delta?.content);
     }
   } else if (cfg.kind === 'shared') {
-    const res = await request(cfg, `${cfg.url}/api/ai`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system, messages, maxTokens }) }, signal);
+    const res = await request(cfg, `${cfg.url}/api/ai`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(cfg.token ? { Authorization: `Bearer ${cfg.token}` } : {}) }, body: JSON.stringify({ system, messages, maxTokens, ...(purpose ? { purpose } : {}) }) }, signal);
     for await (const line of lines(res.body, signal)) {
       if (!line.startsWith('data:')) continue;
       let j; try { j = JSON.parse(line.slice(5)); } catch { continue; }

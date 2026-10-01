@@ -190,11 +190,18 @@
 
       body.append(el('h2', {}, 'Website widget (last 30 days)'));
       body.append(el('p', { 'class': 'muted' }, 'The floating Phoenix button other websites add with one line of code (see /add-to-your-site/). Loads are page views on those sites, opens are visitors who pressed the button, chats are messages sent inside it.'));
-      body.append(el('div', { 'class': 'kpis' }, [kpi('Widget loads', s30('e:embed_load')), kpi('Widget opened', s30('e:embed_open')), kpi('Widget messages sent', s30('e:embed_chat')), kpi('Websites using it', top(t, 'embedhost:embed_load:', 500).length), kpi('Open rate', s30('e:embed_load') ? Math.round(100 * s30('e:embed_open') / s30('e:embed_load')) + '%' : '-')]));
+      body.append(el('div', { 'class': 'kpis' }, [kpi('Widget loads', s30('e:embed_load')), kpi('Widget opened', s30('e:embed_open')), kpi('Widget messages sent', s30('e:embed_chat')), kpi('Websites using it', top(t, 'embedhost:embed_load:', 500).length), kpi('Donate clicks from widgets', top(t, 'embedhost:donate_click:', 500).reduce(function (n, r) { return n + r[1]; }, 0)), kpi('New people through widgets', top(t, 'embedhost:first_open:', 500).reduce(function (n, r) { return n + r[1]; }, 0)), kpi('Open rate', s30('e:embed_load') ? Math.round(100 * s30('e:embed_open') / s30('e:embed_load')) + '%' : '-')]));
       body.append(bars('Widget loads per day', perDay('e:embed_load')), bars('Widget opens per day', perDay('e:embed_open')));
       var wg = el('div', { 'class': 'grid' });
       wg.append(tbl('Websites with the widget (loads)', top(t, 'embedhost:embed_load:', 25)), tbl('Websites where it is opened', top(t, 'embedhost:embed_open:', 25)), tbl('Websites where people chat', top(t, 'embedhost:embed_chat:', 25)), tbl('Widget loads by country', top(t, 'country:embed_load:')));
       body.append(wg);
+      // one row per website: how it is doing, side by side
+      var hosts = {}; ['embed_load', 'embed_open', 'embed_chat', 'feature', 'donate_click', 'first_open'].forEach(function (ev) { top(t, 'embedhost:' + ev + ':', 500).forEach(function (r) { (hosts[r[0]] = hosts[r[0]] || {})[ev] = r[1]; }); });
+      var hostRows = Object.keys(hosts).map(function (h) { var x = hosts[h]; return { h: h, load: x.embed_load || 0, open: x.embed_open || 0, chat: x.embed_chat || 0, use: x.feature || 0, don: x.donate_click || 0, fresh: x.first_open || 0 }; }).sort(function (a, b) { return (b.open + b.chat) - (a.open + a.chat) || b.load - a.load; }).slice(0, 40);
+      var wt = el('div', { 'class': 'card' }, [el('h2', {}, 'Each website with the widget'), el('p', { 'class': 'muted' }, 'Loads are page views on that site. Opened is people who pressed the button. Messages are chats sent. Uses count everything done inside Phoenix there (check-ins, tools and so on). Donate clicks are people who went to the payment page from there. New people had never used Phoenix before.'),
+        el('table', {}, [el('thead', {}, el('tr', {}, ['Website', 'Loads', 'Opened', 'Open rate', 'Messages', 'Uses', 'Donate clicks', 'New people'].map(function (c, i) { return el('th', i ? { 'class': 'n' } : {}, c); }))),
+          el('tbody', {}, hostRows.length ? hostRows.map(function (r) { return el('tr', {}, [el('td', {}, r.h), el('td', { 'class': 'n' }, r.load), el('td', { 'class': 'n' }, r.open), el('td', { 'class': 'n' }, r.load ? Math.round(100 * r.open / r.load) + '%' : '-'), el('td', { 'class': 'n' }, r.chat), el('td', { 'class': 'n' }, r.use), el('td', { 'class': 'n' }, r.don), el('td', { 'class': 'n' }, r.fresh)]); }) : [el('tr', {}, el('td', {}, 'Nothing yet'))])])]);
+      body.append(wt);
 
       body.append(el('h2', {}, 'Downloads (last 30 days)'));
       var dg = el('div', { 'class': 'grid' });

@@ -29,7 +29,7 @@ export function openDonate() {
   modal({
     title: '♥ Support NeuroHub Community',
     body: el('div', { class: 'stack' },
-      el('p', {}, 'Phoenix is free, with no ads and no account. It is made by NeuroHub Community, a small Autistic-led social enterprise, and every Phoenix AI reply is paid for from our own Claude account. If Phoenix has helped and you can spare something, a donation helps cover the cost of keeping the AI live for everyone.'),
+      el('p', {}, 'Phoenix is free, with no ads and no account needed. It is made by NeuroHub Community, a small Autistic-led social enterprise, and every Phoenix AI reply is paid for from our own Claude account. If Phoenix has helped and you can spare something, a donation helps cover the cost of keeping the AI live for everyone.'),
       choose, amounts,
       el('p', {}, el('a', { class: 'btn', onclick: () => { track('donate_click', clickKey(frequency, 'other')); noteDonateClick(); }, href: linkFor(frequency, 'other'), target: '_blank', rel: 'noopener noreferrer' }, 'Choose my own amount')),
       note,

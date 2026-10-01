@@ -317,7 +317,7 @@ function history(body, navigate) {
         el('button', { class: 'btn btn-sm btn-ghost', onclick: () => confirmDelete(e) }, 'Delete this check-in')));
     }
   };
-  const confirmDelete = (e) => modal({ title: 'Delete this check-in?', body: el('p', {}, 'This removes it from your history and insights. It cannot be undone.'), actions: [{ label: 'Keep it' }, { label: 'Delete', class: 'btn-danger', onclick: () => { state.wellness = state.wellness.filter((x) => x.id !== e.id); save(); draw(); toast('Deleted.'); } }] });
+  const confirmDelete = (e) => modal({ title: 'Delete this check-in?', body: el('p', {}, 'This removes it from your history and insights. It cannot be undone.'), actions: [{ label: 'Keep it' }, { label: 'Delete', class: 'btn-danger', onclick: () => { state.wellness = state.wellness.filter((x) => x.id !== e.id); (state.deleted ||= {})[e.id] = Date.now(); save(); draw(); toast('Deleted.'); } }] });
   body.append(el('p', { class: 'muted' }, `${list.length} check-in${list.length === 1 ? '' : 's'} stored on this device.`), ul);
   draw();
 }

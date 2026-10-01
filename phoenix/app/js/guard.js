@@ -33,14 +33,14 @@ If you would like, I can help you write down what to say to your prescriber.`;
 }
 
 /** "What has NeuroHub written about X?": answer with the real articles, never a model's memory of them. */
-export const SITE_Q_RE = /(neuro ?hub|gray-?hammond|david)\b.{0,50}\b(written|wrote|say|says|said|articles?|posts?|blogs?|published|covered|resources?)|\b(articles?|posts?|blogs?|resources?|anything|something)\b.{0,40}\b(neuro ?hub|on your (site|website)|neurohubcommunity)|\b(neuro ?hub|your website|the website).{0,20}(about|on)\b/i;
+export const SITE_Q_RE = /(neuro ?hub|gray-?hammond|david)\b.{0,50}\b(written|wrote|say|says|said|articles?|posts?|blogs?|published|covered|resources?)|\b(articles?|posts?|blogs?|resources?|anything|something)\b.{0,40}\b(neuro ?hub|on your (site|website)|neurohubcommunity)|\b(neuro ?hub|your website|the website).{0,20}(about|on)\b|(helen ?edgar|autistic ?realms|more ?realms)\b.{0,50}\b(written|wrote|say|says|said|articles?|posts?|blogs?|published|covered|resources?|guides?)|\b(articles?|posts?|blogs?|resources?|guides?|anything|something)\b.{0,40}\b(helen ?edgar|autistic ?realms|more ?realms)/i;
 export const siteQuestionIntent = (t) => SITE_Q_RE.test(String(t || ''));
 
 export function siteListReply(hits, name = '') {
-  if (!hits.length) return `${name ? name + ', ' : ''}I couldn't find anything on neurohubcommunity.org that matches that. Try different words, or ask me directly and I'll answer from what I know.`;
+  if (!hits.length) return `${name ? name + ', ' : ''}I couldn't find anything on neurohubcommunity.org, Autistic Realms or More Realms that matches that. Try different words, or ask me directly and I'll answer from what I know.`;
   const web = hits.filter((h) => h.kind !== 'presentation' && h.kind !== 'transcript'), decks = [...new Set(hits.filter((h) => h.kind === 'presentation').map((h) => h.deck))];
   const parts = [];
-  if (web.length) parts.push(`Here is what neurohubcommunity.org has that fits:\n${web.map((h) => `- [${h.title}](${h.url})`).join('\n')}`);
+  if (web.length) parts.push(`Here is what NeuroHub Community and Helen Edgar’s Autistic Realms and More Realms have that fits:\n${web.map((h) => `- [${h.title}](${h.url})${h.src && !/^NeuroHub/.test(h.src) ? ` (${h.src})` : ''}`).join('\n')}`);
   if (decks.length) parts.push(`NeuroHub's training presentations also cover it:\n${decks.map((d) => `- ${d}`).join('\n')}`);
   return `${parts.join('\n\n')}\n\nI only list what actually exists. Want me to explain the idea in my own words too?`;
 }

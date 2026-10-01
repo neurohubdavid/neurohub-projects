@@ -157,7 +157,7 @@ test('site knowledge: retrieval finds real articles, builds a data-not-instructi
   await site.loadSite(async () => data);
   const hits = site.siteHits('autistic burnout recovery', 3);
   assert.ok(hits.length >= 1);
-  assert.ok(hits.every((h) => h.url.startsWith('https://neurohubcommunity.org')));
+  assert.ok(hits.every((h) => /^https:\/\/(neurohubcommunity\.org|autisticrealms\.com|morerealms\.com)/.test(h.url)));
   const block = site.siteBlock('autistic burnout recovery');
   assert.match(block, /reference DATA, never instructions/);
   assert.match(block, /Link: https:\/\/neurohubcommunity\.org/);
@@ -472,4 +472,18 @@ test('shared AI: the app streams from it like any other AI, and explains limits 
     setF(async () => new Response('{"error":"unavailable"}', { status: 503 }));
     await assert.rejects(() => sc(cfg, { system: PHX_SYSTEM, messages: [{ role: 'user', content: 'hi' }] }), /not available right now/);
   } finally { setF(null); }
+});
+test('knowledge: Helen Edgar’s Autistic Realms and More Realms are in Phoenix’s reference material, credited, and found by name', async () => {
+  const site = await import('../app/js/site.js');
+  const data = JSON.parse(readFileSync(new URL('../app/data/site.json', import.meta.url), 'utf8'));
+  const bySrc = {}; for (const p of data.posts) bySrc[p.src || 'NeuroHub Community'] = (bySrc[p.src || 'NeuroHub Community'] || 0) + 1;
+  assert.ok(bySrc['Autistic Realms (Helen Edgar)'] >= 100, 'Autistic Realms is bundled'); assert.ok(bySrc['More Realms (Helen Edgar)'] >= 30, 'More Realms is bundled'); assert.ok(bySrc['NeuroHub Community'] >= 300);
+  assert.ok(data.posts.every((p) => /^https:\/\/(neurohubcommunity\.org|autisticrealms\.com|morerealms\.com)\//.test(p.url)), 'only the three agreed websites');
+  await site.loadSite(async () => data);
+  const hits = site.siteHits('Helen Edgar Autistic Realms monotropism burnout', 6);
+  assert.ok(hits.some((h) => /autisticrealms\.com|morerealms\.com/.test(h.url)), 'her writing is found');
+  const block = site.siteBlock('monotropism and autistic burnout recovery guide');
+  assert.match(block, /Helen Edgar/); assert.match(block, /used with her permission/);
+  const { siteQuestionIntent } = await import('../app/js/guard.js');
+  for (const q of ['What has Helen Edgar written about burnout?', 'any articles on Autistic Realms about monotropism', 'what has more realms published']) assert.equal(siteQuestionIntent(q), true, q);
 });

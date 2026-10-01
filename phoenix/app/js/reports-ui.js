@@ -41,7 +41,7 @@ function list(body, { navigate }) {
         el('div', { class: 'row-wrap' },
           el('button', { class: 'btn btn-sm', onclick: () => navigate('checkin:doc-' + r.id) }, 'Open'),
           d.kind === 'rated' ? el('button', { class: 'btn btn-sm', title: 'Copy this one to fill in again and see what has changed', onclick: () => { const n = R.newReport(d, { from: r }); state.reports.push(n); save(); navigate('checkin:doc-' + n.id); } }, 'Do it again from this') : null,
-          el('button', { class: 'btn btn-sm btn-ghost', onclick: () => modal({ title: 'Delete this document?', body: el('p', {}, 'The document and the ratings you saved from it to Insights will be deleted. This cannot be undone.'), actions: [{ label: 'Keep it' }, { label: 'Delete', class: 'btn-danger', onclick: () => { state.reports = state.reports.filter((x) => x.id !== r.id); save(); draw(); toast('Deleted.'); } }] }) }, 'Delete'))));
+          el('button', { class: 'btn btn-sm btn-ghost', onclick: () => modal({ title: 'Delete this document?', body: el('p', {}, 'The document and the ratings you saved from it to Insights will be deleted. This cannot be undone.'), actions: [{ label: 'Keep it' }, { label: 'Delete', class: 'btn-danger', onclick: () => { state.reports = state.reports.filter((x) => x.id !== r.id); (state.deleted ||= {})[r.id] = Date.now(); save(); draw(); toast('Deleted.'); } }] }) }, 'Delete'))));
     }
   };
   draw();

@@ -141,6 +141,20 @@ test('widget analytics: other websites may report only that the widget loaded, a
   assert.equal(day['plat:embed_load:windows'], 2); assert.equal(day['country:embed_load:GB'], 2);
 });
 
+test('widget analytics: what people do inside the widget is counted against the website it is on, from Phoenix’s own address only', async () => {
+  const store = kvMem(), now = () => new Date('2026-10-01T10:00:00Z'), ctx = {};
+  const inside = (body, origin = 'https://phoenix.neurohubcommunity.org') => hit(new Request('https://phoenix.neurohubcommunity.org/api/hit', { method: 'POST', headers: { origin, 'content-type': 'application/json', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0) Chrome/150' }, body: JSON.stringify(body) }), ctx, { store, now });
+  await inside({ e: 'feature', v: 'checkin_done', h: 'www.example-charity.org.uk' }); await inside({ e: 'feature', v: 'chat_ai', h: 'example-charity.org.uk' });
+  await inside({ e: 'donate_click', v: '10', h: 'example-charity.org.uk' }); await inside({ e: 'first_open', v: 'embed', h: 'example-charity.org.uk' });
+  await inside({ e: 'feature', v: 'chat_ai' }); // the app itself, no website
+  await inside({ e: 'feature', v: 'chat_ai', h: 'evil.example' }, 'https://evil.example'); // another website cannot report this
+  await inside({ e: 'feature', v: 'chat_ai', h: '"><script>' });
+  const day = await readDayCounts(store, '2026-10-01');
+  assert.equal(day['embedhost:feature:example-charity.org.uk'], 2); assert.equal(day['embedhost:donate_click:example-charity.org.uk'], 1); assert.equal(day['embedhost:first_open:example-charity.org.uk'], 1);
+  assert.equal(day['e:feature:chat_ai'], 3, 'the overall counts still include every use');
+  assert.ok(!Object.keys(day).some((k) => /evil|script/.test(k)), 'junk and other websites are not counted');
+});
+
 test('widget analytics: the list of websites cannot grow without limit', async () => {
   const store = kvMem(), now = () => new Date('2026-10-01T10:00:00Z');
   for (let i = 0; i < 320; i++) await hit(new Request('https://phoenix.neurohubcommunity.org/api/hit', { method: 'POST', headers: { origin: 'https://site' + i + '.example.com', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0) Chrome/150' }, body: JSON.stringify({ e: 'embed_load', v: 'ok' }) }), {}, { store, now });

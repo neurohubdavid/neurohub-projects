@@ -16,6 +16,7 @@ export const FEATURES = [
   'learn_open', 'share_on', 'share_off', 'reminders_on', 'reminders_off', 'a11y_open', 'help_open',
   'donate_open', 'nudge_shown', 'nudge_dismissed', 'nudge_off', 'ai_on', 'ai_off', 'install_sheet', 'name_given', 'backup_export', 'data_deleted',
   'float_open', 'float_close', 'float_chat', 'float_activity', 'float_nudges_on', 'float_unsupported',
+  'account_created', 'account_signin', 'account_signout', 'account_deleted', 'memory_added', 'memory_edited', 'memory_deleted', 'sync_off', 'sync_on',
 ];
 // Every event and every allowed value is listed here, so nothing free-form is ever stored.
 export const ALLOWED = {
@@ -34,6 +35,7 @@ export const ALLOWED = {
 const HOST_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/;
 const MAX_HOST_KEYS = 300; // a day's counters never grow past this many different websites, whatever is sent
 const EMBED = ['embed_load', 'embed_open', 'embed_chat'];
+const HOSTED = ['feature', 'donate_click', 'first_open']; // counted per website too, when they come from inside the widget on someone's site
 
 /** A clean website name (no www, no port, lower case) or '' if it is not one. */
 export function cleanHost(v) {
@@ -56,6 +58,10 @@ export function namesFor(body, { ua = '', country = '', originHost = '' } = {}) 
   }
   if (EMBED.includes(e)) { // which website the widget is on: the browser's own Origin header when it loads, the page's name from the widget when it is used
     const host = cleanHost(e === 'embed_load' ? originHost : body.h);
+    if (host && !host.endsWith('neurohubcommunity.org')) names.push(`embedhost:${e}:${host}`);
+  }
+  if (HOSTED.includes(e) && body.h) { // use inside the widget: counted against the website it is on (one counter per website, not per feature)
+    const host = cleanHost(body.h);
     if (host && !host.endsWith('neurohubcommunity.org')) names.push(`embedhost:${e}:${host}`);
   }
   return names;

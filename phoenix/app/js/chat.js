@@ -14,6 +14,7 @@ import { openDonate } from './donate.js';
 import { offlineReply, findTopic, topicReply } from './offline.js';
 import { loadSite, siteHits, siteBlock } from './site.js';
 import { voiceSupport, createRecognizer, createSpeaker, listVoices } from './voice.js';
+import { memoryIntent, memoryReply, memoryBlock, memoryMode, shouldLearn, notesRequest, parseNotes, addMemory, deleteMemory } from './memory.js';
 
 let go = () => {};            // navigation callback supplied by main.js
 let aiNoteEl, footEl, mascot, statusEl, listEl, inputEl, sendBtn, micBtn, chipsEl, pillEl, root;
@@ -249,6 +250,12 @@ export async function send(text, { viaVoice = false } = {}) {
       const r = reportReply(state.profile.name);
       const { m, node } = addMessage('assistant', r.text, { actions: r.actions }); node.replaceWith(renderMessage(m)); announce('Phoenix replied'); return;
     }
+    const mem = !crisis && !emergency ? memoryIntent(text) : null;
+    if (mem) {
+      const r = memoryReply(mem, state.profile.name);
+      if (mem.kind === 'remember' && memoryMode() !== 'off') trackFeature('memory_added');
+      const { m, node } = addMessage('assistant', r.text, { actions: r.actions }); node.replaceWith(renderMessage(m)); announce('Phoenix replied'); return;
+    }
     if (!crisis && !emergency && checkinIntent(text) && !(aiActive() && aiMaySeeCheckins())) {
       const r = chatReply(state.wellness, state.profile.name);
       const { m, node } = addMessage('assistant', r.text, { actions: r.actions }); node.replaceWith(renderMessage(m)); announce('Phoenix replied'); return;
@@ -298,7 +305,7 @@ export async function send(text, { viaVoice = false } = {}) {
     await loadSite();
     const prevUser = currentChat().messages.filter((m) => m.role === 'user').slice(-2, -1)[0]?.content || '';
     const sb = state.prefs.useSite ? siteBlock(`${text} ${prevUser}`) : '';
-    const system = buildSystem({ profile: state.profile, prefs: state.prefs, crisisBlock: block, crisisFlag: crisis, activity: compact ? state.float?.activity : '', siteBlock: [topicNotes, sb].filter(Boolean).join('\n\n'), small, wellnessBlock: aiMaySeeCheckins() ? [summaryForAI(state.wellness), assessmentSummaryForAI(state.reports)].filter(Boolean).join('\n') : '' });
+    const system = buildSystem({ profile: state.profile, prefs: state.prefs, crisisBlock: block, crisisFlag: crisis, activity: compact ? state.float?.activity : '', memoryBlock: memoryBlock(), siteBlock: [topicNotes, sb].filter(Boolean).join('\n\n'), small, wellnessBlock: aiMaySeeCheckins() ? [summaryForAI(state.wellness), assessmentSummaryForAI(state.reports)].filter(Boolean).join('\n') : '' });
     const history = currentChat().messages.filter((m) => !m.crisis && m.content && (m.role === 'user' || m.role === 'assistant')).slice(-20).map(({ role, content }) => ({ role, content }));
     while (history.length && history[0].role !== 'user') history.shift();
 
@@ -327,6 +334,7 @@ export async function send(text, { viaVoice = false } = {}) {
       }
       if (speakIt) speaker.end();
       refreshAiNote(); // update "replies left today"
+      if (!crisis) learnSoon();
       m.content = acc || '…'; save();
       node.replaceWith(renderMessage(m));
       announce('Phoenix replied');
@@ -481,4 +489,24 @@ export function leaveChat() { stopVoice(); }
 export function prefillChat(text, { autosend = false } = {}) {
   if (!inputEl) return;
   if (autosend) send(text); else { inputEl.value = text; inputEl.focus(); }
+}
+
+// ---------------------------------------------------------------- Phoenix writing its own notes (signed-in people who allow it)
+/** After every few messages, a small separate request asks Phoenix to jot down anything worth remembering. It never blocks the chat. */
+function learnSoon() {
+  try {
+    if (memoryMode() !== 'auto' || !aiActive()) return;
+    state.account.learnCount = (state.account.learnCount || 0) + 1;
+    const chat = currentChat();
+    if (!shouldLearn(chat)) return;
+    state.account.learnCount = 0; save();
+    const req = notesRequest(chat);
+    streamChat(providerConfig(state), { system: req.system, messages: req.messages, maxTokens: 400, purpose: 'memory' }).then((reply) => {
+      const out = parseNotes(reply);
+      let added = 0;
+      for (const id of out.remove) deleteMemory(id);
+      for (const n of out.add) if (addMemory(n, 'ai')) added++;
+      if (added) { trackFeature('memory_added'); toast(`Phoenix made ${added === 1 ? 'a note' : added + ' notes'} to remember. See or change them in Settings, Account and memories.`, { icon: '🪶', ms: 4200 }); }
+    }).catch(() => { /* notes are a bonus: if it fails, nothing is lost */ });
+  } catch { /* never break the chat */ }
 }

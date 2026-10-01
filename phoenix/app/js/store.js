@@ -44,6 +44,9 @@ export const DEFAULTS = () => ({
   wellness: [],            // 6PF-Wellness daily check-ins, see sixpf.js
   reports: [],              // reflection documents (6PF assessment, burnout plan, identity workbook), see reports.js
   float: { activity: '', nudgeMins: 0, invited: false }, // the floating Phoenix window, see float.js
+  account: { token: '', email: '', signedInAt: 0, sync: true, memory: 'auto', base: '', lastSync: 0, scalarsAt: 0, scalarsHash: '', learnCount: 0 }, // the optional account, see account.js (the token stays on this device)
+  memories: [],            // short notes Phoenix keeps for a signed-in person, see memory.js
+  deleted: {},             // ids of things deleted, so a deletion reaches other devices when syncing
   reminders: { enabled: false, time: '10:00', lastShown: '', snoozedUntil: 0, launch: false },
   provider: {
     kind: 'shared',         // shared (Phoenix AI, run on NeuroHub's own Claude account, limited per day) | offline (the built-in helper, no AI). Nothing else exists.
@@ -75,7 +78,7 @@ function load() {
   return DEFAULTS();
 }
 /** Older versions let people connect other AIs and store their own keys. Those settings are dropped, and the keys erased. */
-function cleaned(s) { normaliseProvider(s); delete s.billing; return s; }
+function cleaned(s) { normaliseProvider(s); delete s.billing; if (!s.account || typeof s.account !== 'object') s.account = DEFAULTS().account; return s; }
 
 export const state = load();
 
@@ -121,8 +124,10 @@ export function newChat() {
 export function currentChat() {
   return state.chats.find((c) => c.id === state.currentChat) || newChat();
 }
+export function markDeleted(id) { (state.deleted ||= {})[id] = Date.now(); }
 export function deleteChat(id) {
   state.chats = state.chats.filter((c) => c.id !== id);
+  markDeleted(id);
   if (state.currentChat === id) state.currentChat = state.chats[0]?.id || null;
   save();
 }

@@ -10,6 +10,7 @@ import { installPanel } from './install.js';
 import { openDonate } from './donate.js';
 import { startSharing, stopSharing } from './share.js';
 import { floatSupported, openFloat, setNudges } from './float.js';
+import { accountSection } from './account-ui.js';
 import { notifSupport, setReminder, testReminder, downloadIcs } from './reminders.js';
 
 const NEUROTYPES = ['Autistic', 'ADHD', 'AuDHD', 'Dyslexic', 'Dyspraxic', 'Dyscalculic', 'Tourettic', 'OCD', 'Voice-hearer', 'Exploring / not sure', 'Multiply neurodivergent'];
@@ -51,6 +52,8 @@ export function mountSettings(container, { focus } = {}) {
       el('label', { class: 'field' }, 'Anything Phoenix should know?', el('span', { class: 'hint' }, 'What helps, what does not, how you like to be spoken to.'), about))));
 
   // ---------------------------------------------------- how Phoenix talks
+  const acctBox = accountSection();
+  root.append(acctBox);
   root.append(el('fieldset', {}, el('legend', {}, 'How Phoenix talks'), el('div', { class: 'stack' },
     el('div', {}, el('div', { style: { fontWeight: 700, marginBottom: '.3rem' } }, 'Length of replies'), seg([['short', 'Short'], ['normal', 'Medium'], ['detailed', 'Detailed']], () => state.prefs.replyLength, (v) => (state.prefs.replyLength = v), 'Reply length')),
     el('div', {}, el('div', { style: { fontWeight: 700, marginBottom: '.3rem' } }, 'Tone'), seg([['gentle', 'Gentle'], ['direct', 'Direct'], ['playful', 'Playful']], () => state.prefs.tone, (v) => (state.prefs.tone = v), 'Tone')),
@@ -73,7 +76,7 @@ export function mountSettings(container, { focus } = {}) {
 
   // ---------------------------------------------------- neurohubcommunity.org knowledge
   const siteStatus = el('p', { class: 'muted small', 'aria-live': 'polite' });
-  const drawSite = () => { const i = siteInfo(); siteStatus.textContent = i.count ? `${i.articles} articles and pages from neurohubcommunity.org (${i.source === 'refreshed' ? 'refreshed' : 'built into the app'}${i.syncedAt ? ' on ' + fmtDate(i.syncedAt) : ''}), plus ${i.presentations} sections from NeuroHub’s training presentations and recorded conversations.` : 'Nothing loaded yet.'; };
+  const drawSite = () => { const i = siteInfo(); siteStatus.textContent = i.count ? `${i.articles} articles and pages from neurohubcommunity.org, and Helen Edgar’s Autistic Realms and More Realms websites, used with her permission (${i.source === 'refreshed' ? 'refreshed' : 'built into the app'}${i.syncedAt ? ' on ' + fmtDate(i.syncedAt) : ''}), plus ${i.presentations} sections from NeuroHub’s training presentations and recorded conversations.` : 'Nothing loaded yet.'; };
   loadSite().then(drawSite);
   const refreshBtn = el('button', { class: 'btn btn-sm', onclick: async () => {
     refreshBtn.disabled = true; siteStatus.textContent = 'Contacting neurohubcommunity.org…';
@@ -81,7 +84,7 @@ export function mountSettings(container, { focus } = {}) {
     catch (e) { toast(e.message || 'Could not refresh', { icon: '⚠️', ms: 4200 }); }
     refreshBtn.disabled = false; drawSite();
   } }, 'Refresh from neurohubcommunity.org');
-  root.append(el('fieldset', {}, el('legend', {}, 'Knowledge from NeuroHub Community'), el('div', { class: 'stack' },
+  root.append(el('fieldset', {}, el('legend', {}, 'Knowledge from NeuroHub Community and Helen Edgar'), el('div', { class: 'stack' },
     el('p', { class: 'muted small' }, 'Phoenix can draw on NeuroHub Community’s own articles, pages and training presentations when it answers, and link the articles so you can read more. This uses a copy stored in the app, so nothing is sent anywhere when you chat. If you use an online AI, the few relevant passages are sent to it along with your message, like anything else.'),
     toggle('Use NeuroHub articles and presentations', () => state.prefs.useSite, (v) => (state.prefs.useSite = v)),
     siteStatus, el('div', { class: 'row' }, refreshBtn))));
@@ -106,7 +109,7 @@ export function mountSettings(container, { focus } = {}) {
     try { importData(await f.text()); applyLook(); toast('Backup restored', { icon: '✅' }); mountSettings(container); } catch (e) { toast(e.message || 'Could not read that file', { icon: '⚠️', ms: 4000 }); }
   });
   root.append(el('fieldset', {}, el('legend', {}, 'Your data'),
-    el('p', { class: 'muted small' }, 'Everything Phoenix remembers (chats, check-ins, tasks and settings) lives only on this device. There is no account and no server, so nobody else can read it, and nobody can recover it for you. Back it up if it matters.'),
+    el('p', { class: 'muted small' }, 'Everything Phoenix remembers (chats, check-ins, tasks and settings) lives on this device. Unless you make the optional account above, nothing is kept anywhere else, so nobody else can read it and nobody can recover it for you. Back it up if it matters.'),
     el('p', { class: 'muted small' }, 'Saved in this browser, on this device. Your browser has been asked to keep it, but clearing site data would erase it, so download a backup now and then.'),
     toggle('Remind me about donating, at most once a week', () => state.prefs.donateReminders !== false, (v) => (state.prefs.donateReminders = v), 'A small card, never a notification. It waits a week after you start, stays away after hard days, and rests for a month if you open the donate options.'),
     toggle('Share anonymous usage counts with NeuroHub', () => state.prefs.analytics !== false, (v) => (state.prefs.analytics = v), 'Counts app opens, installs and which kind of AI is chosen, as daily totals. No identifier, no cookies, and nothing you write or check in. It helps NeuroHub keep Phoenix free. Off means nothing is sent.'),
@@ -120,10 +123,11 @@ export function mountSettings(container, { focus } = {}) {
   root.append(el('fieldset', {}, el('legend', {}, 'About Phoenix'), el('div', { class: 'stack small' },
     el('p', {}, 'Phoenix is a free, neuro-affirming AI assistant for Autistic, ADHD and other neurodivergent people, made by NeuroHub Community, an Autistic-led organisation. It is built around the ideas in David Gray-Hammond’s books. Full catalogue: ', el('a', { href: 'https://mybook.to/dgh-full-catalogue', target: '_blank', rel: 'noopener noreferrer' }, 'mybook.to/dgh-full-catalogue')),
     el('p', {}, 'Community: ', el('a', { href: 'https://connect.neurohubcommunity.org/p/join', target: '_blank', rel: 'noopener noreferrer' }, 'connect.neurohubcommunity.org'), ' · ', el('a', { href: 'https://neurohubcommunity.org', target: '_blank', rel: 'noopener noreferrer' }, 'neurohubcommunity.org')),
-    el('p', {}, 'Phoenix is free, with no ads and no account. NeuroHub Community is a small Autistic-led social enterprise, and every AI reply costs us money, so donations are what keep Phoenix AI live. ', el('button', { class: 'btn btn-sm donate-btn', onclick: () => openDonate() }, '♥ Donate to NeuroHub Community'), ' There is never any pressure, and Phoenix works the same either way.'),
+    el('p', {}, 'Phoenix is free, with no ads and no account needed. NeuroHub Community is a small Autistic-led social enterprise, and every AI reply costs us money, so donations are what keep Phoenix AI live. ', el('button', { class: 'btn btn-sm donate-btn', onclick: () => openDonate() }, '♥ Donate to NeuroHub Community'), ' There is never any pressure, and Phoenix works the same either way.'),
     el('p', { class: 'muted' }, 'Phoenix is not a therapist, doctor or crisis service, and it cannot diagnose. Nothing it says is medical advice. If you are in danger or thinking of harming yourself, use the red Help button, or call your local emergency number.'),
     el('p', { class: 'muted' }, 'Version 1.2.0'))));
 
+  if (focus === 'account') setTimeout(() => acctBox.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
   if (focus === 'ai') requestAnimationFrame(() => aiBox.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   if (focus === 'install') requestAnimationFrame(() => document.getElementById('install-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   if (focus === 'share') requestAnimationFrame(() => shareBox.scrollIntoView({ behavior: 'smooth', block: 'start' }));
