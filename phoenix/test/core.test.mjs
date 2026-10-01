@@ -129,27 +129,23 @@ test('unreachable Ollama gives a helpful message, and abort works', async () => 
 });
 
 
-// ---- pay-as-you-go budget (needs a fake localStorage because store.js reads it at import)
-test('budget: paid providers are capped and costs are estimated; local ones are free', async () => {
-  globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
-  globalThis.window = { addEventListener() {} };
-  const s = await import('../app/js/store.js');
-  s.state.provider.kind = 'ollama';
-  assert.equal(s.isPaidProvider(), false);
-  s.state.provider.kind = 'openai'; s.state.provider.openai.baseUrl = 'http://localhost:1234/v1';
-  assert.equal(s.isPaidProvider(), false);
-  s.state.provider.openai.baseUrl = 'https://api.groq.com/openai/v1';
-  assert.equal(s.isPaidProvider(), true);
-  s.state.billing.dailyLimit = 2;
-  assert.ok(s.checkBudget().ok);
-  s.recordUsage(4000, 400); s.recordUsage(4000, 400);
-  assert.equal(s.checkBudget().ok, false);
-  assert.match(s.checkBudget().message, /limit of 2/);
-  assert.equal(s.estimatedCost(), null);
-  s.state.billing.inPerM = 1; s.state.billing.outPerM = 2;
-  assert.ok(Math.abs(s.estimatedCost() - ((2000 / 1e6) * 1 + (200 / 1e6) * 2)) < 1e-9);
-  s.state.provider.kind = 'ollama'; s.recordUsage(9999, 9999);
-  assert.equal(s.state.billing.messages, 2, 'free providers are not counted');
+// ---- the AI is only ever NeuroHub's own (shared) or none (offline)
+test('provider policy: anything else becomes the shared AI and saved keys are erased', async () => {
+  const { normaliseProvider, KINDS } = await import('../app/js/provider-policy.js');
+  assert.deepEqual(KINDS, ['shared', 'offline']);
+  const old = { provider: { kind: 'anthropic', anthropic: { key: 'sk-ant-secret' }, openai: { key: 'x' }, ollama: { url: 'http://localhost:11434' } } };
+  assert.equal(normaliseProvider(old), true);
+  assert.deepEqual(old.provider, { kind: 'shared' });
+  const off = { provider: { kind: 'offline' } };
+  assert.equal(normaliseProvider(off), false); assert.equal(off.provider.kind, 'offline');
+  const none = {}; normaliseProvider(none); assert.equal(none.provider.kind, 'shared');
+});
+
+test('provider config: only the shared AI or the built-in helper can be used', async () => {
+  const { providerConfig } = await import('../app/js/providers.js');
+  assert.equal(providerConfig({ provider: { kind: 'shared' } }).kind, 'shared');
+  assert.equal(providerConfig({ provider: { kind: 'ollama', ollama: { url: 'http://x' } } }).kind, 'offline');
+  assert.equal(providerConfig({ provider: { kind: 'openai', openai: { key: 'k' } } }).kind, 'offline');
 });
 
 // ---- neurohubcommunity.org knowledge
@@ -372,10 +368,15 @@ test('documents: the PDF is a real, multi-page A4 file, marks AI drafts, and rep
   assert.ok(RP.pdfBlocks(g, RP.newReport(g)).some((b) => /Nothing has been filled in/.test(b.text || '')));
 });
 
-test('donate: the suggested amounts open NeuroHub’s PayPal page, with Ko-fi as another way', async () => {
-  const { donateUrl, AMOUNTS, PAYPAL, KOFI } = await import('../app/js/donate.js');
-  assert.deepEqual(AMOUNTS, [5, 10, 25, 50]);
-  assert.equal(PAYPAL, 'https://paypal.biz/emergentdivergence'); assert.equal(donateUrl(25), PAYPAL); assert.match(KOFI, /^https:\/\/ko-fi\.com\//);
+test('donate: once or monthly, four suggested amounts or your own, through Stripe (Ko-fi until the links are set)', async () => {
+  const { donateUrl, AMOUNTS } = await import('../app/js/donate.js');
+  const L = await import('../app/js/donate-links.js');
+  assert.deepEqual(AMOUNTS, [5, 10, 25, 50]); assert.deepEqual(L.FREQUENCIES, ['once', 'monthly']);
+  const ok = /^https:\/\/(buy\.stripe\.com|donate\.stripe\.com|ko-fi\.com)\//;
+  for (const f of L.FREQUENCIES) for (const a of [...AMOUNTS, 'other']) assert.match(L.linkFor(f, a), ok, f + ' ' + a);
+  assert.equal(donateUrl(25), L.linkFor('once', 25)); assert.equal(donateUrl(25, 'monthly'), L.linkFor('monthly', 25));
+  assert.equal(L.clickKey('once', 25), '25'); assert.equal(L.clickKey('monthly', 'other'), 'mother');
+  assert.ok(!JSON.stringify(L.LINKS).includes('paypal'), 'PayPal is gone');
 });
 
 test('privacy: no private individual’s name, place or personal detail is anywhere Phoenix can read it', async () => {
@@ -467,7 +468,7 @@ test('shared AI: the app streams from it like any other AI, and explains limits 
     let acc = ''; const out = await sc(cfg, { system: PHX_SYSTEM, messages: [{ role: 'user', content: 'hi' }], onText: (d) => (acc += d) });
     assert.equal(out, 'Hello there'); assert.match(seenReq[0].url, /\/api\/ai$/); assert.ok(!('x-api-key' in (seenReq[0].init.headers || {})), 'no key ever leaves the app for the shared AI');
     setF(async () => new Response('{"error":"limit","scope":"person","perDay":15}', { status: 429 }));
-    await assert.rejects(() => sc(cfg, { system: PHX_SYSTEM, messages: [{ role: 'user', content: 'hi' }] }), /used your free Phoenix AI messages for today/);
+    await assert.rejects(() => sc(cfg, { system: PHX_SYSTEM, messages: [{ role: 'user', content: 'hi' }] }), /used your Phoenix AI replies for today/);
     setF(async () => new Response('{"error":"unavailable"}', { status: 503 }));
     await assert.rejects(() => sc(cfg, { system: PHX_SYSTEM, messages: [{ role: 'user', content: 'hi' }] }), /not available right now/);
   } finally { setF(null); }

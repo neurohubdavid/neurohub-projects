@@ -1,31 +1,44 @@
-// Donations to NeuroHub Community, the Autistic-led social enterprise that makes Phoenix. Phoenix never handles money:
-// each amount is a plain link that opens NeuroHub's PayPal page in the person's own browser.
+// Donations to NeuroHub Community, the Autistic-led social enterprise that makes Phoenix. Phoenix never handles money: every button is
+// a plain link that opens a payment page hosted by Stripe (or NeuroHub's Ko-fi page) in the person's own browser. People can give once or
+// every month, choose one of four suggested amounts, or type an amount of their own on the payment page.
 import { el, modal } from './util.js';
 import { track } from './analytics.js';
-
-// PayPal business page. It does not take an amount in the link, so the suggested amounts are shown as a guide and the person types
-// the amount on PayPal. (A paypal.me link would allow the amount to be filled in; if NeuroHub gets one, change donateUrl.)
-export const PAYPAL = 'https://paypal.biz/emergentdivergence';
-export const KOFI = 'https://ko-fi.com/neurohubcommunity';
-export const AMOUNTS = [5, 10, 25, 50];
-export const donateUrl = () => PAYPAL;
+import { AMOUNTS, FREQUENCIES, KOFI, linkFor, usingStripe, clickKey } from './donate-links.js';
+export { AMOUNTS, KOFI };
+export const donateUrl = (amount, frequency = 'once') => linkFor(frequency, amount);
 
 /** Remembers that someone opened the donate options, so the weekly reminder gives them a long rest. */
 async function noteDonateClick() { try { const { state, save } = await import('./store.js'); state.donate ||= { firstSeen: 0, lastShown: 0, lastClick: 0 }; state.donate.lastClick = Date.now(); save(); } catch { /* ignore */ } }
 
 export function openDonate() {
-  const link = (amount) => el('a', { class: 'btn btn-lg donate-amt', onclick: () => { track('donate_click', String(amount)); noteDonateClick(); }, href: donateUrl(amount), target: '_blank', rel: 'noopener noreferrer', 'aria-label': `Donate about £${amount} with PayPal (opens PayPal in your browser, where you enter the amount)` }, `£${amount}`);
+  let frequency = 'once';
+  const amounts = el('div', { class: 'donate-amounts', role: 'group', 'aria-label': 'Suggested donation amounts' });
+  const note = el('p', { class: 'small muted', 'aria-live': 'polite' });
+  const choose = el('div', { class: 'seg', role: 'group', 'aria-label': 'How often' });
+  const draw = () => {
+    amounts.textContent = ''; choose.textContent = '';
+    for (const f of FREQUENCIES) choose.append(el('button', { type: 'button', 'aria-pressed': String(f === frequency), onclick: () => { frequency = f; draw(); } }, f === 'once' ? 'Give once' : 'Give monthly'));
+    const go = (a) => { track('donate_click', clickKey(frequency, a)); noteDonateClick(); };
+    for (const a of AMOUNTS) amounts.append(el('a', { class: 'btn btn-lg donate-amt', onclick: () => go(a), href: linkFor(frequency, a), target: '_blank', rel: 'noopener noreferrer', 'aria-label': `Give £${a}${frequency === 'monthly' ? ' every month' : ' once'} (opens the secure payment page in your browser)` }, [`£${a}`, frequency === 'monthly' ? el('small', { style: { display: 'block', fontWeight: 400, fontSize: '.7em' } }, 'a month') : null]));
+    note.textContent = frequency === 'monthly'
+      ? 'Monthly gifts are taken every month until you cancel, which you can do yourself at any time from the receipt email. For your own monthly amount, set the number of pounds on the payment page.'
+      : 'A single gift. Nothing is taken again.';
+  };
+  draw();
   modal({
     title: '♥ Support NeuroHub Community',
     body: el('div', { class: 'stack' },
-      el('p', {}, 'Phoenix is free, with no ads and no account, and it always will be. It is made by NeuroHub Community, a small Autistic-led social enterprise. If Phoenix has helped and you can spare something, a donation helps us keep it free and keep building tools like it.'),
-      el('div', { class: 'donate-amounts', role: 'group', 'aria-label': 'Suggested donation amounts' }, AMOUNTS.map(link)),
-      el('p', { class: 'small muted' }, 'These are suggestions. Each one opens PayPal in your browser, where you type the amount you would like to give. PayPal handles the payment, not Phoenix, and no payment details ever pass through this app.'),
+      el('p', {}, 'Phoenix is free, with no ads and no account. It is made by NeuroHub Community, a small Autistic-led social enterprise, and every Phoenix AI reply is paid for from our own Claude account. If Phoenix has helped and you can spare something, a donation helps cover the cost of keeping the AI live for everyone.'),
+      choose, amounts,
+      el('p', {}, el('a', { class: 'btn', onclick: () => { track('donate_click', clickKey(frequency, 'other')); noteDonateClick(); }, href: linkFor(frequency, 'other'), target: '_blank', rel: 'noopener noreferrer' }, 'Choose my own amount')),
+      note,
+      el('p', { class: 'small muted' }, usingStripe()
+        ? 'Each button opens a secure payment page run by Stripe. The suggested amounts are already filled in, and you can change them there. Stripe handles the payment, not Phoenix, and no card details ever pass through this app.'
+        : 'Each button opens NeuroHub’s donation page in your browser, where you choose the amount and can pay by card. No payment details ever pass through this app.'),
       el('p', { class: 'small' }, 'Prefer another way? ', el('a', { href: KOFI, target: '_blank', rel: 'noopener noreferrer', onclick: () => { track('donate_click', 'other'); noteDonateClick(); } }, 'Give through Ko-fi'), '. There is never any pressure: Phoenix works exactly the same either way.')),
     actions: [{ label: 'Maybe later' }],
   });
 }
-
 
 // ---------------------------------------------------------------- a gentle weekly reminder
 const DAY = 86400000;
@@ -60,7 +73,7 @@ export async function checkDonateNudge(host, { force = false } = {}) {
   host.textContent = '';
   const close = () => { host.textContent = ''; };
   host.append(el('div', { class: 'donate-nudge', role: 'region', 'aria-label': 'Support NeuroHub Community' },
-    el('span', {}, 'Phoenix is free for everyone because NeuroHub Community, a small Autistic-led social enterprise, pays for it. If it has helped and you can spare something, a donation keeps it going. No pressure at all.'),
+    el('span', {}, 'Every Phoenix AI reply costs NeuroHub Community, a small Autistic-led social enterprise, real money, and donations are what keep the AI live for everyone. If Phoenix has helped and you can spare something, even a little or monthly, thank you. No pressure at all.'),
     el('span', { class: 'row-wrap' },
       el('button', { class: 'btn btn-sm', onclick: () => { close(); openDonate(); } }, '♥ Donate'),
       el('button', { class: 'btn btn-sm btn-ghost', onclick: close }, 'Not this week'),

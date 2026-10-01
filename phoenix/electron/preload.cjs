@@ -11,6 +11,8 @@ ipcRenderer.on('net:event', (_e, id, ev) => {
 });
 
 contextBridge.exposeInMainWorld('phoenixNative', {
+  /** Only set by the test suite, to point the shared AI at a local mock. Normally empty, so the real Phoenix service is used. */
+  apiBase: process.env.PHOENIX_API_BASE || '',
   /** request({url, method, headers, body}, onEvent) -> Promise<id>. onEvent gets {type:'head'|'chunk'|'end'|'error', ...}. */
   request(req, onEvent) {
     const id = next++;

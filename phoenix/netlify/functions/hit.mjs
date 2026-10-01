@@ -15,7 +15,7 @@ const ALLOWED = {
   app_open: ['browser', 'installed', 'desktop'],
   first_open: ['browser', 'installed', 'desktop'],
   ai_kind: ['offline', 'shared', 'ollama', 'openai', 'anthropic'],
-  donate_click: ['5', '10', '25', '50', 'other'],
+  donate_click: ['5', '10', '25', '50', 'other', 'm5', 'm10', 'm25', 'm50', 'mother'], // m = monthly
 };
 const HOST_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/;
 

@@ -230,3 +230,6 @@ ul.changes { padding-left: 1.2rem; }
 /* weekly donate reminder: soft, dismissible, never a notification */
 #donate-nudge-host:empty { display: none; }
 .donate-nudge { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; padding: .6rem 1rem; background: color-mix(in srgb, var(--pink) 30%, var(--card)); border-bottom: var(--bw) solid var(--border); font-size: .95rem; }
+
+.ai-note { display: flex; flex-wrap: wrap; gap: .25rem .6rem; align-items: center; font-size: .9rem; color: var(--muted); padding: .25rem 0; }
+button.linklike { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }

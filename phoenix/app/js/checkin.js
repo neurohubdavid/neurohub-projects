@@ -277,7 +277,7 @@ function insights(body, navigate) {
     const adv = S.advice(list);
     out.append(el('h2', {}, 'What might help'), ...adv.map((a) => adviceCard(a, navigate)));
     out.append(talkButton(navigate, 'Can you look at my check-ins with me and help me work out what to protect this week?'));
-    if (!aiMaySeeCheckins()) out.append(el('p', { class: 'muted small' }, 'The advice above is built into Phoenix and works offline. If you connect an AI you run on your own computer, Phoenix can also discuss your patterns in conversation.'));
+    if (!aiMaySeeCheckins()) out.append(el('p', { class: 'muted small' }, 'The advice above is built into Phoenix and works offline. If you allow it in Settings, Phoenix AI can also read a short summary and discuss your patterns in conversation.'));
 
     const notes = cur.flatMap((e) => e.domains.filter((d) => d.note).map((d) => ({ at: e.createdAt, d }))).slice(-8).reverse();
     if (notes.length) out.append(el('section', { class: 'card', 'aria-labelledby': 'ch5' }, el('h2', { id: 'ch5' }, 'Your own notes'), el('ul', {}, notes.map((n) => el('li', {}, el('strong', {}, `${fmtDate(n.at, { day: 'numeric', month: 'short' })}, ${S.DOMAINS.find((x) => x.id === n.d.id)?.short}: `), n.d.note)))));

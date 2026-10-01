@@ -15,7 +15,7 @@
       var a = ev.target.closest && ev.target.closest('a[href*="install=1"]');
       if (a) send('install_click', 'landing');
       var d = ev.target.closest && ev.target.closest('a[data-amount]');
-      if (d) send('donate_click', d.getAttribute('data-amount'));
+      if (d) { var s = d.closest('#donate'), m = s && s.getAttribute('data-mode') === 'monthly' ? 'm' : ''; send('donate_click', m + d.getAttribute('data-amount')); }
     });
   } catch (e) { /* counting must never break the page */ }
 })();

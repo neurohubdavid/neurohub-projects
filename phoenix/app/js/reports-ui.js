@@ -1,9 +1,8 @@
 // The "Documents" screens: pick a NeuroHub reflection document, fill it in (by hand, one section at a time, or with
 // Phoenix drafting answers from what the person has told it), download it as a PDF, and save the ratings to Insights.
 import { el, toast, announce, modal, download, fmtDate, esc } from './util.js';
-import { state, save, aiActive, aiIsLocal, aiMaySeeCheckins, checkBudget, recordUsage } from './store.js';
+import { state, save, aiActive, aiMaySeeCheckins } from './store.js';
 import { streamChat, providerConfig } from './providers.js';
-import { isSmallModel } from './guard.js';
 import { summaryForAI, perDay } from './sixpf.js';
 import { prefillChat } from './chat.js';
 import { makePdf } from './pdf.js';
@@ -58,7 +57,7 @@ function editor(body, { navigate, report }) {
   const secBox = el('div', { class: 'stack' });
   const nav = el('div', { class: 'row-wrap doc-nav', role: 'group', 'aria-label': 'Sections' });
   const persist = () => { R.touch(report); save(); drawProgress(); };
-  const small = () => state.provider.kind === 'ollama' && isSmallModel(state.provider.ollama.model);
+  const small = () => false; // Phoenix AI is always a capable Claude model
 
   function drawProgress() {
     const p = R.progress(doc, report);
@@ -88,7 +87,7 @@ function editor(body, { navigate, report }) {
     card.append(fieldsBox);
     if (s.rating) card.append(ratingRow(s));
     const btns = el('div', { class: 'row-wrap' });
-    if (aiActive() && !small()) btns.append(el('button', { class: 'btn btn-sm', onclick: () => aiFill([s]) }, '✨ Draft this section with Phoenix'));
+    if (aiActive()) btns.append(el('button', { class: 'btn btn-sm', onclick: () => aiFill([s]) }, '✨ Draft this section with Phoenix'));
     if (report.drafted.some((id) => s.fields.some((f) => f.id === id))) btns.append(el('button', { class: 'btn btn-sm', onclick: () => { report.drafted = report.drafted.filter((id) => !s.fields.some((f) => f.id === id)); persist(); drawSection(); } }, 'These look right'));
     if (btns.children.length) card.append(btns);
     secBox.append(card, el('div', { class: 'row-wrap' },
@@ -113,18 +112,15 @@ function editor(body, { navigate, report }) {
   // ---- AI drafting
   async function aiFill(list) {
     if (!aiActive()) return;
-    if (small()) { toast('This AI model is too small to fill in documents reliably. Use the built-in walk-through.', { icon: 'ℹ️', ms: 4200 }); return; }
-    const budget = checkBudget(); if (!budget.ok) { toast(budget.message, { icon: '⚠️', ms: 5000 }); return; }
     const wellness = aiMaySeeCheckins() ? [summaryForAI(state.wellness), R.assessmentSummaryForAI(state.reports)].filter(Boolean).join('\n') : '';
     const ctx = R.chatContext({ profile: state.profile, wellness, chats: [...state.chats].sort((a, b) => a.updated - b.updated).slice(-8) });
     if (!R.hasSource(ctx)) { toast('Phoenix has nothing to go on yet. Have a chat first (even a short one), add a few lines under About me in Settings, or fill this in by hand.', { icon: 'ℹ️', ms: 6000 }); return; }
-    const local = aiIsLocal();
     const go = await new Promise((resolve) => modal({ title: 'Let Phoenix draft this?', onClose: () => resolve(false),
       body: el('div', { class: 'stack' },
         el('p', {}, 'Phoenix will read what you have written to it and draft answers in your voice. It only writes down what you have told it, leaves the rest empty, and never changes anything you have already written. You check every answer afterwards.'),
-        el('p', { class: 'small' }, el('strong', {}, 'What is sent to the AI: '), 'your name and About me notes, your own recent messages to Phoenix (not its replies)' + (wellness ? ', and a short summary of your check-ins' : '') + ', and the section questions. ' + (local ? 'Your AI runs on this computer, so nothing leaves it.' : 'Your AI is an online service, so this text goes to it and is handled under that provider’s terms. Skip this if you would rather it did not.')),
+        el('p', { class: 'small' }, el('strong', {}, 'What is sent to the AI: '), 'your name and About me notes, your own recent messages to Phoenix (not its replies)' + (wellness ? ', and a short summary of your check-ins' : '') + ', and the section questions. Phoenix AI runs through NeuroHub’s server and on to Claude, which is not stored by NeuroHub. Skip this if you would rather it did not.'),
         el('p', { class: 'muted small' }, 'Ratings are never filled in by the AI, because they are your own feelings. The AI can make mistakes.')),
-      actions: [{ label: 'Not now', onclick: () => resolve(false) }, { label: local ? 'Draft it' : 'Send and draft', class: 'btn-primary', onclick: () => { resolve(true); } }] }));
+      actions: [{ label: 'Not now', onclick: () => resolve(false) }, { label: 'Send and draft', class: 'btn-primary', onclick: () => { resolve(true); } }] }));
     if (!go) return;
     aiAbort = new AbortController();
     const cfg = providerConfig(state);
@@ -148,7 +144,7 @@ function editor(body, { navigate, report }) {
         report.values[fid] = text; if (!report.drafted.includes(fid)) report.drafted.push(fid); added++;
       }
     }
-    aiAbort = null; recordUsage(chars, outChars);
+    aiAbort = null;
     if (added) { report.aiUsed = true; persist(); }
     statusEl.textContent = added ? `Phoenix drafted ${added} answer${added === 1 ? '' : 's'}. Please read them, change anything that is not right, and press “These look right” when you are happy.` : failed ? 'Phoenix could not draft anything this time. You can fill it in by hand, or try again.' : 'Phoenix did not find anything in what you have told it to put here, so those answers are left for you.';
     announce(statusEl.textContent); drawSection();
@@ -181,8 +177,8 @@ function editor(body, { navigate, report }) {
   actions.append(el('p', { class: 'muted small' }, R.isRated(doc) ? 'Saving records this set of ratings with today’s date. Do it again every few weeks and Insights will show what has changed.' : 'Saving records that you completed this today, so you can see your progress over time.'), saveBtn);
 
   const top = el('div', { class: 'row-wrap doc-tools' });
-  if (aiActive() && !small()) top.append(el('button', { class: 'btn', onclick: () => aiFill(sections) }, '✨ Draft everything I can from what I have told Phoenix'));
-  else top.append(el('span', { class: 'muted small' }, small() ? 'Your AI model is very small, so drafting is switched off. Fill it in one section at a time below.' : 'Connect an AI in Settings and Phoenix can draft answers for you from your chats. Until then, fill it in one section at a time.'));
+  if (aiActive()) top.append(el('button', { class: 'btn', onclick: () => aiFill(sections) }, '✨ Draft everything I can from what I have told Phoenix'));
+  else top.append(el('span', { class: 'muted small' }, 'Turn on Phoenix AI in Settings and it can draft answers for you from your chats. Until then, fill it in one section at a time.'));
   if (R.isRated(doc) && state.wellness.length) top.append(el('button', { class: 'btn', onclick: () => { const latest = perDay(state.wellness).at(-1); const rs = R.ratingsFromCheckin(latest); let n = 0; for (const s of doc.sections) if (s.rating && rs[s.rating.domain] && !report.ratings[s.id]) { report.ratings[s.id] = rs[s.rating.domain]; n++; } persist(); drawSection(); toast(n ? `Started ${n} rating${n === 1 ? '' : 's'} from your latest check-in. Adjust them to how you feel.` : 'Your ratings are already filled in.'); } }, 'Start ratings from my latest check-in'));
   if (aiActive()) top.append(el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { navigate('chat'); prefillChat(`I want to fill in my ${doc.title}. Can you ask me about it one area at a time?`); } }, 'Talk it through in chat first'));
 

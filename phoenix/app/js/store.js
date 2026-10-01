@@ -1,6 +1,7 @@
 // Everything Phoenix remembers lives here, on this device only (localStorage). Nothing is uploaded anywhere by
 // Phoenix itself. If you connect an online AI service, only the messages you send to Phoenix go to that service.
 import { bus, uid } from './util.js';
+import { normaliseProvider } from './provider-policy.js';
 
 const KEY = 'phoenix.v1';
 
@@ -36,7 +37,7 @@ export const DEFAULTS = () => ({
     useSite: true,          // let the assistant draw on neurohubcommunity.org articles
     donateReminders: true,  // a gentle reminder to donate, at most once a week, see donate.js
     analytics: true,       // share anonymous usage counts (app opens, installs) with NeuroHub, see analytics.js
-    aiSeesCheckins: 'auto', // auto (only an AI on this computer) | yes | no: may the AI read a summary of daily check-ins?
+    aiSeesCheckins: 'no',   // no | yes: may Phoenix AI read a summary of daily check-ins? Off unless the person turns it on.
   },
   share: { on: false, pid: '', since: '', pending: [], asked: false }, // optional anonymous sharing of check-in scores, off by default, see share.js
   donate: { firstSeen: 0, lastShown: 0, lastClick: 0 }, // timestamps for the weekly donate reminder
@@ -44,15 +45,7 @@ export const DEFAULTS = () => ({
   reports: [],              // reflection documents (6PF assessment, burnout plan, identity workbook), see reports.js
   reminders: { enabled: false, time: '10:00', lastShown: '', snoozedUntil: 0, launch: false },
   provider: {
-    kind: 'shared',         // shared (Phoenix free AI, limited) | offline (built-in helper) | ollama | openai | anthropic. New people start on the free AI and can opt out in Settings.
-    ollama: { url: 'http://localhost:11434', model: '' },
-    openai: { preset: 'custom', baseUrl: '', key: '', model: '' },
-    anthropic: { key: '', model: 'claude-sonnet-5-5' },
-  },
-  billing: {                // You pay your own AI provider directly. Phoenix only keeps rough local estimates.
-    month: '', messages: 0, inTok: 0, outTok: 0,
-    day: '', dayCount: 0, dailyLimit: 0,        // dailyLimit 0 = no cap
-    inPerM: 0, outPerM: 0, currency: '$',       // prices per million tokens, typed in by the person from their provider's price page
+    kind: 'shared',         // shared (Phoenix AI, run on NeuroHub's own Claude account, limited per day) | offline (the built-in helper, no AI). Nothing else exists.
   },
   chats: [],                // [{id, title, updated, messages:[{role, content, crisis?}]}]
   currentChat: null,
@@ -79,12 +72,14 @@ const disk = globalThis.phoenixNative?.storage;
 function load() {
   try {
     const fromDisk = disk?.loadSync?.();
-    if (fromDisk) return merge(DEFAULTS(), JSON.parse(fromDisk));
+    if (fromDisk) return cleaned(merge(DEFAULTS(), JSON.parse(fromDisk)));
     const raw = localStorage.getItem(KEY); // first run of the desktop app, or the web version
-    if (raw) return merge(DEFAULTS(), JSON.parse(raw));
+    if (raw) return cleaned(merge(DEFAULTS(), JSON.parse(raw)));
   } catch { /* corrupt or blocked storage: start fresh */ }
   return DEFAULTS();
 }
+/** Older versions let people connect other AIs and store their own keys. Those settings are dropped, and the keys erased. */
+function cleaned(s) { normaliseProvider(s); delete s.billing; return s; }
 
 export const state = load();
 
@@ -140,56 +135,8 @@ export function deleteChat(id) {
   save();
 }
 
-export const providerReady = () => {
-  const p = state.provider;
-  if (p.kind === 'ollama') return !!p.ollama.model;
-  if (p.kind === 'openai') return !!(p.openai.baseUrl && p.openai.model);
-  if (p.kind === 'anthropic') return !!(p.anthropic.key && p.anthropic.model);
-  if (p.kind === 'shared') return true; // Phoenix's own limited free AI: no key or model to set
-  return false;
-};
+/** The AI is Phoenix's own (shared) or none. There is nothing to connect and nothing to pay on the person's side. */
+export const providerReady = () => state.provider.kind === 'shared';
 export const aiActive = () => providerReady();
-
-// ---------------------------------------------------------------- pay-as-you-go accounting (estimates, on this device)
-/** True when each message costs the person money (their own key with an online provider). Local Ollama and LM Studio are free. */
-export function isPaidProvider() {
-  const p = state.provider;
-  if (p.kind === 'anthropic') return true;
-  if (p.kind === 'openai') return !/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])/i.test(p.openai.baseUrl || '');
-  return false;
-}
-/** True when the connected AI runs on this computer (Ollama, or an OpenAI-compatible server on localhost), so nothing leaves the device. */
-export const aiIsLocal = () => aiActive() && (state.provider.kind === 'ollama' || (state.provider.kind === 'openai' && /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])/i.test(state.provider.openai.baseUrl || '')));
-/** May the AI read a short summary of the daily check-ins? 'auto' means only an AI running on this computer. */
-export function aiMaySeeCheckins() {
-  const v = state.prefs.aiSeesCheckins;
-  if (!aiActive() || v === 'no') return false;
-  return v === 'yes' || aiIsLocal();
-}
-const estTokens =(chars) => Math.ceil(chars / 4); // rough rule of thumb for English; real counts differ
-function rollover() {
-  const b = state.billing, now = new Date();
-  const month = `${now.getFullYear()}-${now.getMonth() + 1}`, day = now.toDateString();
-  if (b.month !== month) { b.month = month; b.messages = 0; b.inTok = 0; b.outTok = 0; }
-  if (b.day !== day) { b.day = day; b.dayCount = 0; }
-}
-/** Returns {ok:true} or {ok:false, message} if the person's own daily cap has been reached. */
-export function checkBudget() {
-  rollover();
-  const b = state.billing;
-  if (isPaidProvider() && b.dailyLimit > 0 && b.dayCount >= b.dailyLimit) return { ok: false, message: `You set a limit of ${b.dailyLimit} paid messages a day, and you have reached it. Phoenix stopped so you do not spend more than you meant to. You can change the limit in Settings, or use the free built-in helper and the Toolkit.` };
-  return { ok: true };
-}
-export function recordUsage(inChars, outChars) {
-  if (!isPaidProvider()) return;
-  rollover();
-  const b = state.billing;
-  b.messages++; b.dayCount++; b.inTok += estTokens(inChars); b.outTok += estTokens(outChars);
-  save();
-}
-export function estimatedCost() {
-  const b = state.billing;
-  if (!(b.inPerM > 0 || b.outPerM > 0)) return null;
-  return (b.inTok / 1e6) * b.inPerM + (b.outTok / 1e6) * b.outPerM;
-}
-export function resetUsage() { const b = state.billing; b.messages = 0; b.inTok = 0; b.outTok = 0; b.dayCount = 0; save(); }
+/** May the AI read a short summary of the daily check-ins? Only if the person chose "yes" in Settings. They are never sent by default. */
+export function aiMaySeeCheckins() { return aiActive() && state.prefs.aiSeesCheckins === 'yes'; }

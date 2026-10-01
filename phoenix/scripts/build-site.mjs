@@ -71,12 +71,13 @@ for (const [route, html] of Object.entries(pageMap)) {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'index.html'), html);
 }
-fs.writeFileSync(path.join(site, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pageMap).map((r) => `  <url><loc>${ORIGIN}${r}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`);
+fs.writeFileSync(path.join(site, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pageMap).filter((r) => r !== '/thanks/').map((r) =>`  <url><loc>${ORIGIN}${r}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`);
 fs.writeFileSync(path.join(site, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /go\nDisallow: /admin/\nDisallow: /stats/\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 const ogSrc = path.join(root, 'brand', 'og-image.png');
 if (fs.existsSync(ogSrc)) fs.copyFileSync(ogSrc, path.join(site, 'assets', 'og-image.png')); else console.warn('missing brand/og-image.png (run node scripts/make-og.mjs)');
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'hit.js'), path.join(site, 'assets', 'hit.js'));
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'install.js'), path.join(site, 'assets', 'install.js'));
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'donate.js'), path.join(site, 'assets', 'donate.js'));
 // The private backend: a sign-in page and its script. The server (netlify/functions/admin.mjs) refuses everything that is not a
 // signed-in person with the Admin role; the old /stats/ address is sent here.
 fs.mkdirSync(path.join(site, 'admin'), { recursive: true });

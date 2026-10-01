@@ -1,7 +1,7 @@
 // Settings: about me, how Phoenix talks, connecting an AI, appearance, your data.
 import { el, toast, modal, download, dayKey, fmtDate } from './util.js';
-import { state, save, flush, resetAll, exportData, importData, isPaidProvider, estimatedCost, resetUsage, storageInfo, revealStorage } from './store.js';
-import { PRESETS, listModels, testConnection, providerConfig, sharedStatus } from './providers.js';
+import { state, save, flush, resetAll, exportData, importData, storageInfo, revealStorage } from './store.js';
+import { sharedStatus } from './providers.js';
 import { loadCrisis } from './crisis.js';
 import { loadSite, siteInfo, refreshSite } from './site.js';
 import { applyLook, buildAccessibilityPanel } from './accessibility.js';
@@ -65,7 +65,7 @@ export function mountSettings(container, { focus } = {}) {
   drawShare(shareBox);
 
   // ---------------------------------------------------- AI
-  const aiBox = el('fieldset', { id: 'ai-section' }, el('legend', {}, 'Connect an AI (optional)'));
+  const aiBox = el('fieldset', { id: 'ai-section' }, el('legend', {}, 'The AI'));
   root.append(aiBox);
   drawAI(aiBox);
 
@@ -103,21 +103,21 @@ export function mountSettings(container, { focus } = {}) {
     try { importData(await f.text()); applyLook(); toast('Backup restored', { icon: '✅' }); mountSettings(container); } catch (e) { toast(e.message || 'Could not read that file', { icon: '⚠️', ms: 4000 }); }
   });
   root.append(el('fieldset', {}, el('legend', {}, 'Your data'),
-    el('p', { class: 'muted small' }, 'Everything Phoenix remembers (chats, check-ins, tasks, settings and any API key) lives only on this device. There is no account and no server, so nobody else can read it, and nobody can recover it for you. Back it up if it matters.'),
+    el('p', { class: 'muted small' }, 'Everything Phoenix remembers (chats, check-ins, tasks and settings) lives only on this device. There is no account and no server, so nobody else can read it, and nobody can recover it for you. Back it up if it matters.'),
     storageInfo() ? el('p', { class: 'small' }, 'Saved as a file on this computer, with a daily backup kept for a week: ', el('code', {}, storageInfo().file), ' ', el('button', { class: 'btn btn-sm', onclick: () => revealStorage() }, 'Show in folder')) : el('p', { class: 'muted small' }, 'Saved in this browser. Your browser has been asked to keep it, but clearing site data would erase it, so download a backup now and then.'),
     toggle('Remind me about donating, at most once a week', () => state.prefs.donateReminders !== false, (v) => (state.prefs.donateReminders = v), 'A small card, never a notification. It waits a week after you start, stays away after hard days, and rests for a month if you open the donate options.'),
     toggle('Share anonymous usage counts with NeuroHub', () => state.prefs.analytics !== false, (v) => (state.prefs.analytics = v), 'Counts app opens, installs and which kind of AI is chosen, as daily totals. No identifier, no cookies, and nothing you write or check in. It helps NeuroHub keep Phoenix free. Off means nothing is sent.'),
     el('div', { class: 'row' },
       el('button', { class: 'btn', onclick: () => download(`phoenix-backup-${dayKey()}.json`, exportData(), 'application/json') }, 'Download a backup'),
       el('button', { class: 'btn', onclick: () => file.click() }, 'Restore a backup'), file,
-      el('button', { class: 'btn btn-danger', onclick: () => modal({ title: 'Delete everything?', body: el('p', {}, 'This permanently deletes your chats, check-ins, tasks, plan, settings and any saved API key from this device. It cannot be undone.'),
+      el('button', { class: 'btn btn-danger', onclick: () => modal({ title: 'Delete everything?', body: el('p', {}, 'This permanently deletes your chats, check-ins, tasks, plan and settings from this device. It cannot be undone.'),
         actions: [{ label: 'Cancel' }, { label: 'Delete everything', class: 'btn-danger', onclick: () => { resetAll(); applyLook(); toast('Deleted'); mountSettings(container); } }] }) }, 'Delete everything'))));
 
   // ---------------------------------------------------- about
   root.append(el('fieldset', {}, el('legend', {}, 'About Phoenix'), el('div', { class: 'stack small' },
     el('p', {}, 'Phoenix is a free, neuro-affirming AI assistant for Autistic, ADHD and other neurodivergent people, made by NeuroHub Community, an Autistic-led organisation. It is built around the ideas in David Gray-Hammond’s books. Full catalogue: ', el('a', { href: 'https://mybook.to/dgh-full-catalogue', target: '_blank', rel: 'noopener noreferrer' }, 'mybook.to/dgh-full-catalogue')),
     el('p', {}, 'Community: ', el('a', { href: 'https://connect.neurohubcommunity.org/p/join', target: '_blank', rel: 'noopener noreferrer' }, 'connect.neurohubcommunity.org'), ' · ', el('a', { href: 'https://neurohubcommunity.org', target: '_blank', rel: 'noopener noreferrer' }, 'neurohubcommunity.org')),
-    el('p', {}, 'Phoenix is free, with no ads and no account. NeuroHub Community is a small Autistic-led social enterprise, and donations help keep it going. ', el('button', { class: 'btn btn-sm donate-btn', onclick: () => openDonate() }, '♥ Donate to NeuroHub Community'), ' There is never any pressure, and Phoenix works the same either way.'),
+    el('p', {}, 'Phoenix is free, with no ads and no account. NeuroHub Community is a small Autistic-led social enterprise, and every AI reply costs us money, so donations are what keep Phoenix AI live. ', el('button', { class: 'btn btn-sm donate-btn', onclick: () => openDonate() }, '♥ Donate to NeuroHub Community'), ' There is never any pressure, and Phoenix works the same either way.'),
     el('p', { class: 'muted' }, 'Phoenix is not a therapist, doctor or crisis service, and it cannot diagnose. Nothing it says is medical advice. If you are in danger or thinking of harming yourself, use the red Help button, or call your local emergency number.'),
     el('p', { class: 'muted' }, 'Version 1.2.0'))));
 
@@ -185,8 +185,8 @@ function drawReminders(box) {
   const launch = el('input', { type: 'checkbox', checked: !!r.launch });
   launch.addEventListener('change', async () => { await setReminder({ launch: launch.checked }); drawStatus(); });
   const seeSel = el('select', { class: 'input', 'aria-label': 'Can the AI see my check-ins?' },
-    el('option', { value: 'auto' }, 'Only an AI running on this computer (recommended)'), el('option', { value: 'yes' }, 'Any AI I have connected'), el('option', { value: 'no' }, 'No, never'));
-  seeSel.value = state.prefs.aiSeesCheckins; seeSel.addEventListener('change', () => { state.prefs.aiSeesCheckins = seeSel.value; save(); });
+    el('option', { value: 'no' }, 'No, never (recommended)'), el('option', { value: 'yes' }, 'Yes, Phoenix AI may read a short summary'));
+  seeSel.value = state.prefs.aiSeesCheckins === 'yes' ? 'yes' : 'no'; seeSel.addEventListener('change', () => { state.prefs.aiSeesCheckins = seeSel.value; save(); });
   drawStatus();
   box.append(el('div', { class: 'stack' },
     el('p', { class: 'muted small' }, 'A short daily check-in across six areas of your life shows how you are doing over time, and what might help. A reminder can nudge you once a day. It never repeats, never scolds and is easy to switch off.'),
@@ -201,137 +201,29 @@ function drawReminders(box) {
       el('span', { class: 'hint' }, 'A short summary of your scores and notes helps it talk with you about how you have been. Your check-ins never leave this device, except this summary when the AI you have chosen reads it. Online AI services receive it with your message.'), seeSel)));
 }
 
-// ---------------------------------------------------------------- you pay your own tokens
-function billingPanel(box) {
-  const b = state.billing;
-  const usage = el('p', { 'aria-live': 'polite' });
-  const draw = () => {
-    const cost = estimatedCost();
-    usage.textContent = `This month so far (rough estimate): ${b.messages} message${b.messages === 1 ? '' : 's'}, about ${b.inTok.toLocaleString()} tokens in and ${b.outTok.toLocaleString()} out` + (cost == null ? '. Add your provider’s prices below to see an estimated cost.' : `, roughly ${b.currency}${cost.toFixed(cost < 1 ? 3 : 2)}.`);
-  };
-  const num = (label, hint, key, step) => {
-    const i = el('input', { class: 'input', type: 'number', min: '0', step: String(step), value: b[key] ? String(b[key]) : '', placeholder: '0', 'aria-label': label });
-    i.addEventListener('change', () => { b[key] = Math.max(0, Number(i.value) || 0); save(); draw(); });
-    return el('label', { class: 'field' }, label, el('span', { class: 'hint' }, hint), i);
-  };
-  const cur = el('input', { class: 'input', value: b.currency, maxlength: '3', style: { maxWidth: '5rem' }, 'aria-label': 'Currency symbol' });
-  cur.addEventListener('change', () => { b.currency = cur.value.trim() || '$'; save(); draw(); });
-  draw();
-  return el('div', { class: 'card stack' },
-    el('h3', { style: { margin: 0 } }, 'You pay for your own tokens'),
-    el('p', {}, 'With this option your messages are billed to ', el('strong', {}, 'your own account'), ' with the provider. Phoenix and NeuroHub Community do not see your key or your messages, take no cut, and pay nothing. If your key runs out of credit or hits its limit, the AI stops and Phoenix tells you why. The built-in helper and Toolkit keep working, and you can switch to it in one click.'),
-    usage,
-    num('Daily message limit', 'Phoenix stops sending paid messages after this many in a day. Leave empty or 0 for no limit.', 'dailyLimit', 1),
-    el('div', { class: 'row' }, num('Price per million input tokens', 'From your provider’s price page.', 'inPerM', 0.01), num('Price per million output tokens', 'From your provider’s price page.', 'outPerM', 0.01), el('label', { class: 'field' }, 'Currency', cur)),
-    el('p', { class: 'muted small' }, 'These numbers are only estimates kept on this device (about four characters per token). Your provider’s dashboard is the source of truth. For a hard limit, also set a spending cap in your provider’s account.'),
-    el('div', { class: 'row' }, el('button', { class: 'btn btn-sm', onclick: () => { resetUsage(); draw(); toast('Usage estimate reset', { ms: 1400 }); } }, 'Reset the estimate')));
-}
-
-// ---------------------------------------------------------------- AI wizard
+// ---------------------------------------------------------------- the AI: Phoenix's own, or none
 function drawAI(box) {
   box.querySelectorAll(':scope > :not(legend)').forEach((n) => n.remove());
   const p = state.provider;
   const kinds = [
-    ['offline', '🧰', 'Built-in helper', 'No AI. Works offline. Explains ideas, helps you calm down and get started.'],
-    ['shared', '🔥', 'Phoenix free AI (limited)', 'No key or setup. A limited number of free messages a day, paid for by NeuroHub Community.'],
-    ['ollama', '💻', 'On this computer (Ollama)', 'Free and private. Nothing leaves your machine.'],
-    ['openai', '☁️', 'Free online (Gemini, Groq…)', 'Use your own free key from a provider with a free tier.'],
-    ['anthropic', '✨', 'Claude (Anthropic)', 'Use your own Anthropic API key.'],
+    ['shared', '🔥', 'Phoenix AI', 'Free for you, paid for by NeuroHub Community. A limited number of replies each day.'],
+    ['offline', '🧰', 'Built-in helper (no AI)', 'Fully private: nothing you type leaves this device. Works offline. Explains ideas, helps you calm down and get started.'],
   ];
-  const status = el('div', { class: 'notice', hidden: true, 'aria-live': 'polite' });
-  const show = (ok, msg) => { status.hidden = false; status.className = 'notice ' + (ok ? 'good' : 'bad'); status.textContent = msg; };
   const panel = el('div', { class: 'stack' });
-
-  const pick = el('div', { class: 'grid' }, kinds.map(([k, ico, title, blurb]) => el('button', { class: 'card tile', 'aria-pressed': String(p.kind === k), style: { borderColor: p.kind === k ? 'var(--accent)' : undefined, borderWidth: p.kind === k ? '4px' : undefined },
-    onclick: () => { p.kind = k; save(); drawAI(box); } }, el('span', { class: 'ico', 'aria-hidden': 'true' }, ico), el('strong', {}, title), el('span', { class: 'muted small' }, blurb), p.kind === k ? el('span', { class: 'chip' }, '✓ Selected') : null)));
-
-  const modelPicker = (cfgKey, sub, fetchLabel) => {
-    const dl = el('datalist', { id: 'models-' + cfgKey });
-    const input = el('input', { class: 'input', list: 'models-' + cfgKey, value: sub.model || '', placeholder: 'Model name', 'aria-label': 'Model' });
-    input.addEventListener('change', () => { sub.model = input.value.trim(); save(); });
-    const fetchBtn = el('button', { class: 'btn btn-sm', onclick: async () => {
-      fetchBtn.disabled = true; show(true, 'Looking for models…');
-      try {
-        const models = await listModels(providerConfig(state));
-        dl.textContent = ''; for (const m of models) dl.append(el('option', { value: m }));
-        if (models.length) { show(true, `Found ${models.length} model${models.length === 1 ? '' : 's'}. Click the box and pick one.`); if (!sub.model) { sub.model = models[0]; input.value = models[0]; save(); } }
-        else show(false, cfgKey === 'ollama' ? 'Ollama is running but has no models yet. In a terminal, run: ollama pull llama3.2' : 'No models were listed. You can still type a model name.');
-      } catch (e) { show(false, e.message); }
-      fetchBtn.disabled = false;
-    } }, fetchLabel || 'Find models');
-    return { dl, input, fetchBtn };
-  };
-  const testBtn = () => el('button', { class: 'btn btn-primary', onclick: async (e) => {
-    e.target.disabled = true; show(true, 'Testing…');
-    const r = await testConnection(providerConfig(state)); show(r.ok, r.message); e.target.disabled = false;
-  } }, 'Test connection');
-
-  if (p.kind === 'offline') {
-    panel.append(el('p', {}, 'Phoenix is using the built-in helper. It cannot hold a free-flowing conversation, but it does not need internet, an account, or a key, and nothing you say leaves your device.'),
-      el('p', { class: 'muted' }, 'When you are ready for open conversation, choose one of the other options above. The free-and-private one is Ollama.'));
-  }
-
-  if (p.kind === 'ollama') {
-    const url = el('input', { class: 'input', value: p.ollama.url, 'aria-label': 'Ollama address' });
-    url.addEventListener('change', () => { p.ollama.url = url.value.trim(); save(); });
-    const mp = modelPicker('ollama', p.ollama, 'Find my models');
-    panel.append(
-      el('div', { class: 'notice' }, el('strong', {}, 'Free and private. '), 'Ollama runs an AI on your own computer. Your messages never leave it. You need a reasonably modern computer, and the first download is a few gigabytes.'),
-      el('ol', {}, el('li', {}, 'Install Ollama from ', el('a', { href: 'https://ollama.com/download', target: '_blank', rel: 'noopener noreferrer' }, 'ollama.com/download'), ' and open it.'),
-        el('li', {}, 'In a terminal (Command Prompt or PowerShell on Windows) run: ', el('code', {}, 'ollama pull llama3.2:3b'), ' — a good starting size. Bigger models (7 to 8 billion parameters and up) give clearly better, more careful answers if your computer can run them. Very small models (1 billion) can ramble and get facts wrong, so Phoenix answers medicine, crisis and “what has NeuroHub written” questions itself and does not leave those to the model.'),
-        el('li', {}, 'Come back here and press “Find my models”, pick one, and test it.')),
-      el('label', { class: 'field' }, 'Ollama address', el('span', { class: 'hint' }, 'Leave as it is unless you changed it.'), url),
-      el('label', { class: 'field' }, 'Model', mp.input, mp.dl),
-      el('div', { class: 'row' }, mp.fetchBtn, testBtn()),
-      globalThis.phoenixNative ? null : el('p', { class: 'muted small' }, 'Using Phoenix in a web browser? Ollama must allow it: set the environment variable OLLAMA_ORIGINS to this site’s address, then restart Ollama. The Phoenix desktop app needs no setup.'));
-  }
-
-  if (p.kind === 'openai') {
-    const o = p.openai;
-    const preset = el('select', { class: 'input', 'aria-label': 'Service' }, Object.entries(PRESETS).map(([k, v]) => el('option', { value: k, selected: o.preset === k }, v.label)));
-    const base = el('input', { class: 'input', value: o.baseUrl, placeholder: 'https://…/v1', 'aria-label': 'Address' });
-    const key = el('input', { class: 'input', type: 'password', value: o.key, placeholder: 'Your API key', autocomplete: 'off', 'aria-label': 'API key' });
-    const note = el('p', { class: 'muted small' });
-    const keyLink = el('a', { target: '_blank', rel: 'noopener noreferrer' });
-    const syncPreset = () => { const pr = PRESETS[o.preset] || PRESETS.custom; note.textContent = pr.note; keyLink.hidden = !pr.keyUrl; keyLink.href = pr.keyUrl || '#'; keyLink.textContent = pr.keyUrl ? `Get a key or learn more: ${pr.keyUrl.replace('https://', '')}` : ''; };
-    preset.addEventListener('change', () => { o.preset = preset.value; const pr = PRESETS[o.preset]; if (pr.baseUrl) { o.baseUrl = pr.baseUrl; base.value = pr.baseUrl; } save(); syncPreset(); });
-    base.addEventListener('change', () => { o.baseUrl = base.value.trim().replace(/\/+$/, ''); save(); });
-    key.addEventListener('change', () => { o.key = key.value.trim(); save(); });
-    const mp = modelPicker('openai', o, 'Find models');
-    syncPreset();
-    panel.append(
-      el('div', { class: 'notice' }, el('strong', {}, 'Your messages go to that company. '), 'Free tiers have limits, and some providers may use free-tier chats to improve their products. Keep personal details out of your messages, and read their terms.'),
-      el('label', { class: 'field' }, 'Service', preset), note, keyLink,
-      el('label', { class: 'field' }, 'Address', base),
-      el('label', { class: 'field' }, 'API key', el('span', { class: 'hint' }, 'Stored on this device only, in plain text. Do not use a key you cannot afford to lose, and use one with a spending limit.'), key),
-      el('label', { class: 'field' }, 'Model', mp.input, mp.dl),
-      el('div', { class: 'row' }, mp.fetchBtn, testBtn()),
-      isPaidProvider() ? billingPanel(box) : el('p', { class: 'muted small' }, 'This address is on your own computer, so there is nothing to pay.'));
-  }
+  box.append(el('div', { class: 'grid' }, kinds.map(([k, ico, title, blurb]) => el('button', { class: 'card tile', 'aria-pressed': String(p.kind === k), style: { borderColor: p.kind === k ? 'var(--accent)' : undefined, borderWidth: p.kind === k ? '4px' : undefined },
+    onclick: () => { p.kind = k; save(); drawAI(box); } }, el('span', { class: 'ico', 'aria-hidden': 'true' }, ico), el('strong', {}, title), el('span', { class: 'muted small' }, blurb), p.kind === k ? el('span', { class: 'chip' }, '✓ Selected') : null))), panel);
 
   if (p.kind === 'shared') {
     const left = el('p', { class: 'small', 'aria-live': 'polite' }, 'Checking…');
-    sharedStatus().then((s) => { left.textContent = !s ? 'Could not reach the free AI just now. Check your internet connection.' : s.ai ? `Available. You have ${s.left} of ${s.perDay} free messages left today.` : 'The free AI is switched off at the moment. The built-in helper still works.'; });
+    sharedStatus().then((s) => { left.textContent = !s ? 'Could not reach Phoenix AI just now. Check your internet connection.' : s.ai ? `Available. You have ${s.left} of ${s.perDay} replies left today.` : 'Phoenix AI is switched off at the moment. The built-in helper still works.'; });
     panel.append(
-      el('div', { class: 'notice' }, el('strong', {}, 'Free, but not private in the same way. '), 'Your messages are sent to NeuroHub Community’s server, which passes them to Anthropic’s Claude to write a reply. NeuroHub does not store or read them, and only keeps anonymous counters to enforce the daily limit. Please avoid names and identifying details. For fully private conversations, use the built-in helper or an AI on your own computer (Ollama).'),
-      el('p', {}, 'There is a small daily limit for each person and for everyone together, so that NeuroHub can keep it free. When it runs out, the built-in helper and Toolkit still work, and you can connect your own AI at any time.'),
-      left, el('div', { class: 'row' }, testBtn()),
-      el('p', { class: 'muted small' }, 'Your daily check-ins are not sent to the free AI unless you choose “Any AI I have connected” under Daily check-in.'));
+      el('div', { class: 'notice' }, el('strong', {}, 'Free for you, but not private in the same way. '), 'Your messages are sent to NeuroHub Community’s server, which passes them to Anthropic’s Claude to write a reply. NeuroHub does not store or read them, and only keeps anonymous counters to enforce the daily limit. Please avoid names and identifying details. For fully private conversations, choose the built-in helper.'),
+      el('p', {}, 'Every AI reply costs NeuroHub a small amount, and there is a daily limit for each person and for everyone together so it can stay free. When it runs out, the built-in helper and Toolkit still work.'),
+      left,
+      el('div', { class: 'row-wrap' }, el('button', { class: 'btn donate-btn', onclick: () => openDonate() }, '♥ Help cover the cost of the AI'), el('span', { class: 'muted small' }, 'Give once or monthly. Never any pressure.')),
+      el('p', { class: 'muted small' }, 'Your daily check-ins are not sent to Phoenix AI.'));
+  } else {
+    panel.append(el('p', {}, 'Phoenix is using the built-in helper. It cannot hold a free-flowing conversation, but it does not need internet or an account, and nothing you say leaves your device.'),
+      el('p', { class: 'muted' }, 'When you want open conversation, choose Phoenix AI above. You can switch back at any time.'));
   }
-
-  if (p.kind === 'anthropic') {
-    const a = p.anthropic;
-    const key = el('input', { class: 'input', type: 'password', value: a.key, placeholder: 'sk-ant-…', autocomplete: 'off', 'aria-label': 'Anthropic API key' });
-    key.addEventListener('change', () => { a.key = key.value.trim(); save(); });
-    const mp = modelPicker('anthropic', a, 'Find models');
-    panel.append(
-      el('div', { class: 'notice' }, el('strong', {}, 'Paid, pay-as-you-go. '), 'Anthropic charges per message. Create a key with a low spending limit. Your messages go to Anthropic.'),
-      el('p', { class: 'muted small' }, el('a', { href: 'https://console.anthropic.com/settings/keys', target: '_blank', rel: 'noopener noreferrer' }, 'Get a key at console.anthropic.com')),
-      el('label', { class: 'field' }, 'API key', el('span', { class: 'hint' }, 'Stored on this device only, in plain text.'), key),
-      el('label', { class: 'field' }, 'Model', mp.input, mp.dl),
-      el('div', { class: 'row' }, mp.fetchBtn, testBtn()),
-      billingPanel(box));
-  }
-
-  box.append(el('p', { class: 'muted small' }, 'Phoenix works without any AI. Connecting one lets it hold a free conversation. Safety features (the Help button and crisis detection) run inside the app and never depend on any AI.'), pick, panel, status);
 }

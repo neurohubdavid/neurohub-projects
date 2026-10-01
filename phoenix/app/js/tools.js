@@ -239,7 +239,7 @@ function tasks(body) {
     if (!steps) steps = offlineTaskSteps(title, energy);
     state.tasks.unshift({ id: uid(), title, created: Date.now(), steps: steps.map((text) => ({ text, done: false })) });
     state.tasks = state.tasks.slice(0, 30); save();
-    input.value = ''; status.textContent = aiActive() ? '' : 'Built-in steps. Connect an AI in Settings for steps that fit your exact task.';
+    input.value = ''; status.textContent = aiActive() ? '' : 'Built-in steps. Switch on Phoenix AI in Settings for steps that fit your exact task.';
     go.disabled = false; draw();
   } }, 'Break it down');
   const draw = () => {
@@ -280,7 +280,7 @@ function scriptsTool(body, { navigate }) {
       el('div', { class: 'row' },
         el('button', { class: 'btn btn-sm btn-primary', onclick: async () => toast((await copyText(s.text)) ? 'Copied' : 'Could not copy', { icon: '📋', ms: 1400 }) }, 'Copy'),
         el('button', { class: 'btn btn-sm', onclick: () => {
-          if (!aiActive()) { toast('Connect an AI to tailor this. Opening AI settings.', { icon: 'ℹ️', ms: 3200 }); navigate('settings:ai'); return; }
+          if (!aiActive()) { toast('Switch on Phoenix AI to tailor this. Opening AI settings.', { icon: 'ℹ️', ms: 3200 }); navigate('settings:ai'); return; }
           navigate('chat'); prefillChat(`Please help me adapt this wording for my situation: "${s.text}"\n\nMy situation: `);
         } }, 'Tailor with Phoenix'))));
   }

@@ -1,20 +1,21 @@
 // The chat screen: Phoenix the mascot, the conversation, voice in and out, and the safety layer.
 import { el, fmt, modal, toast, announce, prefersReducedMotion, copyText, fmtDate, sleep } from './util.js';
 import { phoenixSVG, setPhoenixState } from './mascot.js';
-import { state, save, currentChat, newChat, deleteChat, aiActive, checkBudget, recordUsage, aiMaySeeCheckins } from './store.js';
+import { state, save, currentChat, newChat, deleteChat, aiActive, aiMaySeeCheckins } from './store.js';
 import { checkinIntent, chatReply, summaryForAI, checkedInToday, streak } from './sixpf.js';
 import { reportIntent, reportReply, assessmentSummaryForAI } from './reports.js';
 import { CRISIS_RE, EMERGENCY_RE, crisisText, crisisReply, loadCrisis, guessCountry, openHelp } from './crisis.js';
 import { KB } from './kb.js';
 import { medicationIntent, medicationReply, siteQuestionIntent, siteListReply, validateCrisisReply, CRISIS_FOLLOWUP, isSmallModel } from './guard.js';
 import { buildSystem } from './persona.js';
-import { streamChat, providerConfig } from './providers.js';
+import { streamChat, providerConfig, sharedStatus } from './providers.js';
+import { openDonate } from './donate.js';
 import { offlineReply, findTopic, topicReply } from './offline.js';
 import { loadSite, siteHits, siteBlock } from './site.js';
 import { voiceSupport, createRecognizer, createSpeaker, listVoices } from './voice.js';
 
 let go = () => {};            // navigation callback supplied by main.js
-let footEl, mascot, statusEl, listEl, inputEl, sendBtn, micBtn, chipsEl, pillEl, root;
+let aiNoteEl, footEl, mascot, statusEl, listEl, inputEl, sendBtn, micBtn, chipsEl, pillEl, root;
 let busy = false, listening = false, speaking = false, tempState = null, abortCtl = null, rec = null, handsFreeActive = false, lastViaVoice = false, emptyTurns = 0;
 let beatTimer = null;
 
@@ -82,23 +83,32 @@ export function mountChat(container, { navigate }) {
   row.append(sendBtn);
   const foot = el('div', { class: 'composer-foot' },
     footEl = el('span', {}, ''),
+    aiNoteEl = el('span', { class: 'ai-note', 'aria-live': 'polite' }),
     voiceSupport.desktop ? el('span', {}, 'Tip: press Win + H to dictate.') : null);
   container.append(el('div', { class: 'composer' }, buildVoiceRow(), row, foot));
 
   renderChat();
   refreshState();
+  refreshAiNote();
+}
+
+/** Under the message box: Phoenix AI is paid for by NeuroHub, how many replies are left today, and a gentle way to help cover the cost. */
+function refreshAiNote() {
+  if (!aiNoteEl) return;
+  aiNoteEl.textContent = '';
+  if (state.provider.kind !== 'shared') return;
+  sharedStatus().then((s) => {
+    if (!aiNoteEl || state.provider.kind !== 'shared') return;
+    const left = s?.ai ? s.left : null;
+    aiNoteEl.textContent = '';
+    aiNoteEl.append(el('span', {}, 'Phoenix AI is free for you and paid for by NeuroHub Community.' + (left == null ? '' : ` ${left} ${left === 1 ? 'reply' : 'replies'} left today.`) + ' '), el('button', { class: 'linklike', type: 'button', onclick: () => openDonate() }, '♥ Help cover the cost'));
+  });
 }
 
 function updatePill() {
   if (!pillEl) return;
   if (footEl) footEl.textContent = aiActive() ? 'Phoenix is an AI, not a person or a therapist. Please avoid identifying details.' : 'Phoenix is a helper program, not a person or a therapist. Nothing you type leaves this device.';
-  const p = state.provider;
-  const label = !aiActive() ? 'Built-in helper (no AI)'
-    : p.kind === 'ollama' ? `AI on this computer · ${p.ollama.model}`
-    : p.kind === 'anthropic' ? `Claude · ${p.anthropic.model}`
-    : p.kind === 'shared' ? 'Phoenix free AI'
-    : `AI · ${p.openai.model}`;
-  pillEl.textContent = label;
+  pillEl.textContent = aiActive() ? 'Phoenix AI' : 'Built-in helper (no AI)';
 }
 
 /** Names are shown back and sent to the AI, so keep them short and plain. */
@@ -118,11 +128,11 @@ function nameCard() {
 
 /** Switches to Phoenix's free AI after saying plainly where messages go. Nothing is sent until the person agrees. */
 function turnOnSharedAI() {
-  modal({ title: 'Turn on Phoenix free AI?',
+  modal({ title: 'Turn on Phoenix AI?',
     body: el('div', { class: 'stack' },
-      el('p', {}, 'Phoenix’s free AI is run by NeuroHub Community, with a daily limit for each person. Your messages go to NeuroHub’s server, which passes them to Anthropic’s Claude to write a reply. They are not stored or read by NeuroHub. Please avoid names and identifying details.'),
-      el('p', { class: 'muted small' }, 'You can switch back to the built-in helper, or use an AI on your own computer, any time in Settings. Your daily check-ins are not sent to it.')),
-    actions: [{ label: 'Not now' }, { label: 'Turn it on', class: 'btn-primary', onclick: () => { state.provider.kind = 'shared'; save(); renderChat(); toast('Phoenix AI is on.', { icon: '🔥' }); } }] });
+      el('p', {}, 'Phoenix AI is free for you. NeuroHub Community pays for every reply, so there is a daily limit for each person. Your messages go to NeuroHub’s server, which passes them to Anthropic’s Claude to write a reply. They are not stored or read by NeuroHub. Please avoid names and identifying details.'),
+      el('p', { class: 'muted small' }, 'You can switch back to the built-in helper any time in Settings. Your daily check-ins are not sent to it.')),
+    actions: [{ label: 'Not now' }, { label: 'Turn it on', class: 'btn-primary', onclick: () => { state.provider.kind = 'shared'; save(); renderChat(); refreshAiNote(); toast('Phoenix AI is on.', { icon: '🔥' }); } }] });
 }
 
 function chipsFor() {
@@ -145,8 +155,8 @@ function renderChat() {
       needName ? nameCard() : null,
       el('p', {}, 'A neuro-affirming AI assistant for Autistic, ADHD and other neurodivergent minds. You are not broken. You do not have to mask here. You can say as much or as little as you like, and stop any time.'),
       aiActive() ? null : el('div', { class: 'stack' },
-        el('p', { class: 'muted small' }, 'I am running as the built-in helper: I can explain ideas, help you calm down and get started, and give you wording for hard messages, and nothing you type leaves this device. For open conversation you can turn on Phoenix’s free AI, or connect your own in Settings.'),
-        el('button', { class: 'btn btn-primary', onclick: turnOnSharedAI }, 'Turn on Phoenix free AI'))));
+        el('p', { class: 'muted small' }, 'I am running as the built-in helper: I can explain ideas, help you calm down and get started, and give you wording for hard messages, and nothing you type leaves this device. For open conversation you can turn on Phoenix AI, which is free for you and paid for by NeuroHub Community.'),
+        el('button', { class: 'btn btn-primary', onclick: turnOnSharedAI }, 'Turn on Phoenix AI'))));
     if (!needName) for (const t of chipsFor()) chipsEl.append(el('button', { class: 'chip-btn', onclick: () => send(t) }, t));
     else setTimeout(() => { if (!document.querySelector('.modal-overlay')) document.querySelector('.name-ask input')?.focus(); }, 350);
   } else {
@@ -260,13 +270,11 @@ export async function send(text, { viaVoice = false } = {}) {
       return;
     }
 
-    // ---- real AI (if the person pays per token, respect the cap they set)
-    const budget = checkBudget();
-    if (!budget.ok) { addMessage('assistant', budget.message, { error: true }); return; }
+    // ---- Phoenix AI (NeuroHub's own Claude account; the server enforces the daily limits)
     const d = await loadCrisis();
     const code = guessCountry();
     const block = crisisText(d, d.countries[code] ? code : '').text;
-    const small = state.provider.kind === 'ollama' && isSmallModel(state.provider.ollama.model);
+    const small = false; // Phoenix AI is always a capable Claude model, so the small-model safeguards are not needed
     if (small) {
       // A very small model cannot be trusted to be brief and low-demand when someone is overwhelmed: use the built-in answer.
       const r = offlineReply(text, { name: state.profile.name, aiConfigured: true });
@@ -311,7 +319,7 @@ export async function send(text, { viaVoice = false } = {}) {
         if (speakIt) speaker.push(acc);
       }
       if (speakIt) speaker.end();
-      recordUsage(system.length + history.reduce((n, h) => n + h.content.length, 0), acc.length);
+      refreshAiNote(); // update "replies left today"
       m.content = acc || '…'; save();
       node.replaceWith(renderMessage(m));
       announce('Phoenix replied');
@@ -326,7 +334,7 @@ export async function send(text, { viaVoice = false } = {}) {
           // The free shared AI is busy, out for today, or unreachable: never leave the person with nothing. The built-in helper answers.
           try {
             const r = offlineReply(text, { name: state.profile.name, aiConfigured: false, siteHits: state.prefs.useSite ? (q) => siteHits(q, 2) : null });
-            m.content = `${e.message}\n\nUntil then, here is what the built-in helper can offer:\n\n${r.text}`; m.error = false; m.actions = r.actions;
+            m.content = `${e.message}\n\nUntil then, here is what the built-in helper can offer:\n\n${r.text}`; m.error = false; m.actions = (e.kind === 'limit' ? [{ label: '♥ Help cover the cost of Phoenix AI', go: 'donate' }] : []).concat(r.actions || []);
           } catch { /* keep the plain message */ }
         }
         // during a crisis the person must never be left with nothing: the helplines are already on screen above

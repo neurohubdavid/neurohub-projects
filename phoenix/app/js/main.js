@@ -24,6 +24,7 @@ let renderedHash = null;
 /** Route strings used across the app: chat, checkin, checkin:new|insights|history, learn, learn:<id>, settings, settings:ai, settings:reminders, tool:home, tool:<id>, help. */
 export function navigate(route) {
   if (route === 'help') return openHelp();
+  if (route === 'donate') return openDonate();
   const hash = route === 'chat' ? '#/chat' : route === 'learn' ? '#/learn' : route.startsWith('learn:') ? '#/learn/' + route.slice(6) : route === 'settings' ? '#/settings'
     : route === 'settings:ai' ? '#/settings/ai' : route === 'settings:reminders' ? '#/settings/reminders' : route === 'settings:share' ? '#/settings/share'
     : route === 'checkin' ? '#/checkin' : route.startsWith('checkin:') ? '#/checkin/' + route.slice(8)
@@ -81,12 +82,11 @@ function welcome() {
       el('ul', {},
         el('li', {}, el('strong', {}, 'Private. '), 'Your chats, check-ins and settings are stored on this device, and there is no account. NeuroHub counts anonymous app opens (no identifiers, nothing you write). You can switch that off in Settings.'),
         el('li', {}, el('strong', {}, 'Honest. '), 'Phoenix is a computer program, not a person or a therapist, and it cannot diagnose you.'),
-        el('li', {}, el('strong', {}, 'Free AI, no setup. '), 'Phoenix starts with its free AI, run by NeuroHub Community, with a daily limit. Your messages go to NeuroHub’s server and on to Claude to write a reply. They are not stored or read, but please avoid names and identifying details. To keep everything on your device, choose the built-in helper below (or any time in Settings), or connect an AI on your own computer or your own key. The built-in helper and Toolkit work with no internet.'),
+        el('li', {}, el('strong', {}, 'Free AI, no setup. '), 'Phoenix AI is run by NeuroHub Community on Claude, with a daily limit. Every reply costs us money, so if Phoenix helps you and you can spare it, a donation keeps the AI live for everyone. Your messages go to NeuroHub’s server and on to Claude to write a reply. They are not stored or read, but please avoid names and identifying details. To keep everything on your device, choose the built-in helper below (or any time in Settings). The built-in helper and Toolkit work with no internet.'),
         el('li', {}, el('strong', {}, 'Safety first. '), 'The red Help button is always there and shows helplines for your country.')),
       el('p', { class: 'muted small' }, 'Next, Phoenix will ask what you would like to be called.')),
     actions: [
       { label: 'Start with the built-in helper', onclick: () => { state.onboarded = true; state.provider.kind = 'offline'; save(); render(); } },
-      { label: 'Connect my own AI', onclick: () => { state.onboarded = true; save(); navigate('settings:ai'); } },
       { label: 'Chat with Phoenix AI (recommended)', class: 'btn-primary', onclick: () => { state.onboarded = true; state.provider.kind = 'shared'; save(); render(); } },
     ],
     onClose: () => { if (!state.onboarded) { state.onboarded = true; save(); } },

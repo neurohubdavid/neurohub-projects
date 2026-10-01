@@ -27,10 +27,10 @@ export class AIError extends Error {
 function explain(cfg, status, bodyText, cause) {
   if (cfg.kind === 'shared') {
     let code = ''; let scope = ''; try { const j = JSON.parse(bodyText); code = j.error; scope = j.scope; } catch { /* not JSON */ }
-    if (cause) return new AIError('offline', 'I could not reach Phoenix’s free AI. Check your internet connection, or pick another AI in Settings.');
-    if (status === 429 || code === 'limit') return new AIError('limit', scope === 'everyone' ? 'Phoenix’s free AI has been very busy and has reached its limit for now. It resets each day. The built-in helper and Toolkit still work, or you can connect your own AI in Settings.' : 'You have used your free Phoenix AI messages for today. They come back tomorrow. The built-in helper and Toolkit still work, or you can connect your own AI in Settings.', 429);
-    if (status === 503 || code === 'unavailable' || code === 'busy') return new AIError('server', 'Phoenix’s free AI is not available right now. The built-in helper and Toolkit still work, or you can connect your own AI in Settings.', status);
-    return new AIError('other', 'Phoenix’s free AI could not answer that. Try again, or pick another AI in Settings.', status);
+    if (cause) return new AIError('offline', 'I could not reach Phoenix AI. Check your internet connection and try again. The built-in helper and Toolkit still work.');
+    if (status === 429 || code === 'limit') return new AIError('limit', scope === 'everyone' ? 'Phoenix AI has been very busy and has reached its daily limit for now. Every reply is paid for by NeuroHub Community, so there is a limit, and it resets each day. The built-in helper and Toolkit still work. If you can, a donation helps us raise it.' : 'You have used your Phoenix AI replies for today. Every reply is paid for by NeuroHub Community, so there is a daily limit, and yours comes back tomorrow. The built-in helper and Toolkit still work. If you can, a donation helps us raise the limit.', 429);
+    if (status === 503 || code === 'unavailable' || code === 'busy') return new AIError('server', 'Phoenix AI is not available right now. The built-in helper and Toolkit still work. Please try again in a little while.', status);
+    return new AIError('other', 'Phoenix AI could not answer that. Please try again in a moment.', status);
   }
   const who = cfg.kind === 'ollama' ? 'Ollama' : cfg.kind === 'anthropic' ? 'Anthropic' : 'the AI service';
   if (cause) {
@@ -68,9 +68,7 @@ async function* lines(body, signal) {
 
 function config(state) {
   const p = state.provider;
-  if (p.kind === 'ollama') return { kind: 'ollama', url: trimSlash(p.ollama.url) || 'http://localhost:11434', model: p.ollama.model };
-  if (p.kind === 'openai') return { kind: 'openai', url: trimSlash(p.openai.baseUrl), key: p.openai.key, model: p.openai.model };
-  if (p.kind === 'anthropic') return { kind: 'anthropic', url: 'https://api.anthropic.com', key: p.anthropic.key, model: p.anthropic.model };
+  // Phoenix talks to one AI only: NeuroHub's own Claude account, through Phoenix's server. Any other saved setting means no AI.
   if (p.kind === 'shared') return { kind: 'shared', url: sharedBase() };
   return { kind: 'offline' };
 }
@@ -78,7 +76,7 @@ export { config as providerConfig };
 
 /** Where the shared AI lives: this site when Phoenix runs in a browser, NeuroHub's address when it runs as the desktop app. */
 export const SHARED_HOME = 'https://phoenix.neurohubcommunity.org';
-export const sharedBase = () => (typeof location !== 'undefined' && /^https?:/.test(location.protocol) ? location.origin : SHARED_HOME);
+export const sharedBase = () => globalThis.phoenixNative?.apiBase || (typeof location !== 'undefined' && /^https?:/.test(location.protocol) ? location.origin : SHARED_HOME); // apiBase is only set by the test harness
 /** Is the shared AI switched on, and how many messages does this person have left today? Returns null if it cannot be reached. */
 export async function sharedStatus() {
   try { const res = await fetcher(`${sharedBase()}/api/ai`, { method: 'GET' }); if (!res.ok) return null; const j = await res.json(); return typeof j.ai === 'boolean' ? j : null; } catch { return null; }
@@ -185,7 +183,7 @@ export async function testConnection(cfg) {
   if (cfg.kind === 'shared') {
     const s = await sharedStatus();
     if (!s) return { ok: false, message: 'Could not reach Phoenix’s free AI. Check your internet connection.' };
-    return s.ai ? { ok: true, message: `Phoenix’s free AI is available. You have ${s.left} message${s.left === 1 ? '' : 's'} left today (${s.perDay} a day).` } : { ok: false, message: 'Phoenix’s free AI is switched off at the moment.' };
+    return s.ai ? { ok: true, message: `Phoenix AI is available. You have ${s.left} ${s.left === 1 ? 'reply' : 'replies'} left today (${s.perDay} a day).` } : { ok: false, message: 'Phoenix AI is switched off at the moment.' };
   }
   try {
     const models = await listModels(cfg);

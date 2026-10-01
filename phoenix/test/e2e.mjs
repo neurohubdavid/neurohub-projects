@@ -13,24 +13,28 @@ fs.mkdirSync(shots, { recursive: true });
 process.env.PHOENIX_NO_ANALYTICS = '1'; // tests never send usage counts to the live site
 const userData = fs.mkdtempSync(path.join(root, 'test', '.userdata-'));
 
-// A fake Ollama that streams a reply and records what it was sent.
+// A fake Phoenix AI service (what netlify/functions/ai.mjs does): GET reports availability, POST streams Anthropic-style events.
 const seen = [];
+const sse = (o) => 'data: ' + JSON.stringify(o) + '\n\n';
 const mock = http.createServer((req, res) => {
   let b = ''; req.on('data', (c) => (b += c));
   req.on('end', () => {
-    if (req.url === '/api/tags') return res.end(JSON.stringify({ models: [{ name: 'test-model:8b' }] }));
-    if (req.url === '/api/chat') {
+    if (req.url === '/api/ai' && req.method === 'GET') return res.end(JSON.stringify({ ai: true, left: 18, perDay: 20 }));
+    if (req.url === '/api/ai' && req.method === 'POST') {
       const j = JSON.parse(b); seen.push(j);
       const last = j.messages.at(-1)?.content || '';
+      res.setHeader('Content-Type', 'text/event-stream');
+      const text = (s) => res.write(sse({ type: 'content_block_delta', delta: { type: 'text_delta', text: s } }));
       if (last.includes('FORM SECTION')) { // Phoenix asking for a drafted form section: answer with JSON for the first field only
         const ids = [...last.matchAll(/^- "([\w-]+)":/gm)].map((m) => m[1]);
-        return res.end(JSON.stringify({ message: { content: JSON.stringify({ [ids[0]]: 'Open plan offices exhaust me.', [ids[1]]: 'N/A' }) }, done: true }) + '\n');
+        text(JSON.stringify({ [ids[0]]: 'Open plan offices exhaust me.', [ids[1]]: 'N/A' }));
+        return res.end(sse({ type: 'message_stop' }));
       }
       const words = ['That ', 'sounds ', 'like ', 'a ', 'lot. ', 'I ', 'am ', 'here.'];
       let i = 0;
       const t = setInterval(() => {
-        if (i < words.length) res.write(JSON.stringify({ message: { content: words[i++] }, done: false }) + '\n');
-        else { clearInterval(t); res.end(JSON.stringify({ message: { content: '' }, done: true }) + '\n'); }
+        if (i < words.length) text(words[i++]);
+        else { clearInterval(t); res.end(sse({ type: 'message_stop' })); }
       }, 30);
       return;
     }
@@ -40,7 +44,7 @@ const mock = http.createServer((req, res) => {
 await new Promise((r) => mock.on('listening', r));
 const mockUrl = `http://127.0.0.1:${mock.address().port}`;
 
-const app = await electron.launch({ args: [root, `--user-data-dir=${userData}`], env: { ...process.env, ELECTRON_ENABLE_LOGGING: '0' } });
+const app = await electron.launch({ args: [root, `--user-data-dir=${userData}`], env: { ...process.env, ELECTRON_ENABLE_LOGGING: '0', PHOENIX_API_BASE: mockUrl } });
 const page = await app.firstWindow();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
@@ -200,25 +204,18 @@ await step('accessibility: font, size, spacing, theme and voice controls change 
   await page.click('.modal button:has-text("Done")');
 });
 
-await step('settings: connect a local AI, find models, test', async () => {
+await step('settings: only two choices exist (Phoenix AI or the built-in helper), nothing to connect or pay for, and a donate button', async () => {
   await page.click('#nav button:has-text("Settings")');
-  await page.click('.tile:has-text("On this computer")');
-  await page.fill('input[aria-label="Ollama address"]', mockUrl);
-  await page.locator('input[aria-label="Ollama address"]').dispatchEvent('change');
-  await page.click('button:has-text("Find my models")');
-  await page.waitForFunction(() => /Found 1 model/.test(document.querySelector('#ai-section .notice[aria-live]')?.textContent || ''));
-  await page.click('button:has-text("Test connection")');
-  await page.waitForFunction(() => /Connected/.test(document.querySelector('#ai-section .notice[aria-live]')?.textContent || ''));
+  await page.waitForSelector('#ai-section');
+  assert.equal(await page.locator('#ai-section .tile').count(), 2);
+  const text = await page.textContent('#ai-section');
+  assert.doesNotMatch(text, /Ollama|API key|your own key|OpenAI|Gemini|Groq/i);
+  assert.equal(await page.locator('#ai-section input').count(), 0, 'no address or key boxes');
+  await page.click('#ai-section .tile:has-text("Phoenix AI")');
+  await page.waitForFunction(() => /18 of 20 replies left/.test(document.querySelector('#ai-section')?.textContent || ''));
+  assert.ok(await page.locator('#ai-section button:has-text("Help cover the cost of the AI")').count() === 1);
+  assert.equal(await page.evaluate(async () => (await import('./js/store.js')).state.provider.kind), 'shared');
   await page.screenshot({ path: path.join(shots, '12-settings-ai.png'), fullPage: false });
-});
-
-await step('paid options say the user pays their own tokens, with a daily cap', async () => {
-  await page.click('.tile:has-text("Claude (Anthropic)")');
-  await page.waitForSelector('h3:has-text("You pay for your own tokens")');
-  await page.fill('input[aria-label="Daily message limit"]', '5'); await page.locator('input[aria-label="Daily message limit"]').dispatchEvent('change');
-  await page.screenshot({ path: path.join(shots, '12b-settings-paid.png'), fullPage: true });
-  await page.click('.tile:has-text("On this computer")');
-  assert.equal(await page.locator('h3:has-text("You pay for your own tokens")').count(), 0);
 });
 await step('chat now streams from the AI through the network bridge, with persona sent', async () => {
   await page.click('#nav button:has-text("Chat")');
@@ -226,9 +223,8 @@ await step('chat now streams from the AI through the network bridge, with person
   await page.fill('textarea[aria-label="Message Phoenix"]', 'I had a rough day at work');
   await page.click('button:has-text("Send")');
   await page.waitForFunction(() => /I am here\./.test(document.querySelector('.msg.assistant:last-of-type')?.textContent || ''), null, { timeout: 8000 });
-  const sys = seen.at(-1).messages[0];
-  assert.equal(sys.role, 'system');
-  for (const needle of ['Phoenix', 'Monotropism', 'SAFETY', 'Sam', 'never tell anyone to start, stop']) assert.ok(sys.content.includes(needle), 'system prompt missing: ' + needle);
+  const sys = seen.at(-1).system;
+  for (const needle of ['Phoenix', 'Monotropism', 'SAFETY', 'Sam', 'never tell anyone to start, stop']) assert.ok(sys.includes(needle), 'system prompt missing: ' + needle);
   assert.equal(seen.at(-1).messages.at(-1).content, 'I had a rough day at work');
   await page.screenshot({ path: path.join(shots, '13-chat-ai.png') });
 });
@@ -237,7 +233,7 @@ await step('crisis with AI on: helplines appear immediately AND the AI still rep
   await send('I want to end it all');
   await page.waitForSelector('.msg.crisis');
   await page.waitForFunction(() => /I am here\./.test(document.querySelector('.msg.assistant:last-of-type')?.textContent || ''), null, { timeout: 8000 });
-  assert.ok(seen.at(-1).messages[0].content.includes('SAFETY FLAG'));
+  assert.ok(seen.at(-1).system.includes('SAFETY FLAG'));
 });
 
 await step('documents: fill in the 6PF assessment, let the AI draft from chats (checked, never overwriting), download a real PDF', async () => {
@@ -254,7 +250,7 @@ await step('documents: fill in the 6PF assessment, let the AI draft from chats (
   await page.click('button:has-text("Draft everything I can")');
   await page.waitForSelector('.modal:has-text("What is sent to the AI")');
   assert.match(await page.textContent('.modal'), /never changes anything you have already written|Ratings are never filled in/);
-  await page.click('.modal button:has-text("Draft it")');
+  await page.click('.modal button:has-text("Send and draft")');
   await page.waitForFunction(() => /Phoenix drafted/.test(document.querySelector('[role=status]')?.textContent || ''), null, { timeout: 15000 });
   assert.equal(await page.inputValue('#f-sensory-1'), 'Open plan offices exhaust me.');
   assert.equal(await page.inputValue('#f-sensory-3'), 'Soft clothes and dim light help.', 'own answers are never overwritten');
@@ -324,14 +320,19 @@ await step('sharing check-ins with NeuroHub is optional, off by default, and nee
   await page.click('#nav button:has-text("Chat")');
 });
 
-await step('donate: a noticeable but calm button opens suggested amounts', async () => {
+await step('donate: a calm button opens once or monthly gifts, four amounts or your own, through Stripe (Ko-fi until set)', async () => {
   const btn = page.locator('#donate-btn');
   assert.ok(await btn.isVisible());
   await btn.click();
   await page.waitForSelector('.modal:has-text("Support NeuroHub Community")');
-  const amounts = await page.locator('.donate-amounts a').allTextContents();
-  assert.deepEqual(amounts, ['£5', '£10', '£25', '£50']);
-  for (const a of await page.locator('.donate-amounts a').all()) assert.match((await a.getAttribute('href')) || '', /^https:\/\/paypal\.biz\/emergentdivergence$/);
+  assert.match(await page.textContent('.modal'), /cost|AI/);
+  const amounts = await page.locator('.donate-amounts a, .donate-amt').allTextContents();
+  assert.deepEqual(amounts.slice(0, 4), ['£5', '£10', '£25', '£50']);
+  const ok = /^https:\/\/(buy\.stripe\.com|donate\.stripe\.com|ko-fi\.com)\//;
+  for (const a of await page.locator('.modal a.donate-amt').all()) assert.match((await a.getAttribute('href')) || '', ok);
+  assert.ok(await page.locator('.modal :text("Monthly")').count() >= 1, 'a monthly option exists');
+  assert.ok(await page.locator('.modal :text-matches("own amount", "i")').count() >= 1, 'choose your own amount exists');
+  assert.equal(await page.locator('.modal a[href*="paypal"]').count(), 0);
   await page.screenshot({ path: path.join(shots, '32-donate.png') });
   await page.click('.modal button:has-text("Maybe later")');
 });
@@ -339,7 +340,7 @@ await step('donate: a noticeable but calm button opens suggested amounts', async
 await step('AI failure gives a helpful message, not a crash', async () => {
   mock.close(); mock.closeAllConnections?.();
   await send('are you there?');
-  await page.waitForFunction(() => /Ollama|reach/.test(document.querySelector('.msg.assistant:last-of-type')?.textContent || ''), null, { timeout: 8000 });
+  await page.waitForFunction(() => /could not reach Phoenix AI/.test(document.querySelector('.msg.assistant:last-of-type')?.textContent || ''), null, { timeout: 8000 });
   await page.screenshot({ path: path.join(shots, '14-ai-error.png') });
 });
 
