@@ -407,16 +407,16 @@ const PHX_SYSTEM = buildSystem({ crisisBlock: 'Samaritans 116 123' });
 const sse = (...texts) => new Response(new ReadableStream({ start(c) { const e = new TextEncoder(); for (const t of texts) c.enqueue(e.encode(`data: ${JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text: t } })}\n\n`)); c.enqueue(e.encode('data: {"type":"message_stop"}\n\n')); c.close(); } }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
 const post = (body, headers = {}) => new Request('https://phoenix.neurohubcommunity.org/api/ai', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
 const good = { system: PHX_SYSTEM, messages: [{ role: 'user', content: 'hello' }] };
-const env = { PHOENIX_SHARED_AI: 'on', ANTHROPIC_API_KEY: 'sk-test-secret-1234567890', PHOENIX_PER_PERSON_DAILY: '2', PHOENIX_GLOBAL_DAILY: '3', PHOENIX_GLOBAL_MONTHLY: '100' };
+const env = { PHOENIX_SHARED_AI: 'on', PHOENIX_ANTHROPIC_KEY: 'sk-test-secret-1234567890', PHOENIX_PER_PERSON_DAILY: '2', PHOENIX_GLOBAL_DAILY: '3', PHOENIX_GLOBAL_MONTHLY: '100' };
 
 test('shared AI: off unless switched on, and never leaks the key', async () => {
   const off = await handle(post(good), { ip: '1.1.1.1' }, { env: {}, store: memoryStore() });
   assert.equal(off.status, 503);
-  const get = await handle(new Request('https://x/api/ai'), { ip: '1.1.1.1' }, { env: { ANTHROPIC_API_KEY: 'k' }, store: memoryStore() });
-  assert.equal((await get.json()).ai, true, 'on whenever a key is available (the Netlify AI Gateway injects one)');
-  const killed = await handle(new Request('https://x/api/ai'), { ip: '1.1.1.1' }, { env: { ANTHROPIC_API_KEY: 'k', PHOENIX_SHARED_AI: 'off' }, store: memoryStore() });
+  const get = await handle(new Request('https://x/api/ai'), { ip: '1.1.1.1' }, { env: { PHOENIX_ANTHROPIC_KEY: 'k' }, store: memoryStore() });
+  assert.equal((await get.json()).ai, true, 'on whenever NeuroHub\u2019s own key is set');
+  const killed = await handle(new Request('https://x/api/ai'), { ip: '1.1.1.1' }, { env: { PHOENIX_ANTHROPIC_KEY: 'k', PHOENIX_SHARED_AI: 'off' }, store: memoryStore() });
   assert.equal((await killed.json()).ai, false, 'PHOENIX_SHARED_AI=off is the off switch');
-  assert.equal(settings({ ANTHROPIC_API_KEY: 'gw', ANTHROPIC_BASE_URL: 'https://gw.example/anthropic' }).upstream, 'https://gw.example/anthropic', 'the gateway key goes to the gateway');
+  assert.equal(settings({ ANTHROPIC_API_KEY: 'gw', ANTHROPIC_BASE_URL: 'https://gw.example/anthropic' }).on, false, 'the Netlify AI Gateway is never used, only NeuroHub\u2019s own key');
   assert.equal(settings({ PHOENIX_ANTHROPIC_KEY: 'own', ANTHROPIC_BASE_URL: 'https://gw.example' }).upstream, 'https://api.anthropic.com', 'a personal key goes to Anthropic directly');
   const on = await handle(new Request('https://x/api/ai'), { ip: '1.1.1.1' }, { env, store: memoryStore() });
   const j = await on.json(); assert.equal(j.ai, true); assert.equal(j.left, 2); assert.ok(!JSON.stringify(j).includes('sk-test'));
@@ -437,7 +437,7 @@ test('shared AI: streams the reply through, forces our model and reply length, a
   const store = memoryStore(), deps = { env, store, fetch: async (url, init) => { calls++; sent = { url, init, body: JSON.parse(init.body) }; return sse('Hel', 'lo'); } };
   const res = await handle(post({ ...good, model: 'claude-opus-9', maxTokens: 99999 }), { ip: '9.9.9.9' }, deps);
   assert.equal(res.status, 200); assert.match(await res.text(), /Hel[\s\S]*lo/);
-  assert.equal(sent.body.model, settings(env).model); assert.ok(sent.body.max_tokens <= 700); assert.equal(sent.init.headers['x-api-key'], env.ANTHROPIC_API_KEY); assert.equal(sent.body.stream, true);
+  assert.equal(sent.body.model, settings(env).model); assert.ok(sent.body.max_tokens <= 700); assert.equal(sent.init.headers['x-api-key'], env.PHOENIX_ANTHROPIC_KEY); assert.equal(sent.body.stream, true);
   assert.equal(res.headers.get('x-phoenix-left'), '1');
   assert.equal((await handle(post(good), { ip: '9.9.9.9' }, deps)).status, 200);
   const third = await handle(post(good), { ip: '9.9.9.9' }, deps);

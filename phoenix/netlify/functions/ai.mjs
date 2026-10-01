@@ -1,7 +1,7 @@
 // Phoenix's shared, limited free AI: a small proxy that holds NeuroHub's Claude key on the server (it is NEVER in the app's code)
 // and answers for people who have not connected an AI of their own. Because NeuroHub pays for every message, it is built to
 // be hard to abuse and impossible to overspend:
-//   - on when a Claude key is available (Netlify AI Gateway by default); the off switch is PHOENIX_SHARED_AI=off
+//   - on when NeuroHub’s own Anthropic key (PHOENIX_ANTHROPIC_KEY) is set; the off switch is PHOENIX_SHARED_AI=off
 //   - a fixed model and reply length; only Phoenix's own kind of request is accepted (not a general-purpose Claude endpoint)
 //   - a daily cap per person (hashed IP, never stored raw), a daily cap for everyone, and a monthly cap for everyone
 //   - messages are streamed straight through and never stored or logged; only anonymous counters are kept
@@ -17,12 +17,11 @@ const json = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj)
 
 export function settings(env = process.env) {
   const n = (k, d) => { const v = Number(env[k]); return Number.isFinite(v) && v >= 0 ? v : d; };
-  // Which Claude account pays: by default Netlify's AI Gateway, which injects ANTHROPIC_API_KEY and ANTHROPIC_BASE_URL into functions and
-  // bills the site's Netlify credits (the same way the identity course's Phoenix can run). To use a personal Anthropic key instead, set
-  // PHOENIX_ANTHROPIC_KEY (a gateway-issued key is rejected by api.anthropic.com and the other way round, so the pair is kept together).
-  const own = env.PHOENIX_ANTHROPIC_KEY || '';
-  const key = own || env.ANTHROPIC_API_KEY || '';
-  const upstream = own ? 'https://api.anthropic.com' : (env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com');
+  // The only Claude account that pays is NeuroHub's own Anthropic key, PHOENIX_ANTHROPIC_KEY, sent straight to api.anthropic.com.
+  // Netlify's AI Gateway (ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL) is deliberately ignored, so nothing is ever billed to Netlify credits.
+  // Without that key the AI is simply off and the app falls back to the built-in helper.
+  const key = env.PHOENIX_ANTHROPIC_KEY || '';
+  const upstream = 'https://api.anthropic.com';
   return {
     on: env.PHOENIX_SHARED_AI !== 'off' && !!key, // on whenever a key is available; PHOENIX_SHARED_AI=off is the off switch
     key,
