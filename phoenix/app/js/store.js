@@ -35,6 +35,7 @@ export const DEFAULTS = () => ({
     showMascot: true,
     focusChime: true,
     useSite: true,          // let the assistant draw on neurohubcommunity.org articles
+    wakeWord: false,        // installed app only: listen for the word "Phoenix" to start a spoken conversation, see wake.js (off unless the person turns it on)
     donateReminders: true,  // a gentle reminder to donate, at most once a week, see donate.js
     analytics: true,       // share anonymous usage counts (app opens, installs) with NeuroHub, see analytics.js
     aiSeesCheckins: 'no',   // no | yes: may Phoenix AI read a summary of daily check-ins? Off unless the person turns it on.

@@ -17,6 +17,7 @@ export const FEATURES = [
   'donate_open', 'nudge_shown', 'nudge_dismissed', 'nudge_off', 'ai_on', 'ai_off', 'install_sheet', 'name_given', 'backup_export', 'data_deleted',
   'float_open', 'float_close', 'float_chat', 'float_activity', 'float_nudges_on', 'float_unsupported',
   'account_created', 'account_signin', 'account_signout', 'account_deleted', 'memory_added', 'memory_edited', 'memory_deleted', 'sync_off', 'sync_on',
+  'voice_chat', 'companion_chat_view', 'wake_on', 'wake_off', 'wake_word', 'voice_needs_account',
 ];
 // Every event and every allowed value is listed here, so nothing free-form is ever stored.
 export const ALLOWED = {
@@ -29,7 +30,7 @@ export const ALLOWED = {
   donate_click: ['5', '10', '25', '50', 'other', 'm5', 'm10', 'm25', 'm50', 'mother'], // m = monthly
   feature: FEATURES,
   embed_load: ['ok'], // the floating widget was loaded on someone's website (the website's address is read from the browser, see below)
-  embed_open: ['ok'], // someone opened the widget
+  embed_open: ['ok', 'auto'], // the chat was opened by the visitor ('ok'), or was already showing because the widget starts open ('auto')
   embed_chat: ['ok'], // someone sent a message inside the widget
 };
 const HOST_RE = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/;
@@ -58,7 +59,7 @@ export function namesFor(body, { ua = '', country = '', originHost = '' } = {}) 
   }
   if (EMBED.includes(e)) { // which website the widget is on: the browser's own Origin header when it loads, the page's name from the widget when it is used
     const host = cleanHost(e === 'embed_load' ? originHost : body.h);
-    if (host && !host.endsWith('neurohubcommunity.org')) names.push(`embedhost:${e}:${host}`);
+    if (host && !host.endsWith('neurohubcommunity.org') && !(e === 'embed_open' && v === 'auto')) names.push(`embedhost:${e}:${host}`); // per website, only real opens count
   }
   if (HOSTED.includes(e) && body.h) { // use inside the widget: counted against the website it is on (one counter per website, not per feature)
     const host = cleanHost(body.h);

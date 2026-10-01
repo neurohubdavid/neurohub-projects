@@ -163,18 +163,21 @@ test('widget analytics: the list of websites cannot grow without limit', async (
   assert.equal(Object.keys(day).filter((k) => k.startsWith('embedhost:')).length, 300);
 });
 
-test('widget: one script tag, a real button, an iframe that only loads when asked for, and its own framing rules', () => {
+test('widget: one script tag, a real button for keyboards, frames that only talk in fixed words, and its own framing rules', () => {
   execFileSync(process.execPath, ['scripts/build-site.mjs'], { cwd: new URL('..', import.meta.url), stdio: 'pipe' });
   const rd = (p) => readFileSync(new URL('../site/' + p, import.meta.url), 'utf8');
   const js = rd('embed.js');
-  assert.match(js, /document\.createElement\('button'\)/); assert.match(js, /aria-expanded/); assert.match(js, /Escape/);
-  assert.match(js, /\/embed\/\?h=/); assert.ok(js.indexOf('frame = document.createElement') > js.indexOf('function open'), 'the app loads only when opened');
-  assert.ok(!/cookie|localStorage|sessionStorage/.test(js.replace(/\/\*[\s\S]*?\*\//, '')), 'the widget sets no cookies and stores nothing');
+  assert.match(js, /document\.createElement\('button'\)/); assert.match(js, /aria-expanded/); assert.match(js, /Escape/); assert.match(js, /aria-label/);
+  assert.match(js, /\/embed\/\?h=/); assert.match(js, /\/embed\/mascot\.html/); assert.ok(js.indexOf('chat = document.createElement') > js.indexOf('function setOpen'), 'the chat loads only when it is shown');
+  assert.ok(!/cookie|localStorage/.test(js.replace(/\/\*[\s\S]*?\*\//, '')), 'the widget sets no cookies and uses no persistent storage');
+  assert.ok(/sessionStorage/.test(js) && /remember\('min'\)/.test(js), 'it remembers only that a visitor minimised it, for their visit');
+  assert.match(js, /ev\.source === chat\.contentWindow && ev\.origin === origin/, 'only the chat frame can steer her');
   assert.ok(!/innerHTML/.test(js));
   const h = rd('_headers');
   assert.match(h, /\/embed\/\*\n(?:.*\n)*?\s+Content-Security-Policy: frame-ancestors \*/);
   assert.match(h, /\/app\/\*\n(?:.*\n)*?\s+Content-Security-Policy: frame-ancestors 'self'/);
   assert.ok(rd('_redirects').includes('/embed/* /app/:splat 200'));
+  assert.ok(readFileSync(new URL('../site/app/mascot.html', import.meta.url), 'utf8').includes('mascot-frame.js'), 'the floating character page is built');
   assert.match(rd('add-to-your-site/index.html'), /embed\.js/);
   assert.ok(!rd('index.html').includes('/go?f='), 'no installer download links remain on the front page'); assert.ok(!/Phoenix-Setup|Windows installer|\.exe/.test(rd('index.html')), 'the front page does not offer the old desktop installers');
 });

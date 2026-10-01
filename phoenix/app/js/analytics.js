@@ -45,7 +45,7 @@ export async function trackStart() {
   const { state } = await import('./store.js');
   const mode = displayMode();
   track('app_open', mode);
-  if (mode === 'embed') trackHost('embed_open', 'ok');
+  if (mode === 'embed') trackHost('embed_open', new URLSearchParams(location.search).get('a') === '1' ? 'auto' : 'ok'); // 'auto': the chat was showing because the widget starts open, not because the visitor opened it
   if (!lsGet('phoenix.counted')) { track('first_open', mode); lsSet('phoenix.counted', '1'); }
   const today = new Date().toISOString().slice(0, 10);
   if (lsGet('phoenix.aiKindDay') !== today) { track('ai_kind', state.provider.kind); lsSet('phoenix.aiKindDay', today); }

@@ -59,6 +59,11 @@ fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'embed.js'), path.join
 fs.mkdirSync(path.join(site, 'admin'), { recursive: true });
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin.html'), path.join(site, 'admin', 'index.html'));
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin.js'), path.join(site, 'admin', 'admin.js'));
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin-pwa.js'), path.join(site, 'admin', 'admin-pwa.js'));
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin-sw.js'), path.join(site, 'admin', 'sw.js'));
+fs.cpSync(path.join(root, 'scripts', 'site-assets', 'admin-icons'), path.join(site, 'admin', 'icons'), { recursive: true });
+// The backend can be installed as its own app (with its own icon) on a phone or computer. It is the same page; nothing is cached.
+fs.writeFileSync(path.join(site, 'admin', 'manifest.webmanifest'), JSON.stringify({ id: '/admin/', name: 'Phoenix backend', short_name: 'Phoenix Admin', description: 'The private Phoenix backend: users, usage and wellbeing trends. Admin sign-in required.', lang: 'en-GB', start_url: './', scope: './', display: 'standalone', orientation: 'any', background_color: '#2a1a5e', theme_color: '#2a1a5e', prefer_related_applications: false, icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' }, { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }, { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }] }, null, 2));
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin-pdf.js'), path.join(site, 'admin', 'admin-pdf.js')); // the PDF report is drawn in the admin's own browser
 fs.copyFileSync(path.join(root, 'app', 'vendor', 'pdf-lib.esm.min.js'), path.join(site, 'admin', 'pdf-lib.esm.min.js'));
 // /embed/ is the app itself (so every relative file it loads still works), served on its own address so it alone may be shown inside other websites.
@@ -98,7 +103,10 @@ fs.writeFileSync(path.join(site, '_headers'), `/app/*
   Cache-Control: no-store
   Referrer-Policy: no-referrer
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+/admin/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache
 /sitemap.xml
   Content-Type: application/xml; charset=utf-8
   Cache-Control: public, max-age=3600

@@ -93,6 +93,7 @@ async function request(cfg, url, init, signal) {
   catch (e) { if (e?.name === 'AbortError') throw e; throw explain(cfg, 0, '', e); }
   if (!res.ok) {
     let t = ''; try { t = await res.text(); } catch { /* ignore */ }
+    if (res.status === 401 && cfg.kind === 'shared' && !cfg.token) throw new AIError('account', 'Voice chat needs a free Phoenix account. Sign in under Settings, Account, and try again. You can still type to me.', 401);
     if (res.status === 401 && cfg.token) { onSignedOut(); throw new AIError('signed_out', 'You have been signed out of your Phoenix account, so I did not get that. Please try again. Sign in again in Settings to keep your memories.', 401); }
     throw explain(cfg, res.status, t);
   }
@@ -103,7 +104,7 @@ async function request(cfg, url, init, signal) {
  * Streams one reply. `messages` is [{role:'user'|'assistant', content}]; `system` is the system prompt.
  * Calls onText(delta) for each piece and resolves with the full reply.
  */
-export async function streamChat(cfg, { system, messages, signal, onText, maxTokens = 1200, purpose = '' }) {
+export async function streamChat(cfg, { system, messages, signal, onText, maxTokens = 1200, purpose = '', voice = false }) {
   let full = '';
   const push = (t) => { if (t) { full += t; onText?.(t, full); } };
 
@@ -135,7 +136,7 @@ export async function streamChat(cfg, { system, messages, signal, onText, maxTok
       push(j.choices?.[0]?.delta?.content);
     }
   } else if (cfg.kind === 'shared') {
-    const res = await request(cfg, `${cfg.url}/api/ai`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(cfg.token ? { Authorization: `Bearer ${cfg.token}` } : {}) }, body: JSON.stringify({ system, messages, maxTokens, ...(purpose ? { purpose } : {}) }) }, signal);
+    const res = await request(cfg, `${cfg.url}/api/ai`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(cfg.token ? { Authorization: `Bearer ${cfg.token}` } : {}) }, body: JSON.stringify({ system, messages, maxTokens, ...(purpose ? { purpose } : {}), ...(voice ? { voice: true } : {}) }) }, signal);
     for await (const line of lines(res.body, signal)) {
       if (!line.startsWith('data:')) continue;
       let j; try { j = JSON.parse(line.slice(5)); } catch { continue; }

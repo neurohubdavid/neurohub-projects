@@ -23,7 +23,7 @@ for (let i = 0; i < 6; i++) for (const [n, v] of [[40, 2], [28, 2 + (i % 2)], [1
 await usage.set('day:' + day(0) + ':feature', JSON.stringify({ 'e:feature': 9, 'e:feature:checkin_done': 4, 'e:feature:chat_ai': 3, 'e:feature:tool_breathing': 2, 'e:feature:chat_limit': 1, 'e:feature:donate_open': 2, 'e:feature:float_open': 3, 'e:feature:float_chat': 6, 'e:feature:float_activity': 2, 'embedhost:feature:example-charity.org.uk': 7 }));
 await usage.set('day:' + day(0) + ':donate_click', JSON.stringify({ 'e:donate_click': 2, 'e:donate_click:25': 1, 'e:donate_click:m10': 1, 'embedhost:donate_click:example-charity.org.uk': 1 }));
 await usage.set('day:' + day(0) + ':embed_load', JSON.stringify({ 'e:embed_load': 5, 'e:embed_load:ok': 5, 'embedhost:embed_load:example-charity.org.uk': 3, 'embedhost:embed_load:shop.example.com': 2, 'country:embed_load:GB': 5 }));
-await usage.set('day:' + day(0) + ':embed_open', JSON.stringify({ 'e:embed_open': 2, 'embedhost:embed_open:example-charity.org.uk': 2 }));
+await usage.set('day:' + day(0) + ':embed_open', JSON.stringify({ 'e:embed_open': 6, 'e:embed_open:ok': 2, 'e:embed_open:auto': 4, 'embedhost:embed_open:example-charity.org.uk': 2 }));
 await usage.set('day:' + day(0) + ':ai_event', JSON.stringify({ 'e:ai_event': 5, 'e:ai_event:reply': 4, 'e:ai_event:limit_person': 1 }));
 await usage.set('day:' + day(0) + ':view', JSON.stringify({ 'e:view': 3, 'e:view:/thanks/': 1 }));
 await usage.set('day:' + day(0), JSON.stringify({ 'e:view': 12, 'e:app_open': 5, 'ref:google.com': 3, 'e:first_open': 3, 'plat:first_open:android': 2, 'plat:first_open:windows': 1, 'e:first_open:installed': 2, 'e:first_open:browser': 1, 'country:first_open:GB': 3, 'e:installed': 2 }));
@@ -115,6 +115,13 @@ assert.equal(await usersKpi('Thank-you page views (completed)'), '1'); assert.eq
 assert.match(txt, /Websites with the widget[\s\S]*example-charity\.org\.uk[\s\S]*3[\s\S]*shop\.example\.com[\s\S]*2/);
 await page.screenshot({ path: path.join(shots, '51-admin-usage.png'), fullPage: true });
 ok('the users tab counts devices (all time, last 7 and 30 days, by type, how used and country) next to visits, opens and free AI use');
+
+// on a phone the dashboard fits the screen too (wide tables scroll inside their own card)
+await page.setViewportSize({ width: 390, height: 800 });
+for (const tab of ['Users and usage', 'Report']) { await page.click('button:has-text("' + tab + '")'); await page.waitForTimeout(400); const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth); assert.ok(over <= 1, tab + ' scrolls sideways by ' + over); }
+await page.screenshot({ path: path.join(shots, '52-admin-phone.png'), fullPage: true });
+await page.setViewportSize({ width: 1100, height: 900 });
+ok('on a phone the dashboard fits the screen, with no sideways scrolling');
 
 await page.click('#out');
 await page.waitForSelector('#login:not([hidden])');

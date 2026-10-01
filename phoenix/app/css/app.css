@@ -254,3 +254,60 @@ button.linklike { background: none; border: 0; padding: 0; font: inherit; color:
 .memrow { display: flex; gap: .5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: .4rem .6rem; border: 2px dashed color-mix(in srgb, var(--border) 45%, transparent); border-radius: 12px; }
 .memrow .input { flex: 1; min-width: 12rem; } .memtext { flex: 1; min-width: 10rem; overflow-wrap: anywhere; }
 .notice.bad { border-color: var(--red); }
+
+/* ---- Phones: the menu folds away so it never covers the chat */
+.menu-panel { display: contents; }
+.menu-btn { display: none; }
+.voice-toggle { display: none; }
+@media (max-width: 700px) {
+  .top { flex-wrap: nowrap; position: relative; padding: .35rem .6rem; gap: .4rem; }
+  .brand { font-size: 1.3rem; }
+  .menu-btn { display: inline-flex; align-items: center; gap: .35rem; }
+  .menu-panel { display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 40; flex-wrap: wrap; gap: .45rem; padding: .6rem; background: var(--bg); border-bottom: var(--bw) solid var(--border); box-shadow: 0 10px 18px rgba(0, 0, 0, .18); max-height: 75vh; overflow: auto; }
+  .top.menu-open .menu-panel { display: flex; }
+  .menu-panel .nav { flex-basis: 100%; }
+  .menu-panel .nav button { flex: 1 1 auto; min-height: 46px; }
+  .menu-panel .donate-text { display: inline; }
+  /* the chat gets the room */
+  .chat-head { padding: .3rem .6rem; gap: .4rem; flex-wrap: nowrap; }
+  .chat-head .ph { --ph-size: 46px !important; }
+  .chat-head .who strong { font-size: 1.1rem; }
+  .chat-head .ph-status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .8rem; }
+  .chat-head .mode-pill { display: none; }
+  .chat-head .btn { padding: .35rem .6rem; min-height: 38px; }
+  .checkin-nudge { flex-wrap: nowrap; margin: .3rem .6rem 0; padding: .4rem .6rem; font-size: .88rem; }
+  .chips { flex-wrap: nowrap; overflow-x: auto; padding: 0 .6rem .4rem; scrollbar-width: none; }
+  .chips .chip-btn { flex: none; white-space: nowrap; }
+  .composer { padding: .4rem .6rem .6rem; }
+  .composer-foot { font-size: .72rem; margin-top: .2rem; gap: 0 .6rem; line-height: 1.3; }
+  .ai-note { font-size: .72rem; padding: 0; }
+  .checkin-nudge .btn-purple { white-space: nowrap; }
+  .voice-toggle { display: inline-flex; }
+  .voice-row:not(.open) { display: none; }
+  .welcome { padding: .5rem; } .welcome .ph { --ph-size: 90px !important; }
+  .kb-open .checkin-nudge, .kb-open .chips, .kb-open .composer-foot, .kb-open .voice-row, .kb-open .chat-head .ph-status, .kb-open .welcome > p { display: none; }
+}
+
+/* ---- inside the website widget: the free-floating Phoenix is outside the panel, so the chat does not repeat her */
+.embedded .chat-head .ph { display: none; }
+.embedded .top .brand { display: none; }
+
+/* ---- the companion in the floating window: a big animated Phoenix with a speech bubble and a Talk button */
+.float-app .companion { display: flex; flex-direction: column; gap: .5rem; height: 100%; padding: .5rem .7rem .7rem; overflow: auto; }
+.comp-stage { display: flex; justify-content: center; flex: none; animation: comp-in .8s cubic-bezier(.2, 1.5, .4, 1) both; }
+@keyframes comp-in { 0% { transform: translateY(40px) scale(.5); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.comp-bubble { position: relative; border: var(--bw) solid var(--border); border-radius: 18px; background: var(--card); padding: .6rem .8rem; box-shadow: var(--sh-sm); min-height: 4.2rem; }
+.comp-bubble::before { content: ''; position: absolute; top: -10px; left: 50%; width: 16px; height: 16px; background: var(--card); border-left: var(--bw) solid var(--border); border-top: var(--bw) solid var(--border); transform: translateX(-50%) rotate(45deg); }
+.comp-bubble p { margin: 0; } .comp-text { font-size: 1.02rem; line-height: 1.5; overflow-wrap: anywhere; } .comp-you { margin-bottom: .25rem !important; }
+.comp-status { text-align: center; }
+.comp-controls { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
+.comp-talk { flex: 1 1 100%; min-height: 54px; font-size: 1.1rem; }
+.comp-talk.on { animation: comp-pulse 1.4s ease-in-out infinite; }
+@keyframes comp-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 50% { box-shadow: 0 0 0 10px transparent; } }
+.comp-typebox { display: grid; gap: .4rem; }
+.companion[data-view='chat'] .comp-stage .ph { --ph-size: 56px !important; } .companion[data-view='chat'] .comp-stage { justify-content: flex-start; animation: none; }
+.companion[data-view='chat'] .comp-bubble, .companion[data-view='chat'] .comp-status { display: none; }
+.companion[data-view='chat'] .comp-chat { flex: 1; min-height: 0; }
+.comp-chat[hidden], .comp-typebox[hidden] { display: none !important; }
+.comp-chat .chat-head { display: none; } .float-app .comp-chat.chat-view { height: auto; }
+@media (prefers-reduced-motion: reduce) { .comp-stage, .comp-talk.on { animation: none; } }

@@ -9,12 +9,13 @@ const SR = globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
 export const voiceSupport = { stt: !!SR, tts: 'speechSynthesis' in globalThis, desktop: false };
 
 // ---------------------------------------------------------------- speech to text
-export function createRecognizer({ lang = 'en-GB', onStart, onInterim, onEnd, onError }) {
-  if (!voiceSupport.stt) return null;
-  const rec = new SR();
+export function createRecognizer({ lang = 'en-GB', onStart, onInterim, onSegment, onEnd, onError, win = null, continuous = false }) {
+  const Rec = win?.SpeechRecognition || win?.webkitSpeechRecognition || SR; // the floating window uses its own, so it keeps listening when the main window is minimised
+  if (!Rec) return null;
+  const rec = new Rec();
   rec.lang = lang;
   rec.interimResults = true;
-  rec.continuous = false;
+  rec.continuous = !!continuous;
   rec.maxAlternatives = 1;
   let finalText = '';
   let gotFinal = false;
@@ -23,6 +24,7 @@ export function createRecognizer({ lang = 'en-GB', onStart, onInterim, onEnd, on
     let interim = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const t = e.results[i][0].transcript;
+      onSegment?.(t, !!e.results[i].isFinal); // each stretch of speech on its own (used to listen for a wake word)
       if (e.results[i].isFinal) { finalText += t; gotFinal = true; } else interim += t;
     }
     onInterim?.((finalText + interim).trim());

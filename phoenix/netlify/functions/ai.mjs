@@ -83,6 +83,7 @@ export async function handle(req, ctx = {}, deps = {}) {
   if (!s.on) { await note('off'); return json({ error: 'unavailable' }, 503, c); }
 
   let body; try { body = await req.json(); } catch { return json({ error: 'bad_request' }, 400, c); }
+  if (body?.voice === true && !acct) return json({ error: 'account_required' }, 401, c); // voice chat is for signed-in people (the page checks this too; this is the server's own check)
   const memory = body?.purpose === 'memory'; // Phoenix writing notes for a signed-in person: its own small allowance, not their chat allowance
   if (memory && !acct) return json({ error: 'signed_out' }, 401, c);
   const cb = cleanBody(body, { memory });

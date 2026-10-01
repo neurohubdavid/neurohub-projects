@@ -1,5 +1,5 @@
 // Phoenix: entry point. Small hash router, header, first-run welcome, offline support.
-import { $, el, modal, bus } from './util.js';
+import { $, el, modal, bus, toast } from './util.js';
 import { state, save, flush } from './store.js';
 import { phoenixSVG } from './mascot.js';
 import { openHelp } from './crisis.js';
@@ -16,8 +16,11 @@ import { trackStart, trackFeature, isEmbedded } from './analytics.js';
 import { flushShared } from './share.js';
 import { checkedInToday } from './sixpf.js';
 import { initAccount } from './account.js';
+import { initLive } from './mascot-live.js';
+import { initWake, enableWake, disableWake, pauseWake, resumeWake, restartWake, wakeEnabled, wakeListening } from './wake.js';
+import { voiceChatStart, voiceChatActive } from './chat.js';
 import { takeCodeFromLink } from './account-ui.js';
-import { floatSupported, openFloat, closeFloat, floatIsOpen, initFloat, floatPlaceholder, offerFloat } from './float.js';
+import { floatSupported, openFloat, closeFloat, floatIsOpen, floatWindow, initFloat, floatPlaceholder, offerFloat } from './float.js';
 
 const NAV = [['chat', 'Chat'], ['checkin', 'Check-in'], ['tools', 'Toolkit'], ['learn', 'Learn'], ['settings', 'Settings']];
 const view = $('#view');
@@ -100,6 +103,18 @@ function welcome() {
 
 // ---------------------------------------------------------------- boot
 applyLook();
+// On a phone the menu is folded away so it never covers the chat; Menu opens it, and it closes again after a choice.
+{
+  const top = $('#top'), btn = $('#menu-btn'), panel = $('#menu-panel');
+  const setMenu = (open) => { top.classList.toggle('menu-open', open); btn.setAttribute('aria-expanded', String(open)); };
+  btn.addEventListener('click', (e) => { e.stopPropagation(); setMenu(!top.classList.contains('menu-open')); });
+  panel.addEventListener('click', (e) => { if (e.target.closest('button, a')) setTimeout(() => setMenu(false), 0); });
+  document.addEventListener('click', (e) => { if (!top.contains(e.target)) setMenu(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+  // When the on-screen keyboard is up there is little room: tuck away the extras above the message box so the chat has the space.
+  const vv = window.visualViewport;
+  if (vv) vv.addEventListener('resize', () => document.documentElement.classList.toggle('kb-open', matchMedia('(max-width: 700px)').matches && vv.height < window.innerHeight * 0.78));
+}
 $('#brand').prepend((() => { const m = phoenixSVG(4); m.style.setProperty('--ph-size', '38px'); return m; })());
 $('#help-btn').addEventListener('click', () => openHelp());
 $('#donate-btn').addEventListener('click', () => openDonate());
@@ -131,7 +146,25 @@ if (floatSupported() && !isEmbedded()) {
   setTimeout(() => offerFloat($('#float-invite-host'), { navigate }), 2500);
 }
 
+// Wake word: in the installed app, if the person turned it on, saying "Phoenix" starts a spoken conversation.
+{
+  const wb = $('#wake-btn');
+  const draw = () => { wb.hidden = !wakeEnabled(); wb.setAttribute('aria-pressed', String(wakeListening())); };
+  wb.addEventListener('click', () => { disableWake(); toast('Phoenix has stopped listening for her name.', { icon: '🎤', ms: 3000 }); });
+  bus.on('wake', draw);
+  bus.on('voicechat', () => { if (voiceChatActive()) pauseWake(); else resumeWake(); }); // not while a conversation is going on
+  bus.on('chat:state', (st) => { if (st === 'listening' || st === 'talking') pauseWake(); else if (st === 'idle' && !voiceChatActive()) resumeWake(); }); // not while she is speaking or you are using the mic yourself
+  bus.on('float', () => restartWake());
+  bus.on('goto', (r) => navigate(r)); // other parts of the app (such as the voice sign-in notice) can send the person somewhere
+  initWake({
+    getWindow: () => (floatIsOpen() ? floatWindow() : null),
+    busy: () => voiceChatActive(),
+    onWake: async (rest) => { if (!floatIsOpen() && parse().area !== 'chat') navigate('chat'); await voiceChatStart({ first: rest }); },
+  });
+  draw();
+}
 initAccount();
+initLive();
 initReminders();
 trackStart();
 flushShared(); // if sharing is on and an earlier check-in could not be sent, try again now

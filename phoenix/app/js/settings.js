@@ -1,5 +1,5 @@
 // Settings: about me, how Phoenix talks, connecting an AI, appearance, your data.
-import { el, toast, modal, download, dayKey, fmtDate } from './util.js';
+import { el, toast, modal, download, dayKey, fmtDate, bus } from './util.js';
 import { trackFeature } from './analytics.js';
 import { state, save, flush, resetAll, exportData, importData } from './store.js';
 import { sharedStatus } from './providers.js';
@@ -11,6 +11,9 @@ import { openDonate } from './donate.js';
 import { startSharing, stopSharing } from './share.js';
 import { floatSupported, openFloat, setNudges } from './float.js';
 import { accountSection } from './account-ui.js';
+import { wakeSupported, wakeEnabled, wakeListening, enableWake, disableWake, isInstalled } from './wake.js';
+import { voiceAllowed } from './voice-gate.js';
+import { voiceSupport } from './voice.js';
 import { notifSupport, setReminder, testReminder, downloadIcs } from './reminders.js';
 
 const NEUROTYPES = ['Autistic', 'ADHD', 'AuDHD', 'Dyslexic', 'Dyspraxic', 'Dyscalculic', 'Tourettic', 'OCD', 'Voice-hearer', 'Exploring / not sure', 'Multiply neurodivergent'];
@@ -100,6 +103,7 @@ export function mountSettings(container, { focus } = {}) {
 
   // ---------------------------------------------------- install as an app (web version only)
   root.append(floatSection());
+  root.append(wakeSection());
   root.append(el('fieldset', { id: 'install-section' }, el('legend', {}, 'Install as an app'), installPanel()));
 
   // ---------------------------------------------------- data
@@ -204,6 +208,31 @@ function drawReminders(box) {
 }
 
 // ---------------------------------------------------------------- the AI: Phoenix's own, or none
+/** Say "Phoenix" to start talking: only in the installed app, and only if switched on. */
+function wakeSection() {
+  const box = el('fieldset', { id: 'wake-section' }, el('legend', {}, 'Say “Phoenix” to talk'));
+  const draw = () => {
+    box.querySelectorAll(':scope > :not(legend)').forEach((n) => n.remove());
+    const body = el('div', { class: 'stack' }, el('p', {}, 'Say “Phoenix” (or “Hey Phoenix”) and she starts a spoken conversation: she listens, answers out loud, and listens again until you press Stop. You can say what you want straight after her name, like “Phoenix, I feel overwhelmed”.'));
+    if (!voiceSupport.stt) body.append(el('div', { class: 'notice' }, 'This needs speech recognition, which Microsoft Edge, Google Chrome and Safari have. Firefox does not.'));
+    else if (!isInstalled()) body.append(el('div', { class: 'notice' }, 'This is for the installed app. Install Phoenix as an app first (see “Install as an app” below), then open the app and come back here to turn it on.'));
+    else if (!voiceAllowed()) body.append(el('div', { class: 'notice' }, 'Voice chat is for people with a free Phoenix account. ', el('a', { href: '#/settings/account' }, 'Make an account or sign in'), ' (an emailed code, no password), then come back here to turn this on.'));
+    else {
+      const on = wakeEnabled();
+      body.append(
+        el('p', { class: 'small', role: 'status', 'aria-live': 'polite' }, on ? (wakeListening() ? 'On. The microphone is open and Phoenix is listening for her name.' : 'On. Phoenix will listen for her name while the app is open.') : 'Off. The microphone is not in use.'),
+        el('div', { class: 'row-wrap' }, on
+          ? el('button', { class: 'btn', type: 'button', onclick: () => { disableWake(); draw(); } }, 'Turn off listening for “Phoenix”')
+          : el('button', { class: 'btn btn-primary', type: 'button', onclick: async () => { await enableWake(); draw(); } }, 'Turn on listening for “Phoenix”')),
+        el('p', { class: 'muted small' }, 'While this is on, the microphone is open whenever the app is, and in Chrome and Edge your browser sends what it hears to Google or Microsoft to turn into text. Phoenix keeps no audio and ignores everything that does not start with her name. Not for places where private conversations could be overheard.'));
+    }
+    box.append(body);
+  };
+  draw();
+  bus.on('wake', () => { if (box.isConnected) draw(); }); bus.on('account', () => { if (box.isConnected) draw(); });
+  return box;
+}
+
 /** Floating Phoenix: how it works, a button to start it, and gentle check-ins (off unless chosen). */
 function floatSection() {
   const supported = floatSupported();
@@ -213,7 +242,7 @@ function floatSection() {
   nudge.addEventListener('change', () => setNudges(nudge.value));
   return el('fieldset', { id: 'float-section' }, el('legend', {}, 'Floating Phoenix'),
     el('div', { class: 'stack' },
-      el('p', {}, 'Phoenix can float in a small window on top of everything else while you work, to help with what you are doing or just keep you company. Press Float, then minimise Phoenix. She stays beside your work, and comes home when you come back.'),
+      el('p', {}, 'Phoenix can float in a small window on top of everything else while you work: a big animated Phoenix with a speech bubble, who can help with what you are doing, keep you company, or talk with you out loud (press Talk, and she listens, answers aloud, and listens again). Press Float, then minimise Phoenix. She stays beside your work, and comes home when you come back.'),
       el('p', { class: 'muted small' }, 'Phoenix cannot see your screen. Tell her what you are doing in the floating window and she will help with that. It is the same chat, saved on this device.'),
       supported
         ? el('div', { class: 'row-wrap' }, el('button', { class: 'btn btn-primary', type: 'button', onclick: () => openFloat() }, 'Float Phoenix now'), el('span', { class: 'muted small' }, 'Your browser only lets this start when you press the button.'))

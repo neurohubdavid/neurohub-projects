@@ -24,13 +24,17 @@
 <body>
   <a class="skip-link" href="#view">Skip to content</a>
   <div class="app" id="app">
-    <header class="top">
+    <header class="top" id="top">
       <div class="brand" id="brand"><span class="name">Phoenix</span></div>
+      <div class="menu-panel" id="menu-panel">
       <nav class="nav" id="nav" aria-label="Main"></nav>
       <button class="btn btn-sm btn-primary" id="install-btn" hidden title="Install Phoenix as an app on this device">Install</button>
+      <button class="btn btn-sm wake-btn" id="wake-btn" type="button" hidden aria-pressed="true" title="Phoenix is listening for her name. Press to turn this off."><span aria-hidden="true">👂</span> Listening for “Phoenix”</button>
       <button class="btn btn-sm" id="float-btn" type="button" hidden aria-label="Float Phoenix on my screen while this window is minimised" title="Float Phoenix beside your work when you minimise this window">Float</button>
       <button class="btn btn-sm donate-btn" id="donate-btn" type="button" aria-haspopup="dialog" aria-label="Donate to NeuroHub Community, which makes Phoenix" title="Phoenix is free. Donations to NeuroHub Community help keep it that way."><span aria-hidden="true">♥</span><span class="donate-text"> Donate</span></button>
       <button class="btn btn-sm" id="a11y-btn" aria-label="Accessibility settings: font, text size, spacing, colours and voice" title="Accessibility (Alt + A)">Aa</button>
+      </div>
+      <button class="btn btn-sm menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="menu-panel"><span aria-hidden="true">☰</span> Menu</button>
       <button class="btn btn-sm help-btn" id="help-btn" aria-label="Get help now, crisis and emergency support">Help</button>
     </header>
     <div id="install-invite-host"></div>

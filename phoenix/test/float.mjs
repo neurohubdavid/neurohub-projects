@@ -50,7 +50,25 @@ await step('no floating-window support: the Float button is hidden and Settings 
 // a browser that has it
 const ctx = await browser.newContext({ viewport: { width: 1000, height: 800 } });
 // Edge has the real Document Picture-in-Picture window, and a button press inside the test counts as the required user gesture.
-await ctx.addInitScript(() => { if (window.documentPictureInPicture) documentPictureInPicture.addEventListener('enter', (e) => { window.__pip = e.window; }); });
+await ctx.addInitScript(() => {
+  if (window.documentPictureInPicture) documentPictureInPicture.addEventListener('enter', (e) => { window.__pip = e.window; });
+  // a pretend microphone and voice, shared between the windows through localStorage so the test can script a conversation
+  const ls = { get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } } };
+  class FakeRec {
+    constructor() { this.interimResults = true; }
+    start() {
+      ls.set('__starts', ls.get('__starts', 0) + 1); setTimeout(() => this.onstart && this.onstart(), 10);
+      const script = ls.get('__script', []); const s = script.shift(); ls.set('__script', script);
+      if (!s) { setTimeout(() => this.onend && this.onend(), 500); return; }
+      setTimeout(() => this.onresult && this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: s.interim }], { isFinal: false })] }), 150);
+      setTimeout(() => { this.onresult && this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: s.final }], { isFinal: true })] }); this.onend && this.onend(); }, 400);
+    }
+    stop() { setTimeout(() => this.onend && this.onend(), 10); } abort() {}
+  }
+  window.SpeechRecognition = FakeRec; window.webkitSpeechRecognition = FakeRec;
+  const fake = { speak(u) { ls.set('__spoken', [...ls.get('__spoken', []), u.text]); setTimeout(() => u.onstart && u.onstart(), 5); setTimeout(() => u.onboundary && u.onboundary({ name: 'word' }), 40); setTimeout(() => u.onend && u.onend(), 300); }, cancel() {}, getVoices() { return []; }, addEventListener() {}, speaking: false };
+  try { Object.defineProperty(window, 'speechSynthesis', { value: fake, configurable: true }); } catch { /* ignore */ }
+});
 const page = await ctx.newPage();
 const errors = []; page.on('pageerror', (e) => errors.push(e.message)); page.on('console', (m) => { if (process.env.DBG) console.log('   console', m.type(), m.text()); });
 await page.goto(base); await page.waitForSelector('.modal');
@@ -59,6 +77,7 @@ await page.waitForSelector('.name-ask'); await page.click('button:has-text("Skip
 const lastSystem = () => seen.at(-1)?.system || '';
 const hidden = (v) => page.evaluate((hide) => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (hide ? 'hidden' : 'visible') }); Object.defineProperty(document, 'hidden', { configurable: true, get: () => hide }); document.dispatchEvent(new Event('visibilitychange')); }, v);
 
+await page.evaluate(async () => { const { state, save } = await import('./js/store.js'); state.account.token = 'test-session-token-1234567890abcdef'; save(); }); // voice chat is for signed-in people
 await step('a Float button appears; pressing it opens the floating window with the animated Phoenix and the chat', async () => {
   assert.equal(await page.locator('#float-btn').isVisible(), true);
   await page.click('#float-btn');
@@ -113,6 +132,59 @@ await step('gentle check-ins appear in the floating window only when chosen, and
   await page.evaluate(() => window.__pip.document.querySelector('.float-bubble button:last-child').click()); // Stop these
   assert.equal(await page.evaluate(async () => (await import('./js/store.js')).state.float.nudgeMins), 0);
   assert.equal(await page.evaluate(() => window.__pip.document.querySelectorAll('.float-bubble').length), 0);
+});
+
+await step('the companion: a big animated Phoenix, a speech bubble, a Talk button, and typing or the whole conversation only when wanted', async () => {
+  const info = await page.evaluate(() => { const d = window.__pip.document, vis = (s) => { const n = d.querySelector(s); if (!n) return false; const r = n.getBoundingClientRect(); return r.width > 0 && r.height > 0; }; return { compact: d.querySelector('.companion')?.dataset.view, big: vis('.comp-stage .ph'), bigW: d.querySelector('.comp-stage .ph')?.getBoundingClientRect().width, bubble: vis('.comp-bubble'), talk: vis('.comp-talk'), type: vis('.comp-type-btn'), chatBtn: vis('.comp-chat-btn'), chatHidden: !vis('.comp-chat'), typeHidden: !vis('.comp-typebox'), act: d.querySelector('.comp-stage .ph')?.dataset.act, w: window.__pip.innerWidth }; });
+  assert.deepEqual([info.compact, info.big, info.bubble, info.talk, info.type, info.chatBtn, info.chatHidden, info.typeHidden], ['compact', true, true, true, true, true, true, true], JSON.stringify(info));
+  assert.ok(info.bigW >= 150, 'she is big: ' + info.bigW);
+  const popup = ctx.pages().find((p) => p !== page); if (popup) await popup.screenshot({ path: path.join(shots, '45-companion.png') }).catch(() => {});
+});
+
+await step('typing to her: the bubble shows what you said and what she answers', async () => {
+  await page.evaluate(() => { const d = window.__pip.document; d.querySelector('.comp-type-btn').click(); const ta = d.querySelector('.comp-typebox textarea'); ta.value = 'Can you help me plan my morning'; ta.dispatchEvent(new Event('input', { bubbles: true })); d.querySelector('.comp-typebox button[type=submit]').click(); });
+  await page.waitForFunction(() => /first step tiny/.test(window.__pip.document.querySelector('.comp-text').textContent), null, { timeout: 8000 });
+  assert.match(await page.evaluate(() => window.__pip.document.querySelector('.comp-you').textContent), /plan my morning/);
+  assert.ok((await page.evaluate(() => window.__pip.document.querySelector('.comp-status').textContent)).length > 0);
+});
+
+await step('a spoken conversation: she listens, answers aloud, listens again, and stops when you press Stop', async () => {
+  await page.waitForFunction(() => window.__pip.document.querySelector('.comp-stage .ph').dataset.state === 'idle', null, { timeout: 9000 }); // the earlier helpline message keeps her "concerned" for a few seconds
+  await page.evaluate(async () => { const { state, save } = await import('./js/store.js'); state.voiceConsent = true; save(); localStorage.setItem('__script', JSON.stringify([{ interim: 'I feel so overwhelmed', final: 'I feel so overwhelmed today' }, { interim: 'thank you', final: 'thank you so much' }])); localStorage.setItem('__spoken', '[]'); localStorage.setItem('__starts', '0'); });
+  await page.evaluate(() => window.__pip.document.querySelector('.comp-talk').click());
+  assert.match(await page.evaluate(() => window.__pip.document.querySelector('.comp-talk').textContent), /Stop talking/);
+  // while she hears the words, her mood follows them
+  await page.waitForFunction(() => window.__pip.document.querySelector('.comp-stage .ph').dataset.mood === 'calm', null, { timeout: 5000 });
+  await page.waitForFunction(() => /overwhelmed today/.test(window.__pip.document.querySelector('.comp-you').textContent), null, { timeout: 8000 });
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('__spoken') || '[]').some((t) => /first step tiny/.test(t)), null, { timeout: 8000 });
+  // after speaking she listens again, hears the second thing, and answers again
+  await page.waitForFunction(() => /thank you so much/.test(window.__pip.document.querySelector('.comp-you').textContent), null, { timeout: 12000 });
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('__spoken') || '[]').length >= 2, null, { timeout: 10000 });
+  assert.ok(Number(await page.evaluate(() => localStorage.getItem('__starts'))) >= 2, 'she listened more than once');
+  const states = await page.evaluate(() => window.__pip.document.querySelector('.comp-stage .ph').dataset.state); assert.ok(['idle', 'listening', 'thinking', 'talking'].includes(states));
+  await page.evaluate(() => window.__pip.document.querySelector('.comp-talk').click());
+  assert.match(await page.evaluate(() => window.__pip.document.querySelector('.comp-talk').textContent), /Talk with Phoenix/);
+  const n = Number(await page.evaluate(() => localStorage.getItem('__starts'))); await new Promise((r) => setTimeout(r, 1800));
+  assert.equal(Number(await page.evaluate(() => localStorage.getItem('__starts'))), n, 'she stopped listening');
+});
+
+await step('her big stage mascot shows every state the chat goes through (listening, thinking, talking)', async () => {
+  await page.waitForFunction(() => window.__pip.document.querySelector('.comp-stage .ph').dataset.state === 'idle', null, { timeout: 9000 }); // the earlier helpline message keeps her "concerned" for a few seconds
+  const seen = await page.evaluate(async () => {
+    const ph = window.__pip.document.querySelector('.comp-stage .ph'), set = new Set(); const mo = new MutationObserver(() => set.add(ph.dataset.state)); mo.observe(ph, { attributes: true });
+    localStorage.setItem('__script', JSON.stringify([{ interim: 'hello', final: 'hello again' }])); window.__pip.document.querySelector('.comp-talk').click();
+    await new Promise((r) => setTimeout(r, 3500)); window.__pip.document.querySelector('.comp-talk').click(); mo.disconnect(); return [...set];
+  });
+  for (const s of ['listening', 'thinking', 'talking']) assert.ok(seen.includes(s), s + ' in ' + JSON.stringify(seen));
+});
+
+await step('the whole conversation is one press away, with everything that was said', async () => {
+  await page.evaluate(() => window.__pip.document.querySelector('.comp-chat-btn').click());
+  assert.equal(await page.evaluate(() => window.__pip.document.querySelector('.companion').dataset.view), 'chat');
+  const txt = await page.evaluate(() => window.__pip.document.querySelector('.comp-chat .chat-list').innerText);
+  assert.match(txt, /plan my morning/); assert.match(txt, /overwhelmed today/); assert.match(txt, /thank you so much/);
+  await page.evaluate(() => window.__pip.document.querySelector('.comp-chat-btn').click());
+  assert.equal(await page.evaluate(() => window.__pip.document.querySelector('.companion').dataset.view), 'compact');
 });
 
 await step('while the main window is minimised Phoenix stays; when it comes back she goes home with the whole conversation', async () => {

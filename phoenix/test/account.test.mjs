@@ -159,3 +159,16 @@ test('Phoenix AI: signed-in people get a bigger allowance counted by account, an
   assert.equal((await ask({ purpose: 'memory' }, token)).status, 400, 'a memory request must be Phoenix’s own memory prompt');
   const t2 = await ask({ system: memSys }, token); assert.equal(t2.status, 400, 'the memory prompt is not accepted as an ordinary chat');
 });
+
+test('Phoenix AI: voice chat needs a signed-in account (the server checks it too), while typed chat does not', async () => {
+  const t = rig(); const { j } = await t.signIn();
+  const usage = memoryStore(), aiEnv = { PHOENIX_ANTHROPIC_KEY: 'sk-ant-test-key-1234567890', PHOENIX_GLOBAL_DAILY: '999', PHOENIX_GLOBAL_MONTHLY: '9999' };
+  const upstream = async () => new Response('data: {"type":"message_stop"}\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  const sys = buildSystem({ crisisBlock: 'Samaritans 116 123' });
+  const ask = (extra, tok) => aiHandle(new Request('https://x/api/ai', { method: 'POST', headers: { origin: ORIGIN, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify({ system: sys, messages: [{ role: 'user', content: 'hi' }], ...extra }) }), { ip: '198.51.100.8' }, { env: aiEnv, store: usage, stats: memoryStore(), accountStore: t.store, fetch: upstream, now: t.deps.now });
+  assert.equal((await ask({})).status, 200, 'typed chat, signed out');
+  const refused = await ask({ voice: true }); assert.equal(refused.status, 401); assert.equal((await refused.json()).error, 'account_required');
+  assert.equal((await ask({ voice: true }, 'x'.repeat(43))).status, 401, 'a made-up token does not count');
+  assert.equal((await ask({ voice: true }, j.token)).status, 200, 'signed in, voice chat works');
+  assert.equal((await ask({ voice: false })).status, 200);
+});

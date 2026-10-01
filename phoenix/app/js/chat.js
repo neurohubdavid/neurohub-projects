@@ -1,5 +1,5 @@
 // The chat screen: Phoenix the mascot, the conversation, voice in and out, and the safety layer.
-import { el, fmt, modal, toast, announce, prefersReducedMotion, copyText, fmtDate, sleep } from './util.js';
+import { el, fmt, modal, toast, announce, prefersReducedMotion, copyText, fmtDate, sleep, ui, bus } from './util.js';
 import { trackFeature, trackEmbedChat } from './analytics.js';
 import { phoenixSVG, setPhoenixState } from './mascot.js';
 import { state, save, currentChat, newChat, deleteChat, aiActive, aiMaySeeCheckins } from './store.js';
@@ -13,6 +13,8 @@ import { streamChat, providerConfig, sharedStatus } from './providers.js';
 import { openDonate } from './donate.js';
 import { offlineReply, findTopic, topicReply } from './offline.js';
 import { loadSite, siteHits, siteBlock } from './site.js';
+import { reactToDraft, reactToSpeech, reactToSent, reactToReply, relay } from './mascot-live.js';
+import { voiceAllowed, requireAccountForVoice } from './voice-gate.js';
 import { voiceSupport, createRecognizer, createSpeaker, listVoices } from './voice.js';
 import { memoryIntent, memoryReply, memoryBlock, memoryMode, shouldLearn, notesRequest, parseNotes, addMemory, deleteMemory } from './memory.js';
 
@@ -20,6 +22,8 @@ let go = () => {};            // navigation callback supplied by main.js
 let aiNoteEl, footEl, mascot, statusEl, listEl, inputEl, sendBtn, micBtn, chipsEl, pillEl, root;
 let busy = false, listening = false, speaking = false, tempState = null, abortCtl = null, rec = null, handsFreeActive = false, lastViaVoice = false, emptyTurns = 0;
 let beatTimer = null;
+let convoMode = false; // a spoken conversation: Phoenix listens, answers aloud, then listens again (the Talk button in the floating Phoenix)
+let burst = false, burstTimer = null; // burst: Phoenix is "talking" for a moment each time more of her reply arrives
 let compact = false; // true while Phoenix is in the small floating window (float.js)
 /** Called by float.js: the chat shows shorter suggestions and tells the AI what the person is doing. */
 export function setChatCompact(on) { compact = !!on; }
@@ -38,10 +42,14 @@ function beat() {
 }
 
 const STATUS = { idle: 'Here when you need me', listening: 'Listening…', thinking: 'Thinking…', talking: 'Speaking…', happy: 'Glad to help', concerned: 'Here with you' };
-function baseState() { return tempState || (listening ? 'listening' : speaking ? 'talking' : busy ? 'thinking' : 'idle'); }
+function baseState() { return tempState || (listening ? 'listening' : speaking || burst ? 'talking' : busy ? 'thinking' : 'idle'); }
+function talkBurst() { burst = true; refreshState(); clearTimeout(burstTimer); burstTimer = setTimeout(() => { burst = false; refreshState(); }, 380); }
 function refreshState() {
   const st = baseState();
   setPhoenixState(mascot, st);
+  for (const n of ui.doc?.querySelectorAll?.('.ph') || []) setPhoenixState(n, st); // every Phoenix in this window (the big one in the floating window too)
+  bus.emit('chat:state', st);
+  relay('state', st); // the free-floating Phoenix on a website with the widget follows what she is doing here
   if (statusEl) statusEl.textContent = STATUS[st] || '';
   if (micBtn) { micBtn.setAttribute('aria-pressed', String(listening)); micBtn.classList.toggle('on', listening); }
   if (sendBtn) { sendBtn.textContent = busy ? 'Stop' : 'Send'; sendBtn.setAttribute('aria-label', busy ? 'Stop Phoenix answering' : 'Send message'); }
@@ -66,23 +74,31 @@ export function mountChat(container, { navigate }) {
   const histBtn = el('button', { class: 'btn btn-ghost btn-sm', onclick: openHistory }, 'History');
   container.append(el('div', { class: 'chat-head' }, mascot, el('div', { class: 'who' }, el('strong', {}, 'Phoenix'), statusEl), pillEl, histBtn, newBtn));
 
-  if (!checkedInToday(state.wellness)) {
+  const nudgeAway = (() => { try { return sessionStorage.getItem('phoenix.nudgeHidden') === '1'; } catch { return false; } })();
+  if (!checkedInToday(state.wellness) && !nudgeAway) {
     const n = streak(state.wellness);
-    container.append(el('div', { class: 'checkin-nudge', role: 'region', 'aria-label': 'Daily check-in' },
+    const nudgeEl = el('div', { class: 'checkin-nudge', role: 'region', 'aria-label': 'Daily check-in' },
       el('span', {}, state.wellness.length ? `Not checked in today${n ? ` (${n}-day streak so far)` : ''}. Two minutes, whenever you have the energy.` : 'Try a two-minute daily check-in. It shows how you are doing over time, and what might help.'),
-      el('button', { class: 'btn btn-sm btn-purple', onclick: () => go('checkin') }, 'Check in')));
+      el('span', { class: 'row-wrap' }, el('button', { class: 'btn btn-sm btn-purple', onclick: () => go('checkin') }, 'Check in'),
+        el('button', { class: 'btn btn-sm btn-ghost', type: 'button', 'aria-label': 'Hide this for now', title: 'Hide this for now', onclick: () => { try { sessionStorage.setItem('phoenix.nudgeHidden', '1'); } catch { /* ignore */ } nudgeEl.remove(); } }, '✕')));
+    container.append(nudgeEl);
   }
   listEl = el('div', { class: 'chat-list', role: 'log', 'aria-live': 'polite', 'aria-label': 'Conversation with Phoenix' });
   chipsEl = el('div', { class: 'chips' });
   container.append(listEl, chipsEl);
 
-  inputEl = el('textarea', { class: 'input', rows: '1', placeholder: 'Say anything, or pick a suggestion…', 'aria-label': 'Message Phoenix', maxlength: '4000' });
+  inputEl = el('textarea', { class: 'input', rows: '1', placeholder: matchMedia('(max-width: 700px)').matches ? 'Say anything…' : 'Say anything, or pick a suggestion…', 'aria-label': 'Message Phoenix', maxlength: '4000' });
   inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } });
-  inputEl.addEventListener('input', () => { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 144) + 'px'; });
+  inputEl.addEventListener('input', () => { inputEl.style.height = 'auto'; inputEl.style.height = Math.min(inputEl.scrollHeight, 144) + 'px'; reactToDraft(inputEl.value); });
   sendBtn = el('button', { class: 'btn btn-purple', onclick: onSend }, 'Send');
   const row = el('div', { class: 'composer-row' }, inputEl);
+  const voiceRow = buildVoiceRow();
+  if (voiceSupport.tts || voiceSupport.stt) {
+    const vb = el('button', { class: 'btn voice-toggle', type: 'button', 'aria-label': 'Voice options', 'aria-expanded': 'false', title: 'Voice options', onclick: () => { const o = voiceRow.classList.toggle('open'); vb.setAttribute('aria-expanded', String(o)); } }, '🔊');
+    row.append(vb);
+  }
   if (voiceSupport.stt) {
-    micBtn = el('button', { class: 'btn ph-mic', 'aria-label': 'Speak to Phoenix', 'aria-pressed': 'false', title: 'Speak to Phoenix', onclick: toggleMic }, '🎤');
+    micBtn = el('button', { class: 'btn ph-mic', 'aria-label': voiceAllowed() ? 'Speak to Phoenix' : 'Speak to Phoenix (needs a free account)', 'aria-pressed': 'false', title: voiceAllowed() ? 'Speak to Phoenix' : 'Voice chat needs a free account', onclick: toggleMic }, '🎤');
     row.append(micBtn);
   }
   row.append(sendBtn);
@@ -90,7 +106,7 @@ export function mountChat(container, { navigate }) {
     footEl = el('span', {}, ''),
     aiNoteEl = el('span', { class: 'ai-note', 'aria-live': 'polite' }),
     voiceSupport.desktop ? el('span', {}, 'Tip: press Win + H to dictate.') : null);
-  container.append(el('div', { class: 'composer' }, buildVoiceRow(), row, foot));
+  container.append(el('div', { class: 'composer' }, voiceRow, row, foot));
 
   renderChat();
   refreshState();
@@ -230,6 +246,7 @@ export async function send(text, { viaVoice = false } = {}) {
   lastViaVoice = viaVoice;
   speaker.stop(); speaker.reset();
   addMessage('user', text);
+  reactToSent(text);
 
   const crisis = CRISIS_RE.test(text);
   const emergency = EMERGENCY_RE.test(text);
@@ -238,7 +255,7 @@ export async function send(text, { viaVoice = false } = {}) {
   if (crisis && (!emergency || /suicid|kill (my ?self|me)|want(ed)? to die|self[- ]?harm|end (my|it all)/i.test(text))) await crisisCard();
 
   busy = true; refreshState();
-  const speakIt = !!state.prefs.voiceReplies && voiceSupport.tts;
+  const speakIt = (!!state.prefs.voiceReplies || convoMode) && voiceSupport.tts;
   try {
     // Guardrails that never depend on a model: medicine questions and "what has NeuroHub written" get vetted answers.
     if (!crisis && !emergency && medicationIntent(text)) { addMessage('assistant', medicationReply()); announce('Phoenix replied'); return; }
@@ -316,11 +333,13 @@ export async function send(text, { viaVoice = false } = {}) {
     try {
       trackFeature('chat_ai'); trackEmbedChat(); if (compact) trackFeature('float_chat');
       await streamChat(providerConfig(state), {
+        voice: viaVoice || convoMode, // spoken chats are only for signed-in people, and the server checks that too
         system, messages: history, signal: abortCtl.signal, maxTokens: small ? 220 : 1200,
         onText: (delta) => {
           acc += delta;
           if (crisis) return; // in a crisis the reply is held back and checked before anyone sees it
           textEl.innerHTML = fmt(acc); listEl.scrollTop = listEl.scrollHeight;
+          talkBurst(); beat();
           if (speakIt) speaker.push(delta);
           refreshState();
         },
@@ -336,6 +355,7 @@ export async function send(text, { viaVoice = false } = {}) {
       refreshAiNote(); // update "replies left today"
       if (!crisis) learnSoon();
       m.content = acc || '…'; save();
+      reactToReply(acc);
       node.replaceWith(renderMessage(m));
       announce('Phoenix replied');
     } catch (e) {
@@ -443,6 +463,7 @@ async function ensureVoiceConsent() {
 
 async function toggleMic() {
   if (listening) { rec?.stop(); return; }
+  if (!requireAccountForVoice()) return; // voice chat is for people with an account
   if (!(await ensureVoiceConsent())) return;
   emptyTurns = 0;
   startListening();
@@ -453,12 +474,13 @@ function startListening() {
   speaker.stop();
   rec = createRecognizer({
     lang: state.prefs.voiceLang || 'en-GB',
+    win: compact ? ui.doc?.defaultView : null,
     onStart: () => { listening = true; refreshState(); announce('Listening'); },
-    onInterim: (t) => { inputEl.value = t; },
+    onInterim: (t) => { inputEl.value = t; reactToSpeech(t); },
     onEnd: ({ text, gotFinal }) => {
       listening = false; refreshState();
       if (gotFinal) { emptyTurns = 0; send(text, { viaVoice: true }); }
-      else { emptyTurns++; if (state.prefs.handsFree && handsFreeActive && emptyTurns < 2) setTimeout(startListening, 600); else handsFreeActive = false; }
+      else { emptyTurns++; if ((state.prefs.handsFree || convoMode) && handsFreeActive && emptyTurns < (convoMode ? 3 : 2)) setTimeout(startListening, 600); else { handsFreeActive = false; if (convoMode) endConversation('I did not hear anything, so I stopped listening. Press Talk when you are ready.'); } }
     },
     onError: (err) => {
       listening = false; refreshState();
@@ -471,14 +493,14 @@ function startListening() {
       if (msg) { toast(msg, { icon: '🎤', ms: 5000 }); handsFreeActive = false; }
     },
   });
-  handsFreeActive = !!state.prefs.handsFree;
+  handsFreeActive = !!state.prefs.handsFree || convoMode;
   rec?.start();
 }
 
-function stopVoice() { handsFreeActive = false; rec?.abort(); listening = false; speaker.stop(); refreshState(); }
+function stopVoice() { if (convoMode) { convoMode = false; bus.emit('voicechat'); } handsFreeActive = false; rec?.abort(); listening = false; speaker.stop(); refreshState(); }
 
 function maybeRelisten() {
-  if (handsFreeActive && state.prefs.handsFree && lastViaVoice && !speaking && !busy && root?.isConnected) {
+  if (handsFreeActive && (state.prefs.handsFree || convoMode) && lastViaVoice && !speaking && !busy && root?.isConnected) {
     setTimeout(() => { if (handsFreeActive && !speaking && !busy) startListening(); }, 500);
   }
 }
@@ -510,3 +532,28 @@ function learnSoon() {
     }).catch(() => { /* notes are a bonus: if it fails, nothing is lost */ });
   } catch { /* never break the chat */ }
 }
+
+// ---------------------------------------------------------------- a spoken conversation (the floating Phoenix's Talk button)
+export const voiceChatActive = () => convoMode;
+/** Starts a spoken conversation: Phoenix listens, replies aloud, and listens again until the person stops it. Follows a button press, or the wake word. */
+export async function voiceChatStart({ first = '' } = {}) {
+  if (convoMode) return true;
+  if (!requireAccountForVoice()) return false;
+  if (!voiceSupport.stt) { toast('Talking with Phoenix needs Microsoft Edge, Google Chrome or Safari.', { icon: '🎤', ms: 5000 }); return false; }
+  if (!(await ensureVoiceConsent())) return false;
+  convoMode = true; emptyTurns = 0; lastViaVoice = true;
+  bus.emit('voicechat'); trackFeature('voice_chat');
+  handsFreeActive = true;
+  if (first && first.length >= 3) send(first, { viaVoice: true }); // "Hey Phoenix, I feel overwhelmed": what came after her name is the first thing said
+  else startListening();
+  return true;
+}
+export function voiceChatStop() { if (!convoMode) return; endConversation(''); }
+function endConversation(message) {
+  convoMode = false; stopVoice(); lastViaVoice = false;
+  if (message) toast(message, { icon: '🎤', ms: 4200 });
+  bus.emit('voicechat');
+}
+
+// signing out ends any spoken conversation straight away, and the mic buttons say what they need
+bus.on('account', () => { if (!voiceAllowed()) { if (convoMode) endConversation(''); else stopVoice(); } if (micBtn) micBtn.setAttribute('aria-label', voiceAllowed() ? 'Speak to Phoenix' : 'Speak to Phoenix (needs a free account)'); });
