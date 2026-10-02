@@ -11,7 +11,8 @@ import { trackFeature } from './analytics.js';
 import { voiceAllowed, requireAccountForVoice } from './voice-gate.js';
 import { ph } from './pronouns.js';
 
-export const isInstalled = () => typeof matchMedia !== 'undefined' && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches || navigator.standalone === true);
+/** The installed app, or the Phoenix desktop program (which is always "installed"). */
+export const isInstalled = () => !!globalThis.phoenixSpeech?.available || typeof matchMedia !== 'undefined' && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches || navigator.standalone === true);
 /** Only for the installed app, on a browser with speech recognition. */
 export const wakeSupported = () => voiceSupport.stt && isInstalled();
 export const wakeEnabled = () => !!state.prefs.wakeWord && wakeSupported() && voiceAllowed();
@@ -49,7 +50,7 @@ function begin() {
     onEnd: () => { rec = null; bus.emit('wake'); if (on && !paused) { clearTimeout(timer); timer = setTimeout(begin, 400 + Math.min(errors, 5) * 1500); } },
     onError: (e) => {
       errors++;
-      if (e === 'not-allowed' || e === 'service-not-allowed') { on = false; state.prefs.wakeWord = false; save(); bus.emit('wake'); toast(ph('The microphone is blocked, so Phoenix cannot listen for {their} name. You can allow it in your browser’s site settings and turn it on again in Settings.'), { icon: '🎤', ms: 6500 }); }
+      if (e === 'not-allowed' || e === 'service-not-allowed') { on = false; state.prefs.wakeWord = false; save(); bus.emit('wake'); toast(voiceSupport.onDevice ? ph('The microphone is switched off, so Phoenix cannot listen for {their} name. Turn it back on from the Phoenix icon near the clock, then switch this on again in Settings.') : ph('The microphone is blocked, so Phoenix cannot listen for {their} name. You can allow it in your browser’s site settings and turn it on again in Settings.'), { icon: '🎤', ms: 6500 }); }
     },
   });
   rec?.start();
@@ -85,9 +86,9 @@ export function enableWake() {
       body: el('div', { class: 'stack' },
         el('p', {}, ph('When this is on, your microphone stays open while Phoenix is open, waiting to hear the word “Phoenix”. Say “Phoenix” (or “Hey Phoenix”) and {they} {start|starts} a spoken conversation with you.')),
         el('ul', {},
-          el('li', {}, ph('In Chrome and Edge, what the microphone hears is sent to Google or Microsoft to be turned into text, all the time it is listening, not only after you say {their} name.')),
+          voiceSupport.onDevice ? el('li', {}, 'Listening happens on this computer: what the microphone hears is turned into text here, offline, and is never sent anywhere. The microphone is only used while Phoenix is listening, and you can switch it off for good from the Phoenix icon near the clock.') : el('li', {}, ph('In Chrome and Edge, what the microphone hears is sent to Google or Microsoft to be turned into text, all the time it is listening, not only after you say {their} name.')),
           el('li', {}, ph('Phoenix does not record or keep any audio, and ignores everything unless it starts with {their} name.')),
-          el('li', {}, 'Your browser shows that the microphone is in use. Please do not turn this on where private conversations could be overheard.'),
+          el('li', {}, voiceSupport.onDevice ? 'Please do not turn this on where private conversations could be overheard.' : 'Your browser shows that the microphone is in use. Please do not turn this on where private conversations could be overheard.'),
           el('li', {}, 'You can turn it off at any time here or in Settings.'))),
       actions: [{ label: 'No thanks', onclick: () => finish(false) }, { label: 'Turn it on', class: 'btn-primary', onclick: () => { state.voiceConsent = true; state.prefs.wakeWord = true; save(); on = true; paused = false; trackFeature('wake_on'); begin(); bus.emit('wake'); finish(true); } }],
     });

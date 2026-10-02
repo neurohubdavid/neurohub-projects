@@ -29,6 +29,7 @@
   var size = Math.max(90, Math.min(220, parseInt(attr('size', '130'), 10) || 130));
   var asButton = attr('style', 'character') === 'button';
   var greeting = attr('greeting', 'Hi, I’m Phoenix. Want to talk?').slice(0, 80);
+  var preload = attr('preload', 'false') === 'true'; // data-preload="true": load the chat straight away even while minimised (the desktop program uses this so Phoenix can listen for his name)
   var openMode = attr('open', 'false'); // Phoenix starts minimised; a click on him opens the chat
   var host = location.hostname;
   var KEY = 'phoenix-widget';
@@ -105,13 +106,14 @@
     document.body.appendChild(wrap);
 
     var chat = null, isOpen = false, bubbleTimer = null;
+    function ensureChat(how) { if (chat) return; chat = document.createElement('iframe'); chat.title = 'Phoenix chat'; chat.setAttribute('allow', 'clipboard-write; microphone'); chat.src = origin + '/embed/?h=' + encodeURIComponent(host) + (how === 'auto' ? '&a=1' : ''); pbody.append(chat); }
     function say(t, v) { try { if (mframe.contentWindow) mframe.contentWindow.postMessage({ phoenix: true, t: t, v: v }, origin); } catch (e) { /* not ready yet */ } }
     function setOpen(o, how) {
       isOpen = o; box.classList.toggle('open', o);
       hit.setAttribute('aria-expanded', String(o)); fab.setAttribute('aria-expanded', String(o));
       if (o) {
         bubble.classList.remove('show');
-        if (!chat) { chat = document.createElement('iframe'); chat.title = 'Phoenix chat'; chat.setAttribute('allow', 'clipboard-write; microphone'); chat.src = origin + '/embed/?h=' + encodeURIComponent(host) + (how === 'auto' ? '&a=1' : ''); pbody.append(chat); }
+        ensureChat(how);
         if (how === 'user') { say('act', 'wave'); remember('open'); }
         setTimeout(function () { try { if (how === 'user') chat.focus(); } catch (e) { close.focus(); } }, 50);
       } else if (how === 'user') { remember('min'); say('act', 'stretch'); hit.focus(); }
@@ -155,6 +157,7 @@
       var d = ev.data; if (!d || typeof d !== 'object') return;
       if (chat && ev.source === chat.contentWindow && ev.origin === origin) {
         if (d.phoenix === 'close' && isOpen) shut();
+        else if (d.phoenix === 'open' && !isOpen) open('wake');
         else if (d.phoenix === true && RELAY[d.t] && (typeof d.v === 'string' || d.t === 'nod')) say(d.t, d.v);
       }
     });
@@ -165,6 +168,7 @@
 
     // He starts minimised unless the website asked for the chat to start open (or the visitor already opened it earlier in this visit)
     var wantOpen = openMode === 'true' ? remembered() !== 'min' : remembered() === 'open';
+    if (preload) ensureChat('auto0');
     if (wantOpen) setOpen(true, 'auto'); else setTimeout(greet, 1600);
     count('embed_load');
   }

@@ -168,7 +168,7 @@ test('widget: one script tag, a real button for keyboards, frames that only talk
   const rd = (p) => readFileSync(new URL('../site/' + p, import.meta.url), 'utf8');
   const js = rd('embed.js');
   assert.match(js, /document\.createElement\('button'\)/); assert.match(js, /aria-expanded/); assert.match(js, /Escape/); assert.match(js, /aria-label/);
-  assert.match(js, /\/embed\/\?h=/); assert.match(js, /\/embed\/mascot\.html/); assert.ok(js.indexOf('chat = document.createElement') > js.indexOf('function setOpen'), 'the chat loads only when it is shown');
+  assert.match(js, /\/embed\/\?h=/); assert.match(js, /\/embed\/mascot\.html/); assert.match(js, /if \(preload\) ensureChat\(/, 'the chat loads early only when the website asks (data-preload, used by the desktop program)'); assert.match(js, /attr\('preload', 'false'\)/); assert.ok(js.indexOf('ensureChat(how);') > js.indexOf('function setOpen'), 'otherwise the chat loads only when it is shown'); assert.equal((js.match(/ensureChat\(/g) || []).length, 3, 'one definition and two uses');
   assert.ok(!/cookie|localStorage/.test(js.replace(/\/\*[\s\S]*?\*\//, '')), 'the widget sets no cookies and uses no persistent storage');
   assert.ok(/sessionStorage/.test(js) && /remember\('min'\)/.test(js), 'it remembers only that a visitor minimised it, for their visit');
   assert.match(js, /ev\.source === chat\.contentWindow && ev\.origin === origin/, 'only the chat frame can steer her');

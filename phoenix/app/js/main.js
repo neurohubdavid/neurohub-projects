@@ -161,7 +161,7 @@ if (floatSupported() && !isEmbedded()) {
   initWake({
     getWindow: () => (floatIsOpen() ? floatWindow() : null),
     busy: () => voiceChatActive(),
-    onWake: async (rest) => { if (!floatIsOpen() && parse().area !== 'chat') navigate('chat'); await voiceChatStart({ first: rest }); },
+    onWake: async (rest) => { if (isEmbedded()) { try { parent.postMessage({ phoenix: 'open' }, '*'); } catch { /* not in a frame */ } } if (!floatIsOpen() && parse().area !== 'chat') navigate('chat'); await voiceChatStart({ first: rest }); },
   });
   draw();
 }

@@ -255,7 +255,7 @@ function wakeSection() {
         el('div', { class: 'row-wrap' }, on
           ? el('button', { class: 'btn', type: 'button', onclick: () => { disableWake(); draw(); } }, 'Turn off listening for “Phoenix”')
           : el('button', { class: 'btn btn-primary', type: 'button', onclick: async () => { await enableWake(); draw(); } }, 'Turn on listening for “Phoenix”')),
-        el('p', { class: 'muted small' }, ph('While this is on, the microphone is open whenever the app is, and in Chrome and Edge your browser sends what it hears to Google or Microsoft to turn into text. Phoenix keeps no audio and ignores everything that does not start with {their} name. Not for places where private conversations could be overheard.')));
+        el('p', { class: 'muted small' }, (voiceSupport.onDevice ? ph('While this is on, the microphone is open whenever Phoenix is. What it hears is turned into text on this computer, offline, and never sent anywhere. Phoenix keeps no audio and ignores everything that does not start with {their} name. You can switch the microphone off for good from the Phoenix icon near the clock. Not for places where private conversations could be overheard.') : ph('While this is on, the microphone is open whenever the app is, and in Chrome and Edge your browser sends what it hears to Google or Microsoft to turn into text. Phoenix keeps no audio and ignores everything that does not start with {their} name. Not for places where private conversations could be overheard.'))));
     }
     box.append(body);
   };

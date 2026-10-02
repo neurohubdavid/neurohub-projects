@@ -24,6 +24,7 @@ let aiNoteEl, footEl, mascot, statusEl, listEl, inputEl, sendBtn, micBtn, chipsE
 let busy = false, listening = false, speaking = false, tempState = null, abortCtl = null, rec = null, handsFreeActive = false, lastViaVoice = false, emptyTurns = 0;
 let beatTimer = null;
 let convoMode = false; // a spoken conversation: Phoenix listens, answers aloud, then listens again (the Talk button in the floating Phoenix)
+let chat_desktopCounted = false;
 let burst = false, burstTimer = null; // burst: Phoenix is "talking" for a moment each time more of her reply arrives
 let compact = false; // true while Phoenix is in the small floating window (float.js)
 /** Called by float.js: the chat shows shorter suggestions and tells the AI what the person is doing. */
@@ -458,10 +459,10 @@ async function ensureVoiceConsent() {
     modal({
       title: 'Talk to Phoenix',
       body: el('div', {},
-        el('p', {}, 'Voice input uses your browser’s built-in speech recognition. Before you turn it on:'),
+        el('p', {}, voiceSupport.onDevice ? 'Voice input uses speech recognition that runs on this computer. Before you turn it on:' : 'Voice input uses your browser’s built-in speech recognition. Before you turn it on:'),
         el('ul', {},
           el('li', {}, 'Your browser will ask to use your microphone. It only listens after you press the mic.'),
-          el('li', {}, 'In Chrome and Edge, your speech is sent to Google or Microsoft to be turned into text. Phoenix does not record your voice.'),
+          el('li', {}, voiceSupport.onDevice ? 'Your speech is turned into text on this computer, offline, and is never sent anywhere. Phoenix does not record your voice.' : 'In Chrome and Edge, your speech is sent to Google or Microsoft to be turned into text. Phoenix does not record your voice.'),
           el('li', {}, 'The text is then treated like a typed message.'),
           el('li', {}, 'You can type instead, at any time.')),
         el('p', { class: 'muted' }, 'Please do not say names or details that could identify you or someone else.')),
@@ -488,7 +489,7 @@ function startListening() {
   rec = createRecognizer({
     lang: state.prefs.voiceLang || 'en-GB',
     win: compact ? ui.doc?.defaultView : null,
-    onStart: () => { listening = true; refreshState(); announce('Listening'); },
+    onStart: () => { listening = true; refreshState(); announce('Listening'); if (voiceSupport.onDevice && !chat_desktopCounted) { chat_desktopCounted = true; trackFeature('desktop_voice'); } },
     onInterim: (t) => { inputEl.value = t; reactToSpeech(t); },
     onEnd: ({ text, gotFinal }) => {
       listening = false; refreshState();
@@ -498,9 +499,10 @@ function startListening() {
     onError: (err) => {
       listening = false; refreshState();
       const msg = {
-        'not-allowed': 'The microphone is blocked. You can allow it in your browser’s site settings, or type instead.',
+        'not-allowed': voiceSupport.onDevice ? 'The microphone is switched off. You can turn it on from the Phoenix icon near the clock, or type instead.' : 'The microphone is blocked. You can allow it in your browser’s site settings, or type instead.',
         'service-not-allowed': 'Speech recognition is not allowed here. You can type instead.',
         'audio-capture': 'No microphone was found.',
+        'service-not-allowed': voiceSupport.onDevice ? 'The speech engine could not start. You can type instead.' : 'Speech recognition is not allowed here. You can type instead.',
         network: 'Speech recognition needs an internet connection.',
       }[err];
       if (msg) { toast(msg, { icon: '🎤', ms: 5000 }); handsFreeActive = false; }

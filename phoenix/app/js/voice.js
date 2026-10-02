@@ -4,9 +4,12 @@
 // - Listening (speech to text) works in Chrome, Edge and Safari. In Chrome and Edge the audio is sent to Google or
 //   Microsoft to be transcribed. Browsers without it do not get a microphone button.
 import { plain } from './util.js';
+import { desktopRecognitionClass } from './desktop-speech.js';
 
-const SR = globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
-export const voiceSupport = { stt: !!SR, tts: 'speechSynthesis' in globalThis, desktop: false };
+// In the Phoenix desktop program the browser's own recognition does not work (it needs Google's servers), so its offline engine is used instead
+const DesktopSR = desktopRecognitionClass();
+const SR = DesktopSR || globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition;
+export const voiceSupport = { stt: !!SR, tts: 'speechSynthesis' in globalThis, desktop: false, onDevice: !!DesktopSR }; // onDevice: the audio is turned into text on this computer and goes nowhere
 
 // ---------------------------------------------------------------- speech to text
 export function createRecognizer({ lang = 'en-GB', onStart, onInterim, onSegment, onEnd, onError, win = null, continuous = false }) {

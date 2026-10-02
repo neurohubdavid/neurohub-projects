@@ -4,6 +4,14 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, screen, shell, ipcMain, globalShortcut, session } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const { registerScheme, setupSpeech } = require('./speech');
+
+registerScheme(); // the hidden speech window loads its engine from the program's own folder
+// For automated tests only: use a recording instead of the real microphone. Nothing in normal use sets this.
+if (process.env.PHOENIX_FAKE_MIC && fs.existsSync(process.env.PHOENIX_FAKE_MIC)) {
+  app.commandLine.appendSwitch('use-fake-device-for-media-stream'); app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
+  app.commandLine.appendSwitch('use-file-for-fake-audio-capture', process.env.PHOENIX_FAKE_MIC);
+}
 
 const HOME = 'https://phoenix.neurohubcommunity.org';
 const PAGE = HOME + '/desktop/';
@@ -11,7 +19,7 @@ const SHORTCUT = 'Control+Alt+P';
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
-let win = null, tray = null, shown = true, displayIndex = 0, retry = null, quitting = false;
+let win = null, tray = null, shown = true, displayIndex = 0, retry = null, quitting = false, speech = null, listening = false;
 const prefsFile = () => path.join(app.getPath('userData'), 'desktop-prefs.json');
 const prefs = (() => { try { return JSON.parse(fs.readFileSync(prefsFile(), 'utf8')); } catch { return {}; } })();
 const savePrefs = () => { try { fs.writeFileSync(prefsFile(), JSON.stringify(prefs)); } catch { /* not worth stopping for */ } };
@@ -25,7 +33,7 @@ function createWindow() {
     x: b.x, y: b.y, width: b.width, height: b.height,
     transparent: true, frame: false, hasShadow: false, resizable: false, movable: false, maximizable: false, minimizable: false, fullscreenable: false,
     skipTaskbar: true, alwaysOnTop: true, focusable: true, backgroundColor: '#00000000', show: false, title: 'Phoenix',
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false, partition: 'persist:phoenix', spellcheck: false },
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false, nodeIntegrationInSubFrames: true, partition: 'persist:phoenix', spellcheck: false }, // sub-frames: so the chat inside the page gets the speech bridge (preload.js checks the site)
   });
   win.setAlwaysOnTop(true, 'screen-saver'); // above full-screen windows too
   win.setIgnoreMouseEvents(true, { forward: true }); // clicks go through, until the page says the pointer is on Phoenix
@@ -62,6 +70,9 @@ function buildMenu() {
     { label: shown ? 'Hide Phoenix' : 'Show Phoenix', click: () => (shown ? hide() : show()) },
     { label: 'Move to the next screen', enabled: screen.getAllDisplays().length > 1, click: () => { displayIndex = (displayIndex + 1) % screen.getAllDisplays().length; fit(); } },
     { type: 'separator' },
+    { label: listening ? '🎤 Microphone in use right now' : 'Microphone is off right now', enabled: false },
+    { label: 'Let Phoenix use the microphone', type: 'checkbox', checked: prefs.mic !== false, click: (i) => { prefs.mic = i.checked; savePrefs(); if (speech) speech.allow(i.checked); } },
+    { type: 'separator' },
     { label: 'Start with Windows', type: 'checkbox', checked: !!prefs.openAtLogin, click: (i) => { prefs.openAtLogin = i.checked; savePrefs(); app.setLoginItemSettings({ openAtLogin: i.checked, args: [] }); } },
     { label: 'Open the Phoenix app in my browser', click: () => shell.openExternal(HOME + '/app/') },
     { label: 'Privacy and how Phoenix works', click: () => shell.openExternal(HOME + '/privacy/') },
@@ -75,6 +86,10 @@ app.whenReady().then(() => {
   const s = session.fromPartition('persist:phoenix');
   s.setPermissionRequestHandler((_wc, permission, cb) => cb(permission === 'clipboard-sanitized-write'));
   s.setPermissionCheckHandler((_wc, permission) => permission === 'clipboard-sanitized-write');
+
+  // Listening: an offline speech engine in a hidden window, used only by Phoenix's own chat, with a tray switch that turns it off for good
+  speech = setupSpeech({ isHome, onActive: (on) => { listening = on; if (tray) { tray.setToolTip(on ? 'Phoenix is listening' : 'Phoenix'); buildMenu(); } } });
+  speech.allow(prefs.mic !== false);
 
   // Only the desktop page may steer the window, and only to make it clickable or open and close the chat
   ipcMain.on('phoenix:interactive', (e, on) => {
@@ -91,5 +106,5 @@ app.whenReady().then(() => {
 });
 
 app.on('second-instance', openChat); // starting the program again just opens the chat
-app.on('will-quit', () => globalShortcut.unregisterAll());
+app.on('will-quit', () => { globalShortcut.unregisterAll(); if (speech) speech.shutdown(); });
 app.on('window-all-closed', () => { if (quitting) app.quit(); });

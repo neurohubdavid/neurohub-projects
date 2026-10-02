@@ -1,4 +1,5 @@
 node_modules
 dist
 test/shots
-
+speech/model.tar.gz
+speech/vosk.js
