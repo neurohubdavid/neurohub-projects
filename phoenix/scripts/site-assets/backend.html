@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#120d22">
+<link rel="manifest" href="/admin/manifest.webmanifest">
+<link rel="icon" href="/admin/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/admin/icons/apple-touch-icon.png">
+<title>Get the Phoenix backend app</title>
+<style>
+:root{--bg:#0e0a1a;--card:#1a1330;--card2:#231a40;--line:rgba(255,255,255,.1);--text:#f4f0ff;--muted:#a9a0c6;--accent:#8b5cf6;--accent2:#ec4899;--good:#34d399}
+@media (prefers-color-scheme:light){:root{--bg:#f6f3ff;--card:#fff;--card2:#f3eeff;--line:rgba(30,16,70,.12);--text:#1b1233;--muted:#5d5479;--accent:#6d35d6;--accent2:#d6246e;--good:#0f9d6b}}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1100px 560px at 15% -10%,color-mix(in srgb,var(--accent) 24%,transparent),transparent 60%),var(--bg);background-attachment:fixed;color:var(--text);font:400 1.05rem/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:46rem;margin:0 auto;padding:max(1.4rem,env(safe-area-inset-top)) 1.1rem 4rem}
+.hero{text-align:center;padding:1.6rem 0 .6rem}.hero img{width:96px;height:96px;border-radius:26px;box-shadow:0 14px 40px color-mix(in srgb,var(--accent) 45%,transparent)}
+h1{font-size:clamp(1.8rem,5vw,2.5rem);line-height:1.15;margin:1rem 0 .3rem;letter-spacing:-.02em}.lead{color:var(--muted);max-width:34rem;margin:0 auto}
+.cta{display:flex;flex-direction:column;align-items:center;gap:.6rem;margin:1.5rem 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:52px;padding:.6rem 1.6rem;border-radius:999px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:inherit;font-weight:700;cursor:pointer;text-decoration:none}
+.btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;font-size:1.1rem;padding:.7rem 2rem;box-shadow:0 10px 28px color-mix(in srgb,var(--accent) 40%,transparent)}
+.btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.note{color:var(--muted);font-size:.92rem;text-align:center;min-height:1.4em;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:1.2rem 1.3rem;margin:1rem 0}
+.card.me{border-color:color-mix(in srgb,var(--accent) 65%,var(--line));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.card h2{font-size:1.2rem;margin:0 0 .4rem;display:flex;gap:.5rem;align-items:center}.badge{font-size:.72rem;font-weight:700;padding:.1rem .55rem;border-radius:999px;background:color-mix(in srgb,var(--good) 22%,transparent);color:var(--good)}
+ol{margin:.4rem 0 0;padding-left:1.3rem}li{margin:.35rem 0}
+.two{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr))}.two .card{margin:0}
+.fine{color:var(--muted);font-size:.92rem}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center}
+kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:0 .4rem;font:inherit;font-size:.92em}
+</style>
+</head>
+<body>
+<main>
+  <div class="hero">
+    <img src="/admin/icons/icon-512.png" alt="" width="96" height="96">
+    <h1>Get the Phoenix backend app</h1>
+    <p class="lead">The private Phoenix dashboard as an app on your Windows computer or Android phone: users, usage, wellbeing trends, and a switch to pause Phoenix AI. Sign-in with your password and authenticator code is always needed.</p>
+  </div>
+  <div class="cta">
+    <button class="btn primary" id="install" type="button">Install the app</button>
+    <p class="note" id="note" role="status"></p>
+    <div class="row"><a class="btn" href="/admin/" id="open">Open it in the browser instead</a><button class="btn" id="copy" type="button">Copy the link to send to my phone</button></div>
+  </div>
+  <div class="two">
+    <section class="card" id="windows"><h2>Windows <span class="badge" hidden>This device</span></h2>
+      <p class="fine" style="margin:.1rem 0">Microsoft Edge or Google Chrome</p>
+      <ol><li>Press <strong>Install the app</strong> above, then <strong>Install</strong> in the box that appears.</li><li>Or open the backend, then choose the install icon at the right of the address bar (a small screen with a down arrow), or <kbd>⋯</kbd> → <strong>Apps</strong> → <strong>Install this site as an app</strong>.</li><li>Phoenix appears in your Start menu and taskbar with its own window.</li></ol></section>
+    <section class="card" id="android"><h2>Android <span class="badge" hidden>This device</span></h2>
+      <p class="fine" style="margin:.1rem 0">Chrome, Edge or Samsung Internet</p>
+      <ol><li>Open this page on your phone (use <strong>Copy the link</strong> and message it to yourself).</li><li>Press <strong>Install the app</strong>, or open the browser menu <kbd>⋮</kbd> and choose <strong>Install app</strong> (sometimes called <strong>Add to Home screen</strong>).</li><li>The Phoenix icon is added to your home screen and opens full screen.</li></ol></section>
+  </div>
+  <div class="card"><h2>Good to know</h2>
+    <ol><li>It is the same backend as <strong>phoenix.neurohubcommunity.org/admin/</strong>, so there is nothing to keep up to date: it always shows the latest.</li><li>Nothing is stored on the device. Anyone without the Admin role, password and authenticator code sees only the sign-in screen.</li><li>On an iPhone, open this page in Safari, tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</li></ol></div>
+  <p class="fine" style="text-align:center">This page is private and is not listed in search engines.</p>
+</main>
+<script src="/backend/backend.js"></script>
+</body>
+</html>

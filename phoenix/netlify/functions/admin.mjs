@@ -3,12 +3,15 @@
 //   POST /api/admin/logout
 //   GET  /api/admin/me       -> { user }
 //   GET  /api/admin/usage    -> anonymous usage counts (visits, installs, downloads, app opens, free AI use)
+//   GET  /api/admin/status   -> what is set up (never any secret), and whether Phoenix AI is paused
+//   POST /api/admin/control  { aiPaused: true|false } -> pause or resume Phoenix AI at once (logged with who and when)
 //   GET  /api/admin/checkins -> how the people who chose to share their check-ins are doing, in aggregate
 import { openStore, dayOf, readJson, readDayCounts } from './_lib/kv.mjs';
 import { adminUsers, hasAdminRole, verifyPassword, checkTotp, signUserSession, adminFromRequest, sessionCookie, ipHash, COOKIE } from './_lib/admin.mjs';
 import { summarise, trajectories, MEASURES, MIN_N } from './_lib/cohort.mjs';
 import { buildReport } from './_lib/report.mjs';
 import { sinceLaunch, usersSummary } from './_lib/usage.mjs';
+import { settings as aiSettings } from './ai.mjs';
 
 export const config = { path: '/api/admin/*' };
 
@@ -59,8 +62,31 @@ export async function handle(req, ctx = {}, deps = {}) {
   // everything below needs a signed-in person who still has the Admin role
   const admin = adminFromRequest(req, env, now.getTime());
   if (!admin) return json({ error: 'auth' }, 401);
-  if (req.method !== 'GET') return json({ error: 'method' }, 405);
   const u = new URL(req.url);
+  // What is set up, as yes/no and numbers only (a secret's value is never sent), and the one control: pausing Phoenix AI.
+  const status = async () => {
+    const usage = deps.aiStore || (await openStore('phoenix-ai-usage')), ai = aiSettings(env);
+    const changes = JSON.parse((await guard.get('changes')) || '[]') || [];
+    const list = (v) => String(v || '').split(/[\s,]+/).filter(Boolean).length;
+    return {
+      ai: { keySet: !!ai.key, switchedOffByEnv: env.PHOENIX_SHARED_AI === 'off', paused: (await usage.get('ctl:paused')) === '1', model: ai.model, perPerson: ai.perPerson, perAccount: ai.perAccount, globalDaily: ai.globalDaily, globalMonthly: ai.globalMonthly },
+      accounts: { emailSetUp: !!env.BREVO_API_KEY && !!env.MAIL_FROM, dataKeySet: !!env.PHOENIX_DATA_KEY, adminAccounts: list(env.PHOENIX_ADMIN_ACCOUNTS) },
+      backendUsers: Object.keys(adminUsers(env)).length,
+      changes: changes.slice(0, 10),
+    };
+  };
+  if (route === 'control' && req.method === 'POST') {
+    let body; try { body = JSON.parse(await req.text()); } catch { body = {}; }
+    if (typeof body.aiPaused !== 'boolean') return json({ error: 'bad_request' }, 400);
+    const usage = deps.aiStore || (await openStore('phoenix-ai-usage'));
+    await usage.set('ctl:paused', body.aiPaused ? '1' : '0');
+    const log = JSON.parse((await guard.get('changes')) || '[]') || [];
+    log.unshift({ at: now.toISOString(), user: admin, what: body.aiPaused ? 'Paused Phoenix AI' : 'Resumed Phoenix AI' });
+    await guard.set('changes', JSON.stringify(log.slice(0, 30)));
+    return json(await status());
+  }
+  if (req.method !== 'GET') return json({ error: 'method' }, 405);
+  if (route === 'status') return json(await status());
 
   if (route === 'me') { const a = JSON.parse((await guard.get('audit')) || '[]') || []; return json({ user: admin, recent: a.slice(0, 12) }); }
 

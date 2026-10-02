@@ -46,7 +46,7 @@ for (const [route, html] of Object.entries(pageMap)) {
   fs.writeFileSync(path.join(dir, 'index.html'), html);
 }
 fs.writeFileSync(path.join(site, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pageMap).filter((r) => r !== '/thanks/').map((r) =>`  <url><loc>${ORIGIN}${r}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`);
-fs.writeFileSync(path.join(site, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /download\nDisallow: /embed/\nDisallow: /desktop/\nDisallow: /admin/\nDisallow: /stats/\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
+fs.writeFileSync(path.join(site, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /download\nDisallow: /embed/\nDisallow: /desktop/\nDisallow: /backend/\nDisallow: /admin/\nDisallow: /stats/\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 const ogSrc = path.join(root, 'brand', 'og-image.png');
 if (fs.existsSync(ogSrc)) fs.copyFileSync(ogSrc, path.join(site, 'assets', 'og-image.png')); else console.warn('missing brand/og-image.png (run node scripts/make-og.mjs)');
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'hit.js'), path.join(site, 'assets', 'hit.js'));
@@ -58,6 +58,10 @@ fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'embed.js'), path.join
 fs.mkdirSync(path.join(site, 'desktop'), { recursive: true });
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'desktop.html'), path.join(site, 'desktop', 'index.html'));
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'desktop.js'), path.join(site, 'desktop', 'desktop.js'));
+// /backend/ : the easy-to-find page for installing the backend as an app on Windows or Android (private, not listed in search)
+fs.mkdirSync(path.join(site, 'backend'), { recursive: true });
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'backend.html'), path.join(site, 'backend', 'index.html'));
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'backend.js'), path.join(site, 'backend', 'backend.js'));
 // The private backend: a sign-in page and its script. The server (netlify/functions/admin.mjs) refuses everything that is not a
 // signed-in person with the Admin role; the old /stats/ address is sent here.
 fs.mkdirSync(path.join(site, 'admin'), { recursive: true });
@@ -67,7 +71,7 @@ fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin-pwa.js'), path.
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin-sw.js'), path.join(site, 'admin', 'sw.js'));
 fs.cpSync(path.join(root, 'scripts', 'site-assets', 'admin-icons'), path.join(site, 'admin', 'icons'), { recursive: true });
 // The backend can be installed as its own app (with its own icon) on a phone or computer. It is the same page; nothing is cached.
-fs.writeFileSync(path.join(site, 'admin', 'manifest.webmanifest'), JSON.stringify({ id: '/admin/', name: 'Phoenix backend', short_name: 'Phoenix Admin', description: 'The private Phoenix backend: users, usage and wellbeing trends. Admin sign-in required.', lang: 'en-GB', start_url: './', scope: './', display: 'standalone', orientation: 'any', background_color: '#2a1a5e', theme_color: '#2a1a5e', prefer_related_applications: false, icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' }, { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }, { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }] }, null, 2));
+fs.writeFileSync(path.join(site, 'admin', 'manifest.webmanifest'), JSON.stringify({ id: '/admin/', name: 'Phoenix backend', short_name: 'Phoenix Admin', description: 'The private Phoenix backend: users, usage and wellbeing trends. Admin sign-in required.', lang: 'en-GB', start_url: './', scope: './', display: 'standalone', orientation: 'any', background_color: '#120d22', theme_color: '#120d22', prefer_related_applications: false, icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' }, { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }, { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }] }, null, 2));
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'admin-pdf.js'), path.join(site, 'admin', 'admin-pdf.js')); // the PDF report is drawn in the admin's own browser
 fs.copyFileSync(path.join(root, 'app', 'vendor', 'pdf-lib.esm.min.js'), path.join(site, 'admin', 'pdf-lib.esm.min.js'));
 // /embed/ is the app itself (so every relative file it loads still works), served on its own address so it alone may be shown inside other websites.
@@ -81,6 +85,10 @@ fs.writeFileSync(path.join(site, '_headers'), `/app/*
   Cache-Control: no-cache
   X-Robots-Tag: noindex
   Content-Security-Policy: frame-ancestors *
+/backend/*
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex, nofollow
+  Content-Security-Policy: frame-ancestors 'none'
 /desktop/*
   Cache-Control: no-cache
   X-Robots-Tag: noindex

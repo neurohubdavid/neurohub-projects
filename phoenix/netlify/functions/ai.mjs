@@ -74,6 +74,8 @@ export async function handle(req, ctx = {}, deps = {}) {
   // Anonymous daily counts of what the shared AI did (replies, limits reached, failures), for the private backend. Never any content.
   const note = async (name) => { try { await bump(deps.stats || (await openStore('phoenix-stats')), dayKeyFor(day, 'ai_event'), [`e:ai_event:${name}`, 'e:ai_event']); } catch { /* counting must never break a reply */ } };
 
+  // The owner can pause Phoenix AI from the private backend (a flag kept next to the usage counters); the key and env switch still apply too
+  if (s.on && (await store.get('ctl:paused')) === '1') s.on = false;
   if (req.method === 'GET') {
     const [p, d, m] = await Promise.all([read(kPerson), read(kDay), read(kMonth)]);
     const left = Math.max(0, Math.min(limit - p, s.globalDaily - d, s.globalMonthly - m));
