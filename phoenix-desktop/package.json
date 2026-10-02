@@ -1,0 +1,28 @@
+{
+  "name": "phoenix-desktop",
+  "version": "1.0.0",
+  "description": "Phoenix, the free neuro-affirming AI assistant, floating on your desktop. A see-through window over the live site.",
+  "main": "main.js",
+  "author": "NeuroHub Community",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node test/smoke.js",
+    "dist": "electron-builder --win dir --x64 --arm64"
+  },
+  "build": {
+    "appId": "org.neurohubcommunity.phoenix.desktop",
+    "productName": "Phoenix Desktop",
+    "files": ["main.js", "preload.js", "offline.html", "icon.png", "package.json"],
+    "win": { "icon": "icon.png", "target": ["dir"], "signAndEditExecutable": false },
+    "portable": { "artifactName": "Phoenix-Desktop-${arch}.exe" },
+    "directories": { "output": "dist" }
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  }
+}
+
+

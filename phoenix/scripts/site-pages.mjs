@@ -20,9 +20,10 @@ function donateStrip() {
 const ORG = { '@type': 'Organization', '@id': `${ORIGIN}/#org`, name: 'NeuroHub Community Ltd', url: 'https://neurohubcommunity.org', logo: `${ORIGIN}/assets/icon-512.png` };
 
 export const FAQ = [
+  ['Can I choose Phoenix’s pronouns, and tell Phoenix mine?','Yes. In Settings, under Pronouns, you pick what Phoenix is called (she/her, he/him or they/them) and, if you like, your own, including your own words. Phoenix is an AI, so there is no right answer: it is whatever feels comfortable. Phoenix then uses your choice in the app, and uses yours if it ever talks about you in the third person.'],
   ['Does Phoenix recommend products or courses?', 'Sometimes, gently, and only from websites Phoenix has permission to use: NeuroHub Community and Helen Edgar’s Autistic Realms and More Realms. Phoenix reads their public sitemaps to know what guides, courses, books and products exist. When something really fits what you are dealing with, and you are not in a hard moment, Phoenix may mention one thing, say who made it and what it costs, and link it. These are made by the people behind Phoenix, so it is not independent advice. You can switch suggestions off in Settings, or ask “any resources that could help?” whenever you like.'],
-  ['Can I just say “Phoenix” to start talking?', 'Yes, if you have a free Phoenix account, have installed Phoenix as an app, and switch it on in Settings. Then saying “Phoenix” (or “Hey Phoenix, I feel overwhelmed”) starts a spoken conversation: she listens, answers out loud and listens again. It is off by default. While it is on the microphone stays open whenever the app is, and in Chrome and Edge your browser sends what it hears to Google or Microsoft to turn into text. Phoenix keeps no audio and ignores anything that does not start with her name.'],
-  ['Can Phoenix float on my screen while I work?', 'Yes, on a computer with Microsoft Edge or Google Chrome. Install Phoenix, press Float, then minimise it: Phoenix stays in a small window on top of your other programs, animated and ready to help with what you are doing, chat, or talk with you out loud (press Talk). Tell her what you are working on, because she cannot see your screen. When you come back to Phoenix, she comes home too. Phones, Firefox and Safari cannot float windows over other programs.'],
+  ['Can I just say “Phoenix” to start talking?', 'Yes, if you have a free Phoenix account, have installed Phoenix as an app, and switch it on in Settings. Then saying “Phoenix” (or “Hey Phoenix, I feel overwhelmed”) starts a spoken conversation: Phoenix listens, answers out loud and listens again. It is off by default. While it is on the microphone stays open whenever the app is, and in Chrome and Edge your browser sends what it hears to Google or Microsoft to turn into text. Phoenix keeps no audio and ignores anything that does not start with the name.'],
+  ['Can Phoenix float on my screen while I work?', 'Yes, on a computer with Microsoft Edge or Google Chrome. Install Phoenix, press Float, then minimise it: Phoenix stays in a small window on top of your other programs, animated and ready to help with what you are doing, chat, or talk with you out loud (press Talk). Tell Phoenix what you are working on, because Phoenix cannot see your screen. When you come back to Phoenix, the floating window closes and Phoenix comes home too. Phones, Firefox and Safari cannot float windows over other programs.'],
   ['Is there a Windows or Mac program to download?', 'No. Phoenix is an app you install straight from your browser in one tap, with no store and no installer file. It gets its own icon and window, works offline, and updates itself. Press Install Phoenix on this page.'],
   ['Is Phoenix really free?', 'Yes. Phoenix is free to use, with no account needed, no ads and no subscription, and you do not need an AI account or key. It is made by NeuroHub Community, an Autistic-led social enterprise. Every AI reply is paid for by NeuroHub from our own Claude account, so the AI has a daily limit for each person, and donations (once or monthly, any amount) are what keep it live.'],
   ['Is Phoenix private?', 'Your chats, daily check-ins and settings are stored on your own device, not on a NeuroHub server, unless you choose to make an optional account to sync them between your devices (then they are stored scrambled with a key only the server holds, and your email address is never stored). Phoenix starts with its free AI, so your messages go to NeuroHub’s server and on to Claude to write a reply, without being stored or read; you can switch to the built-in helper in Settings, and then nothing leaves your device. NeuroHub counts anonymous visits, installs and downloads, with no cookies and nothing that identifies you.'],
@@ -175,7 +176,7 @@ ${donateStrip()}
   <div class="grid">
     <div class="card"><h3>Neuro-affirming</h3><p>Built on the Six-Point Framework and other ideas from NeuroHub Community. It treats neurodivergence as difference, not deficit, and never tells you to mask more, comply, or “try harder”.</p></div>
     <div class="card"><h3>Daily check-in</h3><p>A two-minute wellbeing check-in across six areas of life, with charts that show how you are doing over time, gentle advice, and an optional daily reminder.</p></div>
-    <div class="card"><h3>Floats beside your work</h3><p>Install Phoenix on a computer, press <strong>Float</strong>, then minimise it. A big animated Phoenix stays on top of your other windows with a speech bubble. Press <strong>Talk</strong> and have a spoken conversation, or type. She only floats while Phoenix is minimised, and she cannot see your screen unless you tell her.</p></div>
+    <div class="card"><h3>Floats beside your work</h3><p>Install Phoenix on a computer, press <strong>Float</strong>, then minimise it. A big animated Phoenix stays on top of your other windows with a speech bubble. Press <strong>Talk</strong> and have a spoken conversation, or type. Phoenix only floats while the app is minimised, and cannot see your screen unless you tell Phoenix.</p></div>
     <div class="card"><h3>Calming toolkit</h3><p>Breathing, grounding, sensory reset, a focus timer with company, a task breaker, scripts for hard messages and a personal support plan. All work with no AI and no internet.</p></div>
     <div class="card"><h3>Your own documents</h3><p>Fill in a burnout recovery plan, a six-area self-assessment or an identity workbook with Phoenix’s help, then download it as a PDF to keep or share.</p></div>
     <div class="card"><h3>Free AI, no setup</h3><p>Chat with Phoenix’s free Claude-powered AI straight away, or keep everything on your device with the built-in helper. <strong>Every reply costs NeuroHub money</strong>, so donations of any size, once or monthly, keep the AI live.</p></div>
@@ -206,7 +207,7 @@ ${FAQ.map(([q, a]) => `    <details><summary>${esc(q)}</summary><p>${esc(a)}</p>
   <h2>What stays on your device</h2>
   <p>Your chats, daily check-ins, documents, tasks, settings are stored on your own device only, in the app or browser you use. NeuroHub Community cannot read or recover them. You can download a backup or delete everything at any time in Settings.</p>
   <h2>Voice and the microphone</h2>
-  <p>Voice chat (talking to Phoenix with the microphone, spoken conversations and the wake word) is for people who have signed in to a free Phoenix account. Typing to Phoenix, and having a reply read aloud with its Read aloud button for accessibility, never need an account. Talking to Phoenix is optional and starts only when you press a microphone or Talk button, or, if you choose to turn it on in the installed app, when you say “Phoenix”. In Chrome and Edge the browser itself sends what the microphone hears to Google or Microsoft to turn it into text, while it is listening. With the “Phoenix” wake word that means the whole time it is switched on, not just after her name, so please do not use it where private conversations could be overheard. Phoenix does not record, keep or send audio, and the wake word is off until you turn it on. You can turn it off at any time.</p>
+  <p>Voice chat (talking to Phoenix with the microphone, spoken conversations and the wake word) is for people who have signed in to a free Phoenix account. Typing to Phoenix, and having a reply read aloud with its Read aloud button for accessibility, never need an account. Talking to Phoenix is optional and starts only when you press a microphone or Talk button, or, if you choose to turn it on in the installed app, when you say “Phoenix”. In Chrome and Edge the browser itself sends what the microphone hears to Google or Microsoft to turn it into text, while it is listening. With the “Phoenix” wake word that means the whole time it is switched on, not just after the name, so please do not use it where private conversations could be overheard. Phoenix does not record, keep or send audio, and the wake word is off until you turn it on. You can turn it off at any time.</p>
   <h2>Optional account and memories</h2>
   <p>You never need an account. If you make one (with an emailed sign-in code, no password), your chats, daily check-ins, documents, settings and the short notes Phoenix keeps about you are saved to it so they follow you between devices.</p>
   <ul>
@@ -276,45 +277,45 @@ ${FAQ.map(([q, a]) => `    <details><summary>${esc(q)}</summary><p>${esc(a)}</p>
     crumbs: [{ name: 'Add Phoenix to your website', path: '/add-to-your-site/' }], jsonld: [ORG],
     body: `
   <h1>Add Phoenix to your website</h1>
-  <p class="lead" style="font-size:1.15rem">Give your visitors a calm, neuro-affirming place to turn. One line of code adds <strong>Phoenix herself</strong> to your site: an animated character floating in the corner of every page, with the chat open beside her. Her eyes follow the visitor’s pointer, she reacts to what they say, and visitors can drag her anywhere. It is free, there is nothing to sign up for, and it works on any website, including WordPress, Wix, Squarespace and Shopify.</p>
+  <p class="lead" style="font-size:1.15rem">Give your visitors a calm, neuro-affirming place to turn. One line of code adds <strong>Phoenix</strong> to your site: an animated character floating in the corner of every page, with the chat open beside Phoenix. Phoenix’s eyes follow the visitor’s pointer, Phoenix reacts to what they say, and visitors can drag Phoenix anywhere. It is free, there is nothing to sign up for, and it works on any website, including WordPress, Wix, Squarespace and Shopify.</p>
   <section class="card" aria-labelledby="snip-h">
     <h2 id="snip-h">1. Copy this line</h2>
     <p>Paste it just before the closing <code>&lt;/body&gt;</code> tag on every page where you want Phoenix (or into your site’s “custom code” or “footer scripts” setting).</p>
     <pre style="white-space:pre-wrap;overflow-wrap:anywhere;background:#fff;border:3px solid var(--border,#1b1230);border-radius:12px;padding:.8rem"><code id="snippet">&lt;script src="${ORIGIN}/embed.js" async&gt;&lt;/script&gt;</code></pre>
     <p><button type="button" class="btn btn-primary" id="copy-snippet">Copy the code</button> <span id="copy-status" role="status" class="muted"></span></p>
   </section>
-  <h2>How she behaves</h2>
+  <h2>How Phoenix behaves</h2>
   <ul>
     <li><strong>Always there, and never in the way.</strong> Phoenix floats in the bottom-right corner, animated, on every page, and starts minimised with a friendly greeting. A click on him opens a rounded chat box beside him (full-screen on a phone).</li>
-    <li><strong>Visitors stay in control.</strong> Clicking her (or pressing Enter or Space when she is focused) minimises or reopens the chat, Escape minimises it, and she can be dragged anywhere. If a visitor minimises her, she stays minimised for the rest of their visit.</li>
-    <li><strong>She is alive.</strong> She leans in while someone types, nods, takes on the feeling of what they say (calm for worry, soft for sadness, sparkles for good news), moves her beak as she replies, and now and then stretches, preens or looks around. With reduced motion switched on she holds still poses instead.</li>
+    <li><strong>Visitors stay in control.</strong> Clicking Phoenix (or pressing Enter or Space when Phoenix is focused) minimises or reopens the chat, Escape minimises it, and Phoenix can be dragged anywhere. If a visitor minimises Phoenix, Phoenix stays minimised for the rest of their visit.</li>
+    <li><strong>Phoenix is alive.</strong> Phoenix leans in while someone types, nods, takes on the feeling of what they say (calm for worry, soft for sadness, sparkles for good news), moves the beak while replying, and now and then stretches, preens or looks around. With reduced motion switched on Phoenix holds still poses instead.</li>
   </ul>
   <h2>2. Make it yours (optional)</h2>
   <p>Add any of these to the same line:</p>
   <ul>
-    <li><code>data-position="left"</code>: put her bottom-left (default is bottom-right)</li>
-    <li><code>data-size="160"</code>: how big she is, in pixels (90 to 220, default 130)</li>
+    <li><code>data-position="left"</code>: put Phoenix bottom-left (default is bottom-right)</li>
+    <li><code>data-size="160"</code>: how big Phoenix is, in pixels (90 to 220, default 130)</li>
     <li><code>data-open="false"</code> (the default: Phoenix starts minimised and a click opens the chat) or <code>"true"</code> (start with the chat open)</li>
-    <li><code>data-greeting="Need a calm moment?"</code>: the bubble she shows while minimised (<code>""</code> for none)</li>
+    <li><code>data-greeting="Need a calm moment?"</code>: the bubble Phoenix shows while minimised (<code>""</code> for none)</li>
     <li><code>data-label="Chat with us"</code>, <code>data-color="#0f766e"</code>, <code>data-offset="30"</code>: the label read by screen readers, the chat’s header colour, and the distance from the edge</li>
     <li><code>data-style="button"</code>: use a round button instead of the floating character</li>
   </ul>
   <p>Example: <code>&lt;script src="${ORIGIN}/embed.js" data-position="left" data-greeting="Need a calm moment?" async&gt;&lt;/script&gt;</code></p>
-  <p>You can also open or close her from your own button with <code>PhoenixWidget.open()</code> and <code>PhoenixWidget.close()</code>.</p>
+  <p>You can also open or close Phoenix from your own button with <code>PhoenixWidget.open()</code> and <code>PhoenixWidget.close()</code>.</p>
   <h2>What visitors get</h2>
   <ul>
     <li>Phoenix chat (typed, and spoken where the browser allows it), the daily check-in, the calming toolkit and the Help button with helplines for their country, the same as the app.</li>
     <li>It can be used with a keyboard and a screen reader, and works on phones.</li>
-    <li>Their chats stay on their own device, inside Phoenix’s own frame. <strong>Your website never sees what visitors type or what Phoenix says</strong>: the only thing passed to the page is a few fixed words that animate her (such as “thinking” or “calm”).</li>
+    <li>Their chats stay on their own device, inside Phoenix’s own frame. <strong>Your website never sees what visitors type or what Phoenix says</strong>: the only thing passed to the page is a few fixed words that animate Phoenix (such as “thinking” or “calm”).</li>
   </ul>
   <h2>Privacy and cost</h2>
   <ul>
     <li>The widget sets no cookies. The only thing it stores is a note, for that visitor’s visit only, that they minimised Phoenix.</li>
     <li>NeuroHub Community counts, anonymously, that the widget loaded on your website’s address, how often the chat is opened, how many messages are sent, which features get used, and how many people click to donate, all as totals for your website, so we can see how it helps. We never see who your visitors are or what they write. Visitors who send Do Not Track are not counted.</li>
     <li>The AI replies are paid for by NeuroHub Community, and each visitor has a daily limit. If Phoenix is useful to your visitors, please consider <a href="/#donate">a donation</a> to keep it live.</li>
-    <li>Phoenix is a computer program, not a therapist or a crisis service. Please say so on your site if you add her.</li>
+    <li>Phoenix is a computer program, not a therapist or a crisis service. Please say so on your site if you add Phoenix.</li>
   </ul>
-  <p>Questions: <a href="https://neurohubcommunity.org/contact-us/">neurohubcommunity.org/contact-us</a>. You can try her right now: the Phoenix in the corner of this page is the widget.</p>
+  <p>Questions: <a href="https://neurohubcommunity.org/contact-us/">neurohubcommunity.org/contact-us</a>. You can try Phoenix right now: the Phoenix in the corner of this page is the widget.</p>
   <script>(function(){var b=document.getElementById('copy-snippet'),s=document.getElementById('snippet'),o=document.getElementById('copy-status');if(!b)return;b.addEventListener('click',function(){var t=s.textContent;var done=function(){o.textContent='Copied.';};var fail=function(){var r=document.createRange();r.selectNodeContents(s);var g=getSelection();g.removeAllRanges();g.addRange(r);o.textContent='Selected. Press Ctrl+C (or Cmd+C) to copy.';};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,fail);}else fail();});})();</script>
   <script src="/embed.js" data-open="false" data-greeting="Hi! I’m the widget. Press me to try the chat." async></script>`,
   });

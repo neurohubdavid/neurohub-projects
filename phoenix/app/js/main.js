@@ -21,6 +21,7 @@ import { initWake, enableWake, disableWake, pauseWake, resumeWake, restartWake, 
 import { voiceChatStart, voiceChatActive } from './chat.js';
 import { takeCodeFromLink } from './account-ui.js';
 import { floatSupported, openFloat, closeFloat, floatIsOpen, floatWindow, initFloat, floatPlaceholder, offerFloat } from './float.js';
+import { ph } from './pronouns.js';
 
 const NAV = [['chat', 'Chat'], ['checkin', 'Check-in'], ['tools', 'Toolkit'], ['learn', 'Learn'], ['settings', 'Settings']];
 const view = $('#view');
@@ -149,8 +150,9 @@ if (floatSupported() && !isEmbedded()) {
 // Wake word: in the installed app, if the person turned it on, saying "Phoenix" starts a spoken conversation.
 {
   const wb = $('#wake-btn');
+  const tip = () => { wb.title = ph('Phoenix is listening for {their} name. Press to turn this off.'); }; tip(); bus.on('pronouns', tip);
   const draw = () => { wb.hidden = !wakeEnabled(); wb.setAttribute('aria-pressed', String(wakeListening())); };
-  wb.addEventListener('click', () => { disableWake(); toast('Phoenix has stopped listening for her name.', { icon: '🎤', ms: 3000 }); });
+  wb.addEventListener('click', () => { disableWake(); toast(ph('Phoenix has stopped listening for {their} name.'), { icon: '🎤', ms: 3000 }); });
   bus.on('wake', draw);
   bus.on('voicechat', () => { if (voiceChatActive()) pauseWake(); else resumeWake(); }); // not while a conversation is going on
   bus.on('chat:state', (st) => { if (st === 'listening' || st === 'talking') pauseWake(); else if (st === 'idle' && !voiceChatActive()) resumeWake(); }); // not while she is speaking or you are using the mic yourself

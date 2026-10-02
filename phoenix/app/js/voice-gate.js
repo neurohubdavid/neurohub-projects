@@ -3,6 +3,7 @@
 import { el, modal, bus, ui } from './util.js';
 import { state } from './store.js';
 import { trackFeature } from './analytics.js';
+import { ph } from './pronouns.js';
 
 /** Is this person signed in, so voice chat is open to them? */
 export const voiceAllowed = () => !!state.account?.token;
@@ -15,7 +16,7 @@ export function requireAccountForVoice() {
   modal({
     title: 'Voice chat needs a free account',
     body: el('div', { class: 'stack' },
-      el('p', {}, 'Talking with Phoenix out loud, spoken conversations and saying “Phoenix” to wake her are for people with a free Phoenix account. Signing in takes a minute: you get an emailed code, with no password.'),
+      el('p', {}, ph('Talking with Phoenix out loud, spoken conversations and saying “Phoenix” to wake {them} are for people with a free Phoenix account. Signing in takes a minute: you get an emailed code, with no password.')),
       el('p', { class: 'muted small' }, 'Typing to Phoenix never needs an account, and neither does having a reply read aloud with its Read aloud button.'),
       inFloat ? el('p', { class: 'small' }, 'Open the main Phoenix window to sign in, then come back and press Talk.') : null),
     actions: [{ label: 'Not now' }, { label: inFloat ? 'Open the sign-in in the main window' : 'Make an account or sign in', class: 'btn-primary', onclick: () => { bus.emit('goto', 'settings:account'); } }],

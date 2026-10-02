@@ -8,7 +8,7 @@ const KEY = 'phoenix.v1';
 export const DEFAULTS = () => ({
   v: 1,
   onboarded: false,
-  profile: { name: '', nameAsked: false, about: '', neurotypes: [] }, // nameAsked: Phoenix asks what to call someone once, on first meeting
+  profile: { name: '', nameAsked: false, about: '', neurotypes: [], pronouns: '', pronounsCustom: '' }, // pronouns: the person's own (see pronouns.js) // nameAsked: Phoenix asks what to call someone once, on first meeting
   prefs: {
     theme: 'auto',          // auto | light | dark | calm
     motion: 'auto',         // auto | reduced | full
@@ -36,6 +36,7 @@ export const DEFAULTS = () => ({
     focusChime: true,
     useSite: true,          // let the assistant draw on neurohubcommunity.org articles
     recommend: true,        // gently suggest products, guides and courses from the permitted websites when they fit (catalog.js); the person can turn it off
+    phoenixPronouns: 'he',  // the pronouns the person has chosen for Phoenix: 'she' | 'he' | 'they' (pronouns.js)
     wakeWord: false,        // installed app only: listen for the word "Phoenix" to start a spoken conversation, see wake.js (off unless the person turns it on)
     donateReminders: true,  // a gentle reminder to donate, at most once a week, see donate.js
     analytics: true,       // share anonymous usage counts (app opens, installs) with NeuroHub, see analytics.js

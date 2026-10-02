@@ -46,7 +46,7 @@ for (const [route, html] of Object.entries(pageMap)) {
   fs.writeFileSync(path.join(dir, 'index.html'), html);
 }
 fs.writeFileSync(path.join(site, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${Object.keys(pageMap).filter((r) => r !== '/thanks/').map((r) =>`  <url><loc>${ORIGIN}${r}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`);
-fs.writeFileSync(path.join(site, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /download\nDisallow: /embed/\nDisallow: /admin/\nDisallow: /stats/\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
+fs.writeFileSync(path.join(site, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /download\nDisallow: /embed/\nDisallow: /desktop/\nDisallow: /admin/\nDisallow: /stats/\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 const ogSrc = path.join(root, 'brand', 'og-image.png');
 if (fs.existsSync(ogSrc)) fs.copyFileSync(ogSrc, path.join(site, 'assets', 'og-image.png')); else console.warn('missing brand/og-image.png (run node scripts/make-og.mjs)');
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'hit.js'), path.join(site, 'assets', 'hit.js'));
@@ -54,6 +54,10 @@ fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'install.js'), path.jo
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'donate.js'), path.join(site, 'assets', 'donate.js'));
 // The floating widget other websites add with one script tag.
 fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'embed.js'), path.join(site, 'embed.js'));
+// The page the Phoenix desktop program shows in its see-through window (the same character as the widget, over everything else).
+fs.mkdirSync(path.join(site, 'desktop'), { recursive: true });
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'desktop.html'), path.join(site, 'desktop', 'index.html'));
+fs.copyFileSync(path.join(root, 'scripts', 'site-assets', 'desktop.js'), path.join(site, 'desktop', 'desktop.js'));
 // The private backend: a sign-in page and its script. The server (netlify/functions/admin.mjs) refuses everything that is not a
 // signed-in person with the Admin role; the old /stats/ address is sent here.
 fs.mkdirSync(path.join(site, 'admin'), { recursive: true });
@@ -77,6 +81,10 @@ fs.writeFileSync(path.join(site, '_headers'), `/app/*
   Cache-Control: no-cache
   X-Robots-Tag: noindex
   Content-Security-Policy: frame-ancestors *
+/desktop/*
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex
+  Content-Security-Policy: frame-ancestors 'none'
 /embed.js
   Content-Type: text/javascript; charset=utf-8
   Cache-Control: public, max-age=3600

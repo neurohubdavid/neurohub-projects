@@ -16,6 +16,7 @@ import { phoenixSVG } from './mascot.js';
 import { openHelp } from './crisis.js';
 import { openDonate } from './donate.js';
 import { trackFeature } from './analytics.js';
+import { ph } from './pronouns.js';
 
 export const floatSupported = () => typeof window !== 'undefined' && 'documentPictureInPicture' in window;
 
@@ -156,7 +157,7 @@ export function floatPlaceholder(container) {
   const big = phoenixSVG(4); big.style.setProperty('--ph-size', '110px');
   container.append(el('div', { class: 'welcome float-home' }, big,
     el('h1', {}, 'Phoenix is floating on your screen'),
-    el('p', {}, 'Minimise this window and Phoenix stays beside your work in her own small window, ready to help or just keep you company. When you come back to Phoenix, she comes home too.'),
+    el('p', {}, ph('Minimise this window and Phoenix stays beside your work in {their} own small window, ready to help or just keep you company. When you come back to Phoenix, {they} {come|comes} home too.')),
     el('div', { class: 'row-wrap', style: { justifyContent: 'center' } }, el('button', { class: 'btn btn-primary', type: 'button', onclick: closeFloat }, 'Bring Phoenix back here'))));
 }
 
@@ -167,7 +168,7 @@ export function offerFloat(host, { navigate } = {}) {
   if (!standalone) return;
   const dismiss = () => { state.float ||= { activity: '', nudgeMins: 0, invited: false }; state.float.invited = true; save(); host.textContent = ''; };
   host.append(el('div', { class: 'install-invite float-invite', role: 'region', 'aria-label': 'Float Phoenix beside your work' },
-    el('span', {}, 'Want Phoenix beside you while you work? Press Float, then minimise this window. She stays in a small window on top, to help with what you are doing or just chat.'),
+    el('span', {}, ph('Want Phoenix beside you while you work? Press Float, then minimise this window. {They} {stay|stays} in a small window on top, to help with what you are doing or just chat.')),
     el('span', { class: 'row-wrap' },
       el('button', { class: 'btn btn-sm btn-primary', type: 'button', onclick: () => { dismiss(); openFloat({ navigate }); } }, 'Float Phoenix'),
       el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: dismiss }, 'Not now'))));

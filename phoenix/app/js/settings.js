@@ -14,6 +14,7 @@ import { accountSection } from './account-ui.js';
 import { wakeSupported, wakeEnabled, wakeListening, enableWake, disableWake, isInstalled } from './wake.js';
 import { voiceAllowed } from './voice-gate.js';
 import { catalogSize, loadCatalog } from './catalog.js';
+import { ph, PHOENIX_SETS, PERSON_PRONOUNS, cleanPronouns } from './pronouns.js';
 import { voiceSupport } from './voice.js';
 import { notifSupport, setReminder, testReminder, downloadIcs } from './reminders.js';
 
@@ -54,6 +55,21 @@ export function mountSettings(container, { focus } = {}) {
       el('label', { class: 'field' }, 'What should Phoenix call you?', name),
       el('div', {}, el('div', { style: { fontWeight: 700, marginBottom: '.3rem' } }, 'How do you describe yourself?'), tags),
       el('label', { class: 'field' }, 'Anything Phoenix should know?', el('span', { class: 'hint' }, 'What helps, what does not, how you like to be spoken to.'), about))));
+
+  // ---------------------------------------------------- pronouns, for the person and for Phoenix
+  const mine = el('select', { class: 'input', 'aria-label': 'My pronouns' }, PERSON_PRONOUNS.map(([v, l]) => el('option', { value: v, selected: (state.profile.pronouns || '') === v }, l)));
+  const mineCustom = el('input', { class: 'input', value: state.profile.pronounsCustom || '', maxlength: '30', autocomplete: 'off', placeholder: 'For example: xe/xem', 'aria-label': 'My pronouns, in my own words' });
+  const customRow = el('label', { class: 'field' }, 'Your pronouns, in your own words', mineCustom); customRow.hidden = state.profile.pronouns !== 'other';
+  mine.addEventListener('change', () => { state.profile.pronouns = mine.value; customRow.hidden = mine.value !== 'other'; save(); });
+  mineCustom.addEventListener('input', () => { state.profile.pronounsCustom = cleanPronouns(mineCustom.value); save(); });
+  const phoenixSeg = seg(Object.entries(PHOENIX_SETS).map(([k, s]) => [k, s.label]), () => state.prefs.phoenixPronouns || 'he', (v) => { state.prefs.phoenixPronouns = v; trackFeature('phoenix_pronouns_' + v); bus.emit('pronouns'); setTimeout(() => { save(); mountSettings(container); }, 0); }, 'Phoenix’s pronouns');
+  root.append(el('fieldset', { id: 'pronouns-section' }, el('legend', {}, 'Pronouns'),
+    el('p', { class: 'muted small' }, 'Both are your choice. Phoenix is an AI, so there is no right answer for Phoenix: pick whatever feels comfortable, and change it whenever you like.'),
+    el('div', { class: 'stack' },
+      el('label', { class: 'field' }, 'Your pronouns', el('span', { class: 'hint' }, 'Optional. Phoenix will use them if it ever talks about you in the third person.'), mine),
+      customRow,
+      el('div', {}, el('div', { style: { fontWeight: 700, marginBottom: '.3rem' } }, 'Phoenix’s pronouns'), phoenixSeg,
+        el('div', { class: 'muted small', style: { marginTop: '.3rem' } }, ph('Right now Phoenix uses {they}, {them} and {their}. The app, and Phoenix when talking about Phoenix, will use these.'))))));
 
   // ---------------------------------------------------- how Phoenix talks
   const acctBox = accountSection();
@@ -228,18 +244,18 @@ function wakeSection() {
   const box = el('fieldset', { id: 'wake-section' }, el('legend', {}, 'Say “Phoenix” to talk'));
   const draw = () => {
     box.querySelectorAll(':scope > :not(legend)').forEach((n) => n.remove());
-    const body = el('div', { class: 'stack' }, el('p', {}, 'Say “Phoenix” (or “Hey Phoenix”) and she starts a spoken conversation: she listens, answers out loud, and listens again until you press Stop. You can say what you want straight after her name, like “Phoenix, I feel overwhelmed”.'));
+    const body = el('div', { class: 'stack' }, el('p', {}, ph('Say “Phoenix” (or “Hey Phoenix”) and {they} {start|starts} a spoken conversation: {they} {listen|listens}, {answer|answers} out loud, and {listen|listens} again until you press Stop. You can say what you want straight after {their} name, like “Phoenix, I feel overwhelmed”.')));
     if (!voiceSupport.stt) body.append(el('div', { class: 'notice' }, 'This needs speech recognition, which Microsoft Edge, Google Chrome and Safari have. Firefox does not.'));
     else if (!isInstalled()) body.append(el('div', { class: 'notice' }, 'This is for the installed app. Install Phoenix as an app first (see “Install as an app” below), then open the app and come back here to turn it on.'));
     else if (!voiceAllowed()) body.append(el('div', { class: 'notice' }, 'Voice chat is for people with a free Phoenix account. ', el('a', { href: '#/settings/account' }, 'Make an account or sign in'), ' (an emailed code, no password), then come back here to turn this on.'));
     else {
       const on = wakeEnabled();
       body.append(
-        el('p', { class: 'small', role: 'status', 'aria-live': 'polite' }, on ? (wakeListening() ? 'On. The microphone is open and Phoenix is listening for her name.' : 'On. Phoenix will listen for her name while the app is open.') : 'Off. The microphone is not in use.'),
+        el('p', { class: 'small', role: 'status', 'aria-live': 'polite' }, on ? (wakeListening() ? ph('On. The microphone is open and Phoenix is listening for {their} name.') : ph('On. Phoenix will listen for {their} name while the app is open.')) : 'Off. The microphone is not in use.'),
         el('div', { class: 'row-wrap' }, on
           ? el('button', { class: 'btn', type: 'button', onclick: () => { disableWake(); draw(); } }, 'Turn off listening for “Phoenix”')
           : el('button', { class: 'btn btn-primary', type: 'button', onclick: async () => { await enableWake(); draw(); } }, 'Turn on listening for “Phoenix”')),
-        el('p', { class: 'muted small' }, 'While this is on, the microphone is open whenever the app is, and in Chrome and Edge your browser sends what it hears to Google or Microsoft to turn into text. Phoenix keeps no audio and ignores everything that does not start with her name. Not for places where private conversations could be overheard.'));
+        el('p', { class: 'muted small' }, ph('While this is on, the microphone is open whenever the app is, and in Chrome and Edge your browser sends what it hears to Google or Microsoft to turn into text. Phoenix keeps no audio and ignores everything that does not start with {their} name. Not for places where private conversations could be overheard.')));
     }
     box.append(body);
   };
@@ -257,12 +273,12 @@ function floatSection() {
   nudge.addEventListener('change', () => setNudges(nudge.value));
   return el('fieldset', { id: 'float-section' }, el('legend', {}, 'Floating Phoenix'),
     el('div', { class: 'stack' },
-      el('p', {}, 'Phoenix can float in a small window on top of everything else while you work: a big animated Phoenix with a speech bubble, who can help with what you are doing, keep you company, or talk with you out loud (press Talk, and she listens, answers aloud, and listens again). Press Float, then minimise Phoenix. She stays beside your work, and comes home when you come back.'),
-      el('p', { class: 'muted small' }, 'Phoenix cannot see your screen. Tell her what you are doing in the floating window and she will help with that. It is the same chat, saved on this device.'),
+      el('p', {}, ph('Phoenix can float in a small window on top of everything else while you work: a big animated Phoenix with a speech bubble, who can help with what you are doing, keep you company, or talk with you out loud (press Talk, and {they} {listen|listens}, {answer|answers} aloud, and {listen|listens} again). Press Float, then minimise Phoenix. {They} {stay|stays} beside your work, and {come|comes} home when you come back.')),
+      el('p', { class: 'muted small' }, ph('Phoenix cannot see your screen. Tell {them} what you are doing in the floating window and {they} will help with that. It is the same chat, saved on this device.')),
       supported
         ? el('div', { class: 'row-wrap' }, el('button', { class: 'btn btn-primary', type: 'button', onclick: () => openFloat() }, 'Float Phoenix now'), el('span', { class: 'muted small' }, 'Your browser only lets this start when you press the button.'))
         : el('div', { class: 'notice' }, 'Floating Phoenix needs Microsoft Edge or Google Chrome on a computer. Firefox, Safari and phones cannot float windows on top of other programs. On those, install Phoenix as an app and keep it open beside your work.'),
-      supported ? el('label', { class: 'stack' }, el('span', {}, 'Gentle check-ins while she is floating'), nudge, el('span', { class: 'muted small' }, 'A small message in the floating window now and then. You can answer, ignore it, or stop it any time.')) : null));
+      supported ? el('label', { class: 'stack' }, el('span', {}, ph('Gentle check-ins while {they} {are|is} floating')), nudge, el('span', { class: 'muted small' }, 'A small message in the floating window now and then. You can answer, ignore it, or stop it any time.')) : null));
 }
 
 function drawAI(box) {

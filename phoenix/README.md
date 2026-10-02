@@ -14,7 +14,7 @@ that can float beside their work on a computer. There is no separate desktop pro
 - **Floating Phoenix** (`app/js/float.js`). In Edge or Chrome on a computer, the Float button opens a small always-on-top
   Document Picture-in-Picture window with the animated Phoenix and the same chat. It stays while the main window is
   minimised and closes when the person comes back. Browsers only open it when a button is pressed, and Phoenix cannot see
-  the screen, so the person tells her what they are doing.
+  the screen, so the person tells Phoenix what they are doing.
 - **Website widget** (`scripts/site-assets/embed.js`, served at `/embed.js`; the panel is `/embed/`). One script tag puts a
   floating Phoenix button on any website. See `/add-to-your-site/`.
 - **Knows neurohubcommunity.org.** A snapshot of the site's public articles and pages is bundled.

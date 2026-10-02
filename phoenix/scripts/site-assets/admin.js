@@ -174,7 +174,7 @@
       body.append(el('h2', {}, 'Floating Phoenix (last 30 days)'));
       body.append(el('p', { 'class': 'muted' }, 'The small always-on-top window that keeps Phoenix beside people while the main window is minimised (Edge and Chrome on computers). Opens are people who pressed Float.'));
       body.append(el('div', { 'class': 'kpis' }, [kpi('Floating window opened', s30(F('float_open'))), kpi('Closed (back to main window)', s30(F('float_close'))), kpi('Messages sent while floating', s30(F('float_chat'))), kpi('Told Phoenix what they are doing', s30(F('float_activity'))), kpi('Turned gentle check-ins on', s30(F('float_nudges_on'))), kpi('Tried it where it is not supported', s30(F('float_unsupported'))), kpi('Installed as an app (30 days)', s30('e:installed')), kpi('Install clicks (30 days)', s30('e:install_click'))]));
-      body.append(bars('Floating window opened per day', perDay(F('float_open'))), bars('Installs as an app per day', perDay('e:installed')));
+      body.append(bars('Floating window opened per day', perDay(F('float_open'))), bars('Installs as an app per day', perDay('e:installed')), bars('Desktop Phoenix started per day', perDay(F('desktop_app_open'))));
 
       body.append(el('h2', {}, 'Accounts and voice (last 30 days)'));
       body.append(el('p', { 'class': 'muted' }, 'Everyone who signs up is a User. Only an Admin can open this backend. Phoenix never stores email addresses, so these are counts only.'));

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Phoenix on your desktop</title>
+<style>
+  /* The Phoenix desktop program shows this page in a see-through window that sits over everything else. Only Phoenix himself and the
+     chat are solid; the rest of the window lets clicks through to whatever is underneath. */
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  .hint { position: fixed; inset: auto 1rem 1rem 1rem; font: 15px/1.5 system-ui, sans-serif; color: #1b1230; background: #fff; border: 3px solid #1b1230; border-radius: 14px; padding: .75rem 1rem; max-width: 34rem; margin: auto; }
+</style>
+</head>
+<body>
+<noscript>This page needs JavaScript.</noscript>
+<!-- the same character the website widget uses, starting minimised in the corner; a click on Phoenix opens the chat -->
+<script src="/embed.js" data-open="false" data-size="170" data-offset="24" data-greeting="Hi, I’m Phoenix. Click me whenever you want to talk."></script>
+<script src="/desktop/desktop.js"></script>
+</body>
+</html>
